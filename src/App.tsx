@@ -10,8 +10,7 @@ import { StaffProjectDetail } from '@/features/staff/StaffProjectDetail';
 import { Messages } from '@/features/shared/Messages';
 import { CallMeeting } from '@/features/shared/CallMeeting';
 import { ProfileSettings } from '@/features/shared/ProfileSettings';
-
-
+// import PlannerPage from '@/features/planner/PlannerPage';
 
 function App() {
   const location = useLocation();
@@ -69,7 +68,7 @@ function App() {
           <Route path="/messages" element={<Messages />} />
           <Route path="/call-meeting" element={<CallMeeting />} />
           <Route path="/settings" element={<ProfileSettings />} />
-
+          {/* <Route path="/planner" element={<PlannerPage />} /> */}
           
           {/* Auth Routes */}
           <Route
