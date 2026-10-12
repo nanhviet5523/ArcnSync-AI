@@ -9,9 +9,8 @@
     "skipLibCheck": true,
 
     /* Absolute Import Configuration */
-    "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["./src/*"]
     },
 
     /* Bundler mode */

@@ -1,4 +1,4 @@
-import { UserRole } from '@/types/role';
+import type { UserRole } from '@/types/role';
 
 export interface RouteConfig {
   path: string;
@@ -12,11 +12,11 @@ export const ROUTES = {
   SIGNUP: '/signup',
 
   // Role-based Protected Dashboards
-  HOMEOWNER_DASHBOARD: '/dashboard',
-  STAFF_WORKSPACE: '/staff/workspace',
-  DESIGNER_PROJECTS: '/designer/projects',
-  SUPPLIER_PORTAL: '/supplier/portal',
-  ADMIN_OVERVIEW: '/admin/overview',
+  HOMEOWNER_DASHBOARD: '/homeowner-dashboard',
+  STAFF_WORKSPACE: '/staff-dashboard',
+  DESIGNER_PROJECTS: '/designer-projects',
+  SUPPLIER_PORTAL: '/supplier-dashboard',
+  ADMIN_OVERVIEW: '/admin-dashboard',
 } as const;
 
 // Đường dẫn mặc định được chuyển hướng tới sau khi đăng nhập thành công theo từng Role

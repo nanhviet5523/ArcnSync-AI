@@ -1,5 +1,5 @@
 import React from 'react';
-import { Logo } from '@/components/common/Logo';
+import { Logo } from '@/components/common';
 const FOOTER_SECTIONS = [
   {
     title: 'Platform',

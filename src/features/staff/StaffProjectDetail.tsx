@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Bell, Plus } from 'lucide-react';
-import { Header } from '@/components/layout/Header';
-import { Footer } from '@/components/layout/Footer';
+import { Header } from '@/components/layout';
+import { Footer } from '@/components/layout';
 
 export const StaffProjectDetail: React.FC = () => {
+  const navigate = useNavigate();
   // Data danh sách nhân sự tham gia dự án
   const [members, setMembers] = useState([
     {
@@ -98,7 +100,7 @@ export const StaffProjectDetail: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-50/60 font-sans flex flex-col justify-between">
-      <Header />
+      <Header role="staff" />
 
       {/* Main Content */}
       <main className="w-full max-w-[1440px] mx-auto px-6 lg:px-12 py-10 flex-1">
@@ -113,13 +115,23 @@ export const StaffProjectDetail: React.FC = () => {
             </p>
           </div>
 
-          <button
-            type="button"
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-md transition cursor-pointer"
-          >
-            <Bell size={14} />
-            <span>Notify team</span>
-          </button>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => navigate('/staff-addendum')}
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs rounded-xl transition cursor-pointer"
+            >
+              <Plus size={14} />
+              <span>Create addendum</span>
+            </button>
+            <button
+              type="button"
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-md transition cursor-pointer"
+            >
+              <Bell size={14} />
+              <span>Notify team</span>
+            </button>
+          </div>
         </div>
 
         {/* 2 Columns Layout */}

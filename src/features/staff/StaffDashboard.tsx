@@ -1,10 +1,10 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FileText, Edit3, Layers, Users, Video, Plus } from 'lucide-react';
-import { Header } from '@/components/layout/Header';
-import { Footer } from '@/components/layout/Footer';
+import { Header } from '@/components/layout';
+import { Footer } from '@/components/layout';
 
-export const StaffWorkspace: React.FC = () => {
+export const StaffDashboard: React.FC = () => {
   const navigate = useNavigate();
 
   // Data giả lập cho 4 Stat Cards
@@ -140,7 +140,7 @@ export const StaffWorkspace: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-50/60 font-sans flex flex-col justify-between">
-      <Header />
+      <Header role="staff" />
 
       {/* Main Content Container */}
       <main className="w-full max-w-[1440px] mx-auto px-6 lg:px-12 py-10 flex-1">
@@ -198,6 +198,7 @@ export const StaffWorkspace: React.FC = () => {
               <h2 className="text-lg font-bold text-slate-900">Incoming requests</h2>
               <button
                 type="button"
+                onClick={() => navigate('/staff-requests')}
                 className="text-xs font-bold text-blue-600 hover:underline inline-flex items-center gap-1"
               >
                 View all →
@@ -237,6 +238,8 @@ export const StaffWorkspace: React.FC = () => {
                           onClick={() => {
                             if (item.isCreateContract) {
                               navigate('/create-contract');
+                            } else {
+                              navigate('/staff-request-detail');
                             }
                           }}
                           className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${item.actionStyle}`}
@@ -296,7 +299,8 @@ export const StaffWorkspace: React.FC = () => {
                 {contracts.map((item, idx) => (
                   <div
                     key={idx}
-                    className="flex items-center justify-between p-3.5 rounded-xl border border-slate-100"
+                    onClick={() => navigate('/staff-contract-detail')}
+                    className="flex items-center justify-between p-3.5 rounded-xl border border-slate-100 cursor-pointer hover:bg-slate-50"
                   >
                     <div>
                       <h4 className="text-xs font-bold text-slate-900">{item.id}</h4>
@@ -320,4 +324,4 @@ export const StaffWorkspace: React.FC = () => {
   );
 };
 
-export default StaffWorkspace;
+export default StaffDashboard;
