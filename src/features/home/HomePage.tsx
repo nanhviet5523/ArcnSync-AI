@@ -1,6 +1,6 @@
 import React from 'react';
-import { Header } from '@/components/layout/Header';
-import { Footer } from '@/components/layout/Footer';
+import { Header } from '@/components/layout';
+import { Footer } from '@/components/layout';
 import { HeroSection } from './components/HeroSection';
 import { HowItWorksSection } from './components/HowItWorksSection';
 import { InspirationsSection } from './components/InspirationsSection';

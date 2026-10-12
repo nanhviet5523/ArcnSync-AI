@@ -11,7 +11,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigateToSignUp }) => {
   return (
     <div className="flex w-full h-screen overflow-hidden font-sans bg-white">
       {/* Left Column: Form Section (50%) */}
-      <div className="flex-1 flex items-center justify-center p-8 lg:p-16 overflow-hidden">
+      <div className="flex-1 flex items-center justify-center p-6 lg:p-12 overflow-y-auto">
         <LoginForm onSignUpClick={onNavigateToSignUp} />
       </div>
 
