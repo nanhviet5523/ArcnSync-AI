@@ -1,4 +1,4 @@
-import { UserRole } from '@/types/role';
+import type { UserRole } from '@/types/role';
 
 export interface RouteConfig {
   path: string;

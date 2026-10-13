@@ -1,6 +1,6 @@
 import React from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
-import { UserRole } from '@/types/role';
+import type { UserRole } from '@/types/role';
 import { ROUTES, DEFAULT_ROLE_REDIRECT } from './routes.config';
 
 interface ProtectedRouteProps {

@@ -17,12 +17,6 @@ export const CreateContract: React.FC = () => {
     siteSupervision: false,
   });
 
-  const packagePrices = {
-    essential: 'VND 45M',
-    standard: 'VND 68M',
-    premium: 'VND 95M',
-  };
-
   const packageTotalFee = {
     essential: 'VND 45,000,000',
     standard: 'VND 68,000,000',

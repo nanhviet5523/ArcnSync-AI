@@ -1,19 +1,52 @@
-import React, { useState, FormEvent } from 'react';
+import React, { useState } from 'react';
+import type { FormEvent } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Logo } from '@/components/common/Logo';
+import { PasswordInput } from '@/components/common/PasswordInput';
+import { ApiError, loginUser, saveSession } from '@/services/authService';
+import { ROLE_CONFIG } from '@/types/role';
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 interface LoginFormProps {
   onSignUpClick?: () => void;
 }
 
 export const LoginForm: React.FC<LoginFormProps> = ({ onSignUpClick }) => {
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    console.log('Login Submit:', { email, password, rememberMe });
+    setError('');
+
+    const errors: { email?: string; password?: string } = {};
+    if (!email.trim()) errors.email = 'Vui lòng nhập email';
+    else if (!EMAIL_REGEX.test(email.trim())) errors.email = 'Email không đúng định dạng (ví dụ: ten@example.com)';
+    if (!password) errors.password = 'Vui lòng nhập mật khẩu';
+    setFieldErrors(errors);
+    if (errors.email || errors.password) return;
+
+    setLoading(true);
+    try {
+      const res = await loginUser({ email: email.trim(), password });
+      const user = saveSession(res, rememberMe);
+      navigate(ROLE_CONFIG[user.role].defaultPath, { replace: true });
+    } catch (err) {
+      setError(err instanceof ApiError || err instanceof Error ? err.message : 'Something went wrong. Please try again.');
+      setLoading(false);
+    }
   };
+
+  const inputClass = (hasError: boolean) =>
+    `w-full px-4 py-3.5 text-sm rounded-xl border focus:outline-none focus:ring-2 focus:border-transparent transition placeholder:text-slate-400 ${
+      hasError ? 'border-red-400 focus:ring-red-500' : 'border-slate-200 focus:ring-blue-600'
+    }`;
 
   return (
     <div className="w-full max-w-[480px] mx-auto flex flex-col justify-center h-full py-2">
@@ -31,7 +64,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSignUpClick }) => {
       </p>
 
       {/* Form */}
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} noValidate className="space-y-4">
         {/* Email Input */}
         <div>
           <label className="block text-xs font-bold text-slate-900 mb-2 uppercase tracking-wide">
@@ -41,9 +74,15 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSignUpClick }) => {
             type="email"
             placeholder="you@example.com"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full px-4 py-3.5 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition placeholder:text-slate-400"
+            onChange={(e) => {
+              setEmail(e.target.value);
+              setFieldErrors((prev) => ({ ...prev, email: undefined }));
+            }}
+            className={inputClass(!!fieldErrors.email)}
           />
+          {fieldErrors.email && (
+            <p role="alert" className="mt-1 text-xs font-medium text-red-600">{fieldErrors.email}</p>
+          )}
         </div>
 
         {/* Password Input */}
@@ -51,13 +90,18 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSignUpClick }) => {
           <label className="block text-xs font-bold text-slate-900 mb-2 uppercase tracking-wide">
             Password
           </label>
-          <input
-            type="password"
+          <PasswordInput
             placeholder="Enter your password"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full px-4 py-3.5 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition placeholder:text-slate-400"
+            onChange={(e) => {
+              setPassword(e.target.value);
+              setFieldErrors((prev) => ({ ...prev, password: undefined }));
+            }}
+            className={inputClass(!!fieldErrors.password)}
           />
+          {fieldErrors.password && (
+            <p role="alert" className="mt-1 text-xs font-medium text-red-600">{fieldErrors.password}</p>
+          )}
         </div>
 
         {/* Remember Me & Forgot Password */}
@@ -82,10 +126,13 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSignUpClick }) => {
         {/* Login Button */}
         <button
           type="submit"
-          className="w-full py-3.5 bg-[#0B132B] hover:bg-slate-900 text-white font-bold text-sm rounded-xl shadow-md transition duration-200 mt-2"
+          disabled={loading}
+          className="w-full py-3.5 bg-[#0B132B] hover:bg-slate-900 text-white font-bold text-sm rounded-xl shadow-md transition duration-200 mt-2 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
-          Login
+          {loading && <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />}
+          {loading ? 'Logging in...' : 'Login'}
         </button>
+        {error && <p role="alert" className="text-sm font-medium text-rose-600">{error}</p>}
       </form>
 
       {/* Divider */}

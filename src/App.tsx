@@ -4,6 +4,7 @@ import { HomePage } from '@/features/home/HomePage';
 import { LoginPage } from '@/features/auth/LoginPage';
 import { SignUpPage } from '@/features/auth/SignUpPage';
 import { StaffWorkspace } from '@/features/staff/StaffWorkspace';
+import { VerifyOtpPage } from '@/features/auth/VerifyOtpPage';
 import { CreateContract } from '@/features/staff/CreateContract';
 import { StaffProjects } from '@/features/staff/StaffProjects';
 import { StaffProjectDetail } from '@/features/staff/StaffProjectDetail';
@@ -27,7 +28,7 @@ function App() {
       opacity: 1,
       transition: {
         duration: 0.35,
-        ease: [0.25, 1, 0.5, 1],
+        ease: [0.25, 1, 0.5, 1] as const,
       },
     },
     exit: {
@@ -35,7 +36,7 @@ function App() {
       opacity: 0,
       transition: {
         duration: 0.25,
-        ease: [0.25, 1, 0.5, 1],
+        ease: [0.25, 1, 0.5, 1] as const,
       },
     },
   };
@@ -101,6 +102,8 @@ function App() {
               </motion.div>
             }
           />
+
+          <Route path="/verify-otp" element={<VerifyOtpPage />} />
         </Routes>
       </AnimatePresence>
     </div>

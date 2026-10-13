@@ -1,5 +1,44 @@
-import React, { useState, FormEvent } from 'react';
+import React, { useState } from 'react';
+import type { FormEvent } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Logo } from '@/components/common/Logo';
+import { PasswordInput } from '@/components/common/PasswordInput';
+import { ApiError, registerUser } from '@/services/authService';
+
+type FieldName = 'fullName' | 'phone' | 'email' | 'password' | 'confirmPassword' | 'terms';
+type FieldErrors = Partial<Record<FieldName, string>>;
+
+const PHONE_REGEX = /^0[0-9]{9}$/;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const MIN_PASSWORD_LENGTH = 6;
+
+const FORM_FIELDS: FieldName[] = ['fullName', 'phone', 'email', 'password'];
+const FIELD_KEYWORDS: Array<[FieldName, RegExp]> = [
+  ['fullName', /full\s*name|họ\s*và\s*tên|họ tên|tên/i],
+  ['phone', /phone|số điện thoại|điện thoại/i],
+  ['email', /email/i],
+  ['password', /password|mật khẩu/i],
+];
+
+// Maps BE validation response (per-field errors or message list) to form fields.
+function mapServerErrors(err: ApiError): { fields: FieldErrors; general: string } {
+  const fields: FieldErrors = {};
+  for (const [key, msg] of Object.entries(err.fieldErrors)) {
+    const field = FORM_FIELDS.find((f) => f.toLowerCase() === key.toLowerCase());
+    if (field) fields[field] = msg;
+  }
+  const unmatched: string[] = [];
+  for (const msg of err.messages) {
+    const hit = FIELD_KEYWORDS.find(([, re]) => re.test(msg));
+    if (hit) {
+      if (!fields[hit[0]]) fields[hit[0]] = msg;
+    } else {
+      unmatched.push(msg);
+    }
+  }
+  const general = Object.keys(fields).length > 0 ? unmatched.join(' ') : err.message;
+  return { fields, general };
+}
 
 interface SignUpFormProps {
   onLoginClick?: () => void;
@@ -14,17 +53,74 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onLoginClick }) => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [agreeTerms, setAgreeTerms] = useState(false);
 
-  const handleSubmit = (e: FormEvent) => {
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+
+  const clearFieldError = (field: FieldName) =>
+    setFieldErrors((prev) => (prev[field] ? { ...prev, [field]: undefined } : prev));
+
+  const validate = (): FieldErrors => {
+    const errors: FieldErrors = {};
+    if (!fullName.trim()) errors.fullName = 'Vui lòng nhập họ và tên';
+    if (!phone.trim()) errors.phone = 'Vui lòng nhập số điện thoại';
+    else if (!PHONE_REGEX.test(phone.trim())) errors.phone = 'Số điện thoại phải bắt đầu bằng 0 và gồm đúng 10 chữ số';
+    if (!email.trim()) errors.email = 'Vui lòng nhập email';
+    else if (!EMAIL_REGEX.test(email.trim())) errors.email = 'Email không đúng định dạng (ví dụ: ten@example.com)';
+    if (!password) errors.password = 'Vui lòng nhập mật khẩu';
+    else if (password.length < MIN_PASSWORD_LENGTH) errors.password = `Mật khẩu phải có tối thiểu ${MIN_PASSWORD_LENGTH} ký tự`;
+    if (!confirmPassword) errors.confirmPassword = 'Vui lòng nhập lại mật khẩu';
+    else if (password !== confirmPassword) errors.confirmPassword = 'Mật khẩu xác nhận không khớp';
+    if (!agreeTerms) errors.terms = 'Vui lòng đồng ý với Điều khoản dịch vụ và Chính sách bảo mật';
+    return errors;
+  };
+
+  const inputClass = (field: FieldName) =>
+    `w-full px-4 py-3 text-sm rounded-xl border focus:outline-none focus:ring-2 focus:border-transparent transition placeholder:text-slate-400 ${
+      fieldErrors[field] ? 'border-red-400 focus:ring-red-500' : 'border-slate-200 focus:ring-blue-600'
+    }`;
+
+  const renderError = (field: FieldName) =>
+    fieldErrors[field] ? (
+      <p role="alert" className="mt-1 text-xs font-medium text-red-600">
+        {fieldErrors[field]}
+      </p>
+    ) : null;
+
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    console.log('SignUp Submit:', {
-      role,
-      fullName,
-      email,
-      phone,
-      password,
-      confirmPassword,
-      agreeTerms,
-    });
+    setError('');
+    setSuccess('');
+
+    const errors = validate();
+    setFieldErrors(errors);
+    if (Object.keys(errors).length > 0) return;
+
+    setLoading(true);
+    try {
+      const res = await registerUser({
+        fullName: fullName.trim(),
+        phone: phone.trim(),
+        email: email.trim(),
+        password,
+      });
+      setSuccess(res.message);
+      setTimeout(
+        () => navigate('/verify-otp', { state: { email: res.user.email } }),
+        1500,
+      );
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 400) {
+        const { fields, general } = mapServerErrors(err);
+        setFieldErrors(fields);
+        setError(general);
+      } else {
+        setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
+      }
+      setLoading(false);
+    }
   };
 
   return (
@@ -87,7 +183,7 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onLoginClick }) => {
       </div>
 
       {/* Form */}
-      <form onSubmit={handleSubmit} className="space-y-3.5">
+      <form onSubmit={handleSubmit} noValidate className="space-y-3.5">
         <div>
           <label className="block text-xs font-bold text-slate-900 mb-1.5 uppercase tracking-wide">
             Full name
@@ -96,9 +192,13 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onLoginClick }) => {
             type="text"
             placeholder="Nguyen Van A"
             value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
-            className="w-full px-4 py-3 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition placeholder:text-slate-400"
+            onChange={(e) => {
+              setFullName(e.target.value);
+              clearFieldError('fullName');
+            }}
+            className={inputClass('fullName')}
           />
+          {renderError('fullName')}
         </div>
 
         <div className="grid grid-cols-2 gap-3">
@@ -110,9 +210,13 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onLoginClick }) => {
               type="email"
               placeholder="you@example.com"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-3 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition placeholder:text-slate-400"
+              onChange={(e) => {
+              setEmail(e.target.value);
+              clearFieldError('email');
+            }}
+              className={inputClass('email')}
             />
+          {renderError('email')}
           </div>
           <div>
             <label className="block text-xs font-bold text-slate-900 mb-1.5 uppercase tracking-wide">
@@ -122,9 +226,13 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onLoginClick }) => {
               type="tel"
               placeholder="+84 9xx xxx xxx"
               value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              className="w-full px-4 py-3 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition placeholder:text-slate-400"
+              onChange={(e) => {
+              setPhone(e.target.value);
+              clearFieldError('phone');
+            }}
+              className={inputClass('phone')}
             />
+          {renderError('phone')}
           </div>
         </div>
 
@@ -134,25 +242,31 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onLoginClick }) => {
             <label className="block text-xs font-bold text-slate-900 mb-1.5 uppercase tracking-wide">
               Password
             </label>
-            <input
-              type="password"
+            <PasswordInput
               placeholder="Create a password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-3 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition placeholder:text-slate-400"
+              onChange={(e) => {
+              setPassword(e.target.value);
+              clearFieldError('password');
+            }}
+              className={inputClass('password')}
             />
+          {renderError('password')}
           </div>
           <div>
             <label className="block text-xs font-bold text-slate-900 mb-1.5 uppercase tracking-wide">
               Confirm password
             </label>
-            <input
-              type="password"
+            <PasswordInput
               placeholder="Re-enter password"
               value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full px-4 py-3 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition placeholder:text-slate-400"
+              onChange={(e) => {
+              setConfirmPassword(e.target.value);
+              clearFieldError('confirmPassword');
+            }}
+              className={inputClass('confirmPassword')}
             />
+          {renderError('confirmPassword')}
           </div>
         </div>
 
@@ -162,7 +276,10 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onLoginClick }) => {
             <input
               type="checkbox"
               checked={agreeTerms}
-              onChange={(e) => setAgreeTerms(e.target.checked)}
+              onChange={(e) => {
+                setAgreeTerms(e.target.checked);
+                clearFieldError('terms');
+              }}
               className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
             />
             <span>
@@ -176,14 +293,30 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onLoginClick }) => {
               </a>
             </span>
           </label>
+          {renderError('terms')}
         </div>
+
+        {error && (
+          <p role="alert" className="text-xs font-medium text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+            {error}
+          </p>
+        )}
+        {success && (
+          <p role="status" className="text-xs font-medium text-green-700 bg-green-50 border border-green-100 rounded-lg px-3 py-2">
+            {success}
+          </p>
+        )}
 
         {/* Create Account Button */}
         <button
           type="submit"
-          className="w-full py-3.5 bg-[#0B132B] hover:bg-slate-900 text-white font-bold text-sm rounded-xl shadow-md transition duration-200 mt-1"
+          disabled={loading}
+          className="w-full py-3.5 bg-[#0B132B] hover:bg-slate-900 text-white font-bold text-sm rounded-xl shadow-md transition duration-200 mt-1 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
-          Create Account
+          {loading && (
+            <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+          )}
+          {loading ? 'Creating account...' : 'Create Account'}
         </button>
       </form>
 
