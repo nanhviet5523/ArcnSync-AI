@@ -10,9 +10,8 @@
     "ignoreDeprecations": "6.0",
 
     /* Absolute Import Configuration */
-    "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["./src/*"]
     },
 
     /* Bundler mode */

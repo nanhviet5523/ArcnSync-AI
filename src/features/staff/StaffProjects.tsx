@@ -1,113 +1,59 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layers, Clock, AlertTriangle, Calendar, Search, Download } from 'lucide-react';
-import { Header } from '@/components/layout/Header';
-import { Footer } from '@/components/layout/Footer';
+import { Header } from '@/components/layout';
+import { Footer } from '@/components/layout';
+import { useDemoWorkspace } from '@/hooks/useDemoWorkspace';
 
 export const StaffProjects: React.FC = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
+  const workspace = useDemoWorkspace();
+  const projects = workspace.projects.map((project) => {
+    const stage = project.stage === 'Product selection' ? 'Products' : project.stage === 'Design review' ? 'Review' : project.stage;
+    const roundsAtLimit = project.currentRound >= project.totalRounds;
+    const stageColor = stage === 'Review' ? 'bg-amber-50 text-amber-700' : stage === 'Handover' ? 'bg-emerald-50 text-emerald-600' : stage === 'Products' ? 'bg-sky-50 text-sky-600' : 'bg-blue-50 text-blue-600';
+    return { id: project.id, name: project.name, homeowner: project.homeowner, designer: project.designer, stage, stageBg: stageColor, progress: project.progress, rounds: `${project.currentRound}/${project.totalRounds}`, roundsBg: roundsAtLimit ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600', due: project.dueDate, roundsAtLimit, completed: project.stage === 'Handover' };
+  });
+  const matchesSearch = (project: typeof projects[number]) => `${project.name} ${project.homeowner} ${project.designer}`.toLowerCase().includes(searchQuery.toLowerCase());
+  const visibleProjects = projects.filter((project) => {
+    const matchesTab = activeTab === 'All' || activeTab === 'All 18' || (activeTab === 'Active' && !project.completed) || (activeTab === 'Waiting' && project.stage === 'Requirements') || (activeTab.startsWith('At round limit') && project.roundsAtLimit) || (activeTab === 'Completed' && project.completed);
+    return matchesTab && matchesSearch(project);
+  });
+  const roundLimitProject = projects.find((project) => project.roundsAtLimit);
 
   const stats = [
     {
       title: 'ACTIVE',
-      value: '18',
+      value: String(projects.filter((project) => !project.completed).length),
       icon: <Layers className="w-5 h-5 text-blue-600" />,
       bgColor: 'bg-blue-50',
     },
     {
       title: 'WAITING FOR HOMEOWNER',
-      value: '5',
+      value: String(projects.filter((project) => project.stage === 'Requirements').length),
       icon: <Clock className="w-5 h-5 text-amber-600" />,
       bgColor: 'bg-amber-50',
     },
     {
       title: 'AT ROUND LIMIT',
-      value: '2',
+      value: String(projects.filter((project) => project.roundsAtLimit).length),
       icon: <AlertTriangle className="w-5 h-5 text-rose-600" />,
       bgColor: 'bg-rose-50',
     },
     {
       title: 'DUE THIS MONTH',
-      value: '4',
+      value: String(projects.filter((project) => project.due.includes('Oct 2026')).length),
       icon: <Calendar className="w-5 h-5 text-sky-600" />,
       bgColor: 'bg-sky-50',
     },
   ];
 
-  const projects = [
-    {
-      name: 'Modern Townhouse · Thu Duc',
-      homeowner: 'Minh Anh',
-      designer: 'Nguyen Linh',
-      stage: 'Review',
-      stageBg: 'bg-amber-50 text-amber-700',
-      progress: 65,
-      rounds: '2/3',
-      roundsBg: 'bg-amber-50 text-amber-700',
-      due: '12 Dec',
-    },
-    {
-      name: 'Level-4 House · Long An',
-      homeowner: 'Hoang Gia',
-      designer: 'Pham Duc',
-      stage: 'Concept',
-      stageBg: 'bg-blue-50 text-blue-600',
-      progress: 30,
-      rounds: '1/2',
-      roundsBg: 'bg-emerald-50 text-emerald-600',
-      due: '20 Dec',
-    },
-    {
-      name: 'Narrow Townhouse · Binh Thanh',
-      homeowner: 'Phuong Vy',
-      designer: 'Nguyen Linh',
-      stage: 'Products',
-      stageBg: 'bg-sky-50 text-sky-600',
-      progress: 85,
-      rounds: '3/3',
-      roundsBg: 'bg-rose-50 text-rose-600',
-      due: '28 Nov',
-    },
-    {
-      name: 'Townhouse · District 7',
-      homeowner: 'Bao Chau',
-      designer: 'Le Trang',
-      stage: 'Handover',
-      stageBg: 'bg-emerald-50 text-emerald-600',
-      progress: 95,
-      rounds: '2/3',
-      roundsBg: 'bg-amber-50 text-amber-700',
-      due: '10 Nov',
-    },
-    {
-      name: 'Level-4 House · Dong Nai',
-      homeowner: 'Tuan Kiet',
-      designer: 'Pham Duc',
-      stage: 'Requirements',
-      stageBg: 'bg-purple-50 text-purple-600',
-      progress: 15,
-      rounds: '0/2',
-      roundsBg: 'bg-emerald-50 text-emerald-600',
-      due: '15 Jan',
-    },
-    {
-      name: 'Townhouse · Go Vap',
-      homeowner: 'Thu Ha',
-      designer: 'Le Trang',
-      stage: 'Approval',
-      stageBg: 'bg-indigo-50 text-indigo-600',
-      progress: 75,
-      rounds: '2/3',
-      roundsBg: 'bg-amber-50 text-amber-700',
-      due: '18 Nov',
-    },
-  ];
 
   return (
     <div className="min-h-screen bg-slate-50/60 font-sans flex flex-col justify-between">
-      <Header />
+      <Header role="staff" />
 
       <main className="w-full max-w-[1440px] mx-auto px-6 lg:px-12 py-10 flex-1">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
@@ -116,7 +62,7 @@ export const StaffProjects: React.FC = () => {
               Projects
             </h1>
             <p className="text-sm text-slate-500 mt-1">
-              18 active projects · progress and design rounds
+              {projects.filter((project) => !project.completed).length} active projects · progress and design rounds
             </p>
           </div>
 
@@ -152,26 +98,27 @@ export const StaffProjects: React.FC = () => {
           ))}
         </div>
 
-        <div className="bg-amber-50/80 border border-amber-200/80 rounded-2xl p-4 mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-xs text-amber-900">
+        {roundLimitProject && <div className="bg-amber-50/80 border border-amber-200/80 rounded-2xl p-4 mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-xs text-amber-900">
           <div className="flex items-center gap-2.5">
             <AlertTriangle size={16} className="text-amber-600 flex-shrink-0" />
             <span>
-              <strong>Narrow Townhouse · Binh Thanh</strong> reached its design round limit. Add an extra round (VND 5M) to continue.
+              <strong>{roundLimitProject.name}</strong> reached its design round limit. Add an extra round to continue.
             </span>
           </div>
           <button
             type="button"
+            onClick={() => navigate(`/staff-addendum?projectId=${roundLimitProject.id}`)}
             className="px-4 py-2 bg-white hover:bg-amber-100/50 text-slate-800 font-bold text-xs rounded-xl border border-amber-200 transition whitespace-nowrap cursor-pointer shadow-sm"
           >
             Create addendum
           </button>
-        </div>
+        </div>}
 
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
             <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0">
-              {['All 18', 'Active', 'Waiting', 'At round limit 2', 'Completed'].map((tab) => {
-                const isSelected = activeTab === tab || (tab === 'All 18' && activeTab === 'All');
+              {['All', 'Active', 'Waiting', 'At round limit', 'Completed'].map((tab) => {
+                const isSelected = activeTab === tab;
                 return (
                   <button
                     key={tab}
@@ -216,8 +163,8 @@ export const StaffProjects: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs">
-                {projects.map((item, idx) => (
-                  <tr key={idx} className="hover:bg-slate-50/50 transition">
+                {visibleProjects.map((item) => (
+                  <tr key={item.id} className="hover:bg-slate-50/50 transition">
                     <td className="py-4 px-4 font-bold text-slate-900">{item.name}</td>
                     <td className="py-4 px-4 text-slate-700 font-medium">{item.homeowner}</td>
                     <td className="py-4 px-4 text-slate-700 font-medium">{item.designer}</td>
@@ -243,7 +190,7 @@ export const StaffProjects: React.FC = () => {
                     <td className="py-4 px-4">
                       <button
                         type="button"
-                        onClick={() => navigate('/staff-project-detail')}
+                        onClick={() => navigate(`/staff-project-detail?projectId=${item.id}`)}
                         className="px-3 py-1 bg-blue-50 hover:bg-blue-100 text-blue-600 font-bold text-xs rounded-lg transition cursor-pointer"
                       >
                         Open

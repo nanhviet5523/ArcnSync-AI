@@ -1,5 +1,6 @@
-import React, { useState, type FormEvent } from 'react';
-import { Logo } from '@/components/common/Logo';
+import React, { useState } from 'react';
+import type { FormEvent } from 'react';
+import { Logo } from '@/components/common';
 
 interface SignUpFormProps {
   onLoginClick?: () => void;
