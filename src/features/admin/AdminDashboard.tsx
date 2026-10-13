@@ -2,22 +2,18 @@ import React from 'react';
 import { Activity, AlertTriangle, ArrowRight, Layers3, Sparkles, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { AdminButton, AdminCard, AdminPageFrame } from './AdminPageFrame';
-
-const stats = [
-  { label: 'Users', value: '214', icon: Users, color: 'bg-blue-50 text-blue-600', path: '/admin-users' },
-  { label: 'Active projects', value: '18', icon: Layers3, color: 'bg-teal-50 text-teal-700', path: '/admin-reports' },
-  { label: 'AI generations / month', value: '1,248', icon: Sparkles, color: 'bg-violet-50 text-violet-700', path: '/admin-ai-settings' },
-  { label: 'Open issues', value: '3', icon: AlertTriangle, color: 'bg-amber-50 text-amber-700', path: '/admin-reports?tab=issues' },
-];
-const activity = [
-  ['Invitation sent to Le Trang', 'Designer', '1 h ago'],
-  ['Partner account created: Viglacera Tiles', 'Supplier', '3 h ago'],
-  ['Minh Anh signed up', 'Homeowner', 'Today'],
-  ['Pham Duc role changed to Designer', 'Designer', 'Yesterday'],
-];
+import { useDemoWorkspace } from '@/hooks/useDemoWorkspace';
 
 export const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
+  const workspace = useDemoWorkspace();
+  const stats = [
+    { label: 'Demo accounts', value: '5', icon: Users, color: 'bg-blue-50 text-blue-600', path: '/admin-users' },
+    { label: 'Active projects', value: String(workspace.projects.filter((project) => project.stage !== 'Handover').length), icon: Layers3, color: 'bg-teal-50 text-teal-700', path: '/admin-reports' },
+    { label: 'Design versions', value: String(workspace.versions.length), icon: Sparkles, color: 'bg-violet-50 text-violet-700', path: '/admin-reports' },
+    { label: 'Open inquiries', value: String(workspace.inquiries.filter((inquiry) => inquiry.status !== 'Answered').length), icon: AlertTriangle, color: 'bg-amber-50 text-amber-700', path: '/admin-reports?tab=issues' },
+  ];
+  const activity = workspace.activity.slice(0, 4).map((item) => [item.action, item.role, item.at]);
   return <AdminPageFrame title="Platform overview" description="Monitor activity and manage accounts, data and AI settings." action={<AdminButton secondary onClick={() => navigate('/admin-reports')}>Export report</AdminButton>}>
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{stats.map(({ label, value, icon: Icon, color, path }) => <button key={label} onClick={() => navigate(path)} className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"><span className={`grid h-12 w-12 place-items-center rounded-xl ${color}`}><Icon size={23} /></span><span><span className="block text-sm text-slate-500">{label}</span><strong className="mt-1 block text-2xl text-slate-900">{value}</strong></span></button>)}</div>
     <div className="mt-5 grid gap-5 xl:grid-cols-[1.5fr_1fr]">

@@ -2,8 +2,16 @@ import React, { useState } from 'react';
 import { Check, User, Send, Download, Lock } from 'lucide-react';
 import { Header } from '@/components/layout';
 import { Footer } from '@/components/layout';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useDemoWorkspace } from '@/hooks/useDemoWorkspace';
+import { workspaceApi } from '@/services/workspaceApi';
 
 export const CreateContract: React.FC = () => {
+  const navigate = useNavigate();
+  const [params] = useSearchParams();
+  const workspace = useDemoWorkspace();
+  const project = workspace.projects.find((item) => item.id === params.get('projectId')) ?? workspace.projects.find((item) => item.id === 'project-modern-thuduc') ?? workspace.projects[0];
+  const [saving, setSaving] = useState(false);
   // States quản lý form
   const [selectedPackage, setSelectedPackage] = useState<'essential' | 'standard' | 'premium'>('standard');
   const [designRounds, setDesignRounds] = useState('3');
@@ -22,6 +30,19 @@ export const CreateContract: React.FC = () => {
     standard: 'VND 68,000,000',
     premium: 'VND 95,000,000',
   };
+  const saveContract = async (status: 'Draft' | 'Awaiting signature') => {
+    if (!project) return;
+    setSaving(true);
+    await workspaceApi.saveContract(project.id, {
+      packageName: selectedPackage[0].toUpperCase() + selectedPackage.slice(1) as 'Essential' | 'Standard' | 'Premium',
+      fee: Number(packageTotalFee[selectedPackage].replace(/[^0-9]/g, '')),
+      rounds: Number(designRounds),
+      timeline,
+      status,
+    }, 'Tran Nam');
+    setSaving(false);
+    navigate('/staff-contracts');
+  };
 
   return (
     <div className="min-h-screen bg-slate-50/60 font-sans flex flex-col justify-between">
@@ -36,7 +57,7 @@ export const CreateContract: React.FC = () => {
               Create contract
             </h1>
             <p className="text-sm text-slate-500 mt-1">
-              C-2026-014 · Modern Townhouse · Thu Duc
+              {workspace.contracts.find((contract) => contract.projectId === project?.id)?.id ?? 'New contract'} · {project?.name}
             </p>
           </div>
 
@@ -46,9 +67,11 @@ export const CreateContract: React.FC = () => {
             </span>
             <button
               type="button"
+              disabled={saving}
+              onClick={() => void saveContract('Draft')}
               className="px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl transition"
             >
-              Save draft
+              {saving ? 'Saving…' : 'Save draft'}
             </button>
           </div>
         </div>
@@ -67,7 +90,7 @@ export const CreateContract: React.FC = () => {
                   </label>
                   <div className="flex items-center gap-2 px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800">
                     <User size={14} className="text-slate-400" />
-                    <span>Minh Anh · 0903 *** 421</span>
+                    <span>{project?.homeowner} · {project?.homeownerEmail}</span>
                   </div>
                 </div>
 
@@ -320,7 +343,7 @@ export const CreateContract: React.FC = () => {
                   DESIGN SERVICE CONTRACT
                 </span>
                 <h3 className="text-lg font-extrabold text-slate-900 mt-0.5">
-                  No. C-2026-014
+                  No. {workspace.contracts.find((contract) => contract.projectId === project?.id)?.id ?? 'New contract'}
                 </h3>
               </div>
 
@@ -372,10 +395,12 @@ export const CreateContract: React.FC = () => {
             {/* Action Buttons */}
             <button
               type="button"
+              disabled={saving}
+              onClick={() => void saveContract('Awaiting signature')}
               className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-md transition flex items-center justify-center gap-2"
             >
               <Send size={14} />
-              <span>Send to homeowner</span>
+              <span>{saving ? 'Sending…' : 'Send to homeowner'}</span>
             </button>
 
             <button
