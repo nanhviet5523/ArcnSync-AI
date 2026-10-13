@@ -10,6 +10,9 @@ import { StaffProjectDetail } from '@/features/staff/StaffProjectDetail';
 import { Messages } from '@/features/shared/Messages';
 import { CallMeeting } from '@/features/shared/CallMeeting';
 import { ProfileSettings } from '@/features/shared/ProfileSettings';
+import { AdminUsersRoles } from '@/features/admin/AdminUsersRoles';
+import { AdminDashboard } from '@/features/admin/AdminDashboard';
+import { AdminMasterData } from '@/features/admin/AdminMasterData';
 
 
 
@@ -27,7 +30,7 @@ function App() {
       opacity: 1,
       transition: {
         duration: 0.35,
-        ease: [0.25, 1, 0.5, 1],
+        ease: [0.25, 1, 0.5, 1] as [number, number, number, number],
       },
     },
     exit: {
@@ -35,7 +38,7 @@ function App() {
       opacity: 0,
       transition: {
         duration: 0.25,
-        ease: [0.25, 1, 0.5, 1],
+        ease: [0.25, 1, 0.5, 1] as [number, number, number, number],
       },
     },
   };
@@ -70,7 +73,14 @@ function App() {
           <Route path="/call-meeting" element={<CallMeeting />} />
           <Route path="/settings" element={<ProfileSettings />} />
 
-          
+          {/* Routes cho Admin */}
+          <Route path="/admin" element={<AdminUsersRoles />} />
+          <Route path="/admin/users" element={<AdminUsersRoles />} />
+          <Route path="/admin/roles" element={<AdminUsersRoles />} />
+          <Route path="/admin/overview" element={<AdminDashboard />} />
+          <Route path="/admin/dashboard" element={<AdminDashboard />} />
+          <Route path="/admin/master-data" element={<AdminMasterData />} />
+          <Route path="/admin/ai-settings" element={<AdminMasterData />} />
           {/* Auth Routes */}
           <Route
             path="/login"

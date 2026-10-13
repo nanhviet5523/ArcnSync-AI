@@ -1,4 +1,4 @@
-import { UserRole } from '@/types/role';
+import type { UserRole } from '@/types/role';
 
 export interface RouteConfig {
   path: string;
@@ -17,6 +17,9 @@ export const ROUTES = {
   DESIGNER_PROJECTS: '/designer/projects',
   SUPPLIER_PORTAL: '/supplier/portal',
   ADMIN_OVERVIEW: '/admin/overview',
+  ADMIN_USERS: '/admin/users',
+  ADMIN_MASTER_DATA: '/admin/master-data',
+  ADMIN_AI_SETTINGS: '/admin/ai-settings',
 } as const;
 
 // Đường dẫn mặc định được chuyển hướng tới sau khi đăng nhập thành công theo từng Role
