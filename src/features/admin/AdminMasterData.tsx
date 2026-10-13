@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Plus, Edit2, X, CheckCircle } from 'lucide-react';
-import { AdminHeader } from '@/features/admin/components/AdminHeader';
-import { Footer } from '@/components/layout';
+import { Header, Footer } from '@/components/layout';
 import {
   INITIAL_BUILDING_TYPES,
   INITIAL_DESIGN_STYLES,
@@ -82,7 +81,7 @@ export const AdminMasterData: React.FC<AdminMasterDataProps> = () => {
 
   return (
     <div className="min-h-screen bg-slate-50/60 font-sans flex flex-col justify-between">
-      <AdminHeader activeTab="master-data" />
+      <Header role="admin" activeTab="master-data" />
 
       <main className="w-full max-w-[1440px] mx-auto px-6 lg:px-12 py-8 flex-1">
         {/* Saved Toast Notification */}

@@ -1,7 +1,6 @@
 import React, { useRef } from 'react';
 import { Search, Plus, ArrowRight, Lock, Check, ChevronDown, CheckCircle, AlertCircle } from 'lucide-react';
-import { AdminHeader } from '@/features/admin/components/AdminHeader';
-import { Footer } from '@/components/layout';
+import { Header, Footer } from '@/components/layout';
 import { useAdminUsers } from '@/features/admin/hooks/useAdminUsers';
 import type { AdminRole, UserFilterCategory } from '@/types/admin';
 
@@ -77,7 +76,7 @@ export const AdminUsersRoles: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-50/60 font-sans flex flex-col justify-between">
       {/* Admin Top Navigation Header */}
-      <AdminHeader activeTab="users" />
+      <Header role="admin" activeTab="users" />
 
       {/* Main Content Area */}
       <main className="w-full max-w-[1440px] mx-auto px-6 lg:px-12 py-8 flex-1">

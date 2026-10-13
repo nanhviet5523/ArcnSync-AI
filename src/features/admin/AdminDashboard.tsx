@@ -9,8 +9,7 @@ import {
   UserPlus,
   Box,
 } from 'lucide-react';
-import { AdminHeader } from '@/features/admin/components/AdminHeader';
-import { Footer } from '@/components/layout';
+import { Header, Footer } from '@/components/layout';
 import {
   GENERATION_STATS_WEEK,
   INITIAL_RECENT_ACTIVITY,
@@ -64,7 +63,7 @@ export const AdminDashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-50/60 font-sans flex flex-col justify-between">
-      <AdminHeader activeTab="dashboard" />
+      <Header role="admin" activeTab="dashboard" />
 
       <main className="w-full max-w-[1440px] mx-auto px-6 lg:px-12 py-8 flex-1">
         {/* Page Header */}
