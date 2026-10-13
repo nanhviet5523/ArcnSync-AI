@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
 import { Search, Plus, ArrowRight, Lock, Check, ChevronDown, CheckCircle, AlertCircle } from 'lucide-react';
 import { AdminHeader } from '@/features/admin/components/AdminHeader';
-import { Footer } from '@/components/layout/Footer';
+import { Footer } from '@/components/layout';
 import { useAdminUsers } from '@/features/admin/hooks/useAdminUsers';
 import type { AdminRole, UserFilterCategory } from '@/types/admin';
 

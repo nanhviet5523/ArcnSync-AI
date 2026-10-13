@@ -10,7 +10,7 @@ import {
   Box,
 } from 'lucide-react';
 import { AdminHeader } from '@/features/admin/components/AdminHeader';
-import { Footer } from '@/components/layout/Footer';
+import { Footer } from '@/components/layout';
 import {
   GENERATION_STATS_WEEK,
   INITIAL_RECENT_ACTIVITY,

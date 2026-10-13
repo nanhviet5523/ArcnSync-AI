@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Bell } from 'lucide-react';
-import { Logo } from '@/components/common/Logo';
+import { Logo } from '@/components/common';
 
 interface AdminHeaderProps {
   activeTab?: 'dashboard' | 'users' | 'master-data' | 'ai-settings';
@@ -17,11 +17,11 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
 
   const currentTab =
     activeTab ||
-    (location.pathname.includes('/admin/users') || location.pathname.includes('/admin/roles')
+    (location.pathname.includes('users') || location.pathname.includes('roles')
       ? 'users'
-      : location.pathname.includes('/admin/master-data')
+      : location.pathname.includes('master-data')
       ? 'master-data'
-      : location.pathname.includes('/admin/ai-settings')
+      : location.pathname.includes('ai-settings')
       ? 'ai-settings'
       : 'dashboard');
 

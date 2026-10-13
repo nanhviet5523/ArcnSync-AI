@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Plus, Edit2, X, CheckCircle } from 'lucide-react';
 import { AdminHeader } from '@/features/admin/components/AdminHeader';
-import { Footer } from '@/components/layout/Footer';
+import { Footer } from '@/components/layout';
 import {
   INITIAL_BUILDING_TYPES,
   INITIAL_DESIGN_STYLES,
