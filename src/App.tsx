@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { HomePage } from '@/features/home/HomePage';
 import { LoginPage } from '@/features/auth/LoginPage';
 import { SignUpPage } from '@/features/auth/SignUpPage';
+import { VerifyOtpPage } from '@/features/auth/VerifyOtpPage';
 import { AcceptInvitation } from '@/features/auth/AcceptInvitation';
 import { StaffDashboard } from '@/features/staff/StaffDashboard';
 import { CreateContract } from '@/features/staff/CreateContract';
@@ -190,6 +191,7 @@ function App() {
             }
           />
 
+          <Route path="/verify-otp" element={<VerifyOtpPage />} />
           <Route path="/accept-invitation" element={<AcceptInvitation />} />
           <Route path="/auth/accept-invitation" element={<AcceptInvitation />} />
         </Routes>
