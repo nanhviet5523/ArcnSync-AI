@@ -197,3 +197,125 @@ export function getAccessToken(): string | null {
   if (typeof window === 'undefined') return null;
   return window.localStorage.getItem(ACCESS_TOKEN_KEY) ?? window.sessionStorage.getItem(ACCESS_TOKEN_KEY);
 }
+
+// ---------------------------------------------------------------------------
+// Authenticated requests with silent token refresh (fetch-based interceptor)
+// ---------------------------------------------------------------------------
+
+export interface RefreshResponse {
+  accessToken: string;
+  refreshToken: string;
+}
+
+// The storage that currently holds the session (remember-me => localStorage).
+function getSessionStorage(): Storage | null {
+  if (typeof window === 'undefined') return null;
+  if (window.localStorage.getItem(REFRESH_TOKEN_KEY)) return window.localStorage;
+  if (window.sessionStorage.getItem(REFRESH_TOKEN_KEY)) return window.sessionStorage;
+  return null;
+}
+
+export function getRefreshToken(): string | null {
+  return getSessionStorage()?.getItem(REFRESH_TOKEN_KEY) ?? null;
+}
+
+function redirectToLogin(): void {
+  if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+    window.location.replace('/login');
+  }
+}
+
+// One refresh at a time: concurrent 401s all wait on the same request, because
+// the BE rotates the refresh token and a second call would use a stale one.
+let refreshing: Promise<string> | null = null;
+
+export function refreshAccessToken(): Promise<string> {
+  if (refreshing) return refreshing;
+
+  refreshing = (async () => {
+    const storage = getSessionStorage();
+    const refreshToken = storage?.getItem(REFRESH_TOKEN_KEY);
+    if (!storage || !refreshToken) throw new ApiError('Session expired. Please log in again.', 401);
+
+    const res = await postJson<RefreshResponse>('/auth/refresh', { refreshToken }, 'Session expired');
+    storage.setItem(ACCESS_TOKEN_KEY, res.accessToken);
+    storage.setItem(REFRESH_TOKEN_KEY, res.refreshToken);
+    return res.accessToken;
+  })()
+    .catch((err) => {
+      // Refresh token is expired/invalid (or missing): drop the session and go to login.
+      logoutDemo();
+      redirectToLogin();
+      throw err;
+    })
+    .finally(() => {
+      refreshing = null;
+    });
+
+  return refreshing;
+}
+
+// fetch wrapper for protected endpoints: attaches the Bearer token, and on a 401
+// refreshes the token once and retries the original request with the new one.
+export async function apiFetch(path: string, init: RequestInit = {}): Promise<Response> {
+  const send = (token: string | null) => {
+    const headers = new Headers(init.headers);
+    if (init.body !== undefined && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
+    if (token) headers.set('Authorization', `Bearer ${token}`);
+    return fetch(`${API_BASE_URL}${path}`, { ...init, headers });
+  };
+
+  let res: Response;
+  try {
+    res = await send(getAccessToken());
+  } catch {
+    throw new ApiError('Cannot connect to the server. Please check your connection and try again.');
+  }
+  if (res.status !== 401) return res;
+
+  const newToken = await refreshAccessToken();
+  try {
+    return await send(newToken);
+  } catch {
+    throw new ApiError('Cannot connect to the server. Please check your connection and try again.');
+  }
+}
+
+// JSON helper on top of apiFetch; throws ApiError for non-2xx responses.
+export async function apiRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const res = await apiFetch(path, init);
+  const data = await res.json().catch(() => null);
+  if (!res.ok) throw buildApiError(res.status, data, `Request failed (${res.status}). Please try again.`);
+  return data as T;
+}
+
+// Revokes the refresh token on the BE, then always clears the local session,
+// even if the request fails (network error, expired token, ...).
+export async function logout(): Promise<void> {
+  const refreshToken = getRefreshToken();
+  try {
+    if (refreshToken) await postJson('/auth/logout', { refreshToken }, 'Logout failed');
+  } catch {
+    // Ignore: the local session is cleared regardless.
+  } finally {
+    logoutDemo();
+  }
+}
+
+export interface ForgotPasswordResponse {
+  message: string;
+}
+
+export function forgotPassword(email: string): Promise<ForgotPasswordResponse> {
+  return postJson<ForgotPasswordResponse>('/auth/forgot-password', { email }, 'Request failed');
+}
+
+export interface ResetPasswordPayload {
+  email: string;
+  otp: string;
+  newPassword: string;
+}
+
+export function resetPassword(payload: ResetPasswordPayload): Promise<ForgotPasswordResponse> {
+  return postJson<ForgotPasswordResponse>('/auth/reset-password', payload, 'Password reset failed');
+}

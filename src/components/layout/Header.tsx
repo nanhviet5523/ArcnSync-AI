@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Bell, Settings, LogOut } from 'lucide-react';
 import { Button, Logo } from '@/components/common';
-import { getCurrentDemoUser, logoutDemo } from '@/services/authService';
+import { getCurrentDemoUser, logout } from '@/services/authService';
 import { ROLE_CONFIG } from '@/types/role';
 import type { UserRole } from '@/types/role';
 
@@ -411,10 +411,10 @@ export const Header: React.FC<HeaderProps> = ({
                 <div className="border-t border-slate-100 pt-1">
                   <button
                     type="button"
-                    onClick={() => {
+                    onClick={async () => {
                       setAccountMenuOpen(false);
-                      logoutDemo();
-                      navigate('/');
+                      await logout();
+                      navigate('/login', { replace: true });
                     }}
                     className="w-full px-4 py-2 text-left text-xs font-semibold text-rose-600 hover:bg-rose-50 flex items-center gap-2 cursor-pointer transition-colors"
                   >

@@ -121,12 +121,13 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSignUpClick }) => {
             />
             <span>Remember me</span>
           </label>
-          <a
-            href="#forgot"
+          <button
+            type="button"
+            onClick={() => navigate('/forgot-password')}
             className="text-sm font-bold text-blue-600 hover:text-blue-700 transition"
           >
             Forgot password?
-          </a>
+          </button>
         </div>
 
         {/* Login Button */}
