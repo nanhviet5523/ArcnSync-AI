@@ -9,11 +9,13 @@ import {
   FileText,
   Download,
 } from 'lucide-react';
-import { Header } from '@/components/layout/Header';
-import { Footer } from '@/components/layout/Footer';
+import { Header } from '@/components/layout';
+import { Footer } from '@/components/layout';
+import { getCurrentDemoUser } from '@/services/authService';
 
 export const Messages: React.FC = () => {
   const navigate = useNavigate();
+  const currentUser = getCurrentDemoUser();
 
   // State quản lý danh sách hội thoại
   const [conversations] = useState([
@@ -134,7 +136,7 @@ export const Messages: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-50/60 font-sans flex flex-col justify-between">
-      <Header />
+      <Header role={currentUser?.role} />
 
       <main className="w-full max-w-[1440px] mx-auto px-6 lg:px-12 py-10 flex-1">
         {/* Title & Top Action */}

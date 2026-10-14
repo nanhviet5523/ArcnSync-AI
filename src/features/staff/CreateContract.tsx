@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Check, User, Send, Download, Lock } from 'lucide-react';
-import { Header } from '@/components/layout/Header';
-import { Footer } from '@/components/layout/Footer';
+import { Header } from '@/components/layout';
+import { Footer } from '@/components/layout';
 
 export const CreateContract: React.FC = () => {
   // States quản lý form
@@ -25,7 +25,7 @@ export const CreateContract: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-50/60 font-sans flex flex-col justify-between">
-      <Header />
+      <Header role="staff" />
 
       {/* Main Content */}
       <main className="w-full max-w-[1440px] mx-auto px-6 lg:px-12 py-10 flex-1">

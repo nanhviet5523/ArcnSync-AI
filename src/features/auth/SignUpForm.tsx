@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import type { FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Logo } from '@/components/common/Logo';
-import { PasswordInput } from '@/components/common/PasswordInput';
+import { Logo, PasswordInput } from '@/components/common';
 import { ApiError, registerUser } from '@/services/authService';
 
 type FieldName = 'fullName' | 'phone' | 'email' | 'password' | 'confirmPassword' | 'terms';

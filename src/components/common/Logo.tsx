@@ -4,7 +4,7 @@ export interface LogoProps {
   className?: string;
 }
 
-export const Logo = ({
+export const Logo: React.FC<LogoProps> = ({
   size = 36,
   showText = true,
   className = '',
