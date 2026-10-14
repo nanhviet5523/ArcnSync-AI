@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { HomePage } from '@/features/home/HomePage';
 import { LoginPage } from '@/features/auth/LoginPage';
 import { SignUpPage } from '@/features/auth/SignUpPage';
+import { AcceptInvitation } from '@/features/auth/AcceptInvitation';
 import { StaffDashboard } from '@/features/staff/StaffDashboard';
 import { CreateContract } from '@/features/staff/CreateContract';
 import { StaffRequests } from '@/features/staff/StaffRequests';
@@ -188,6 +189,9 @@ function App() {
               </motion.div>
             }
           />
+
+          <Route path="/accept-invitation" element={<AcceptInvitation />} />
+          <Route path="/auth/accept-invitation" element={<AcceptInvitation />} />
         </Routes>
       </AnimatePresence>
     </div>
