@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Users,
@@ -8,6 +8,9 @@ import {
   Download,
   UserPlus,
   Box,
+  X,
+  Check,
+  ChevronDown,
 } from 'lucide-react';
 import { Header, Footer } from '@/components/layout';
 import {
@@ -18,6 +21,33 @@ import type { AdminRole } from '@/types/admin';
 
 export const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
+
+  // Export report modal state (Image 2)
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [exportDateRange, setExportDateRange] = useState('Last 30 days');
+  const [exportFormat, setExportFormat] = useState<'PDF' | 'CSV'>('PDF');
+  const [exportOverview, setExportOverview] = useState(true);
+  const [exportActivityLog, setExportActivityLog] = useState(true);
+  const [exportIssues, setExportIssues] = useState(true);
+
+  const handleConfirmExport = () => {
+    const filename = `archsync-platform-report-${exportDateRange.toLowerCase().replace(/\s+/g, '-')}.${exportFormat.toLowerCase()}`;
+    const content = `ArchSync AI Platform Report\nDate Range: ${exportDateRange}\nFormat: ${exportFormat}\nSections: ${[
+      exportOverview && 'Overview',
+      exportActivityLog && 'Activity log',
+      exportIssues && 'Issues',
+    ]
+      .filter(Boolean)
+      .join(', ')}`;
+    const blob = new Blob([content], { type: exportFormat === 'CSV' ? 'text/csv' : 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(url);
+    setIsExportModalOpen(false);
+  };
 
   const statCards = [
     {
@@ -79,7 +109,7 @@ export const AdminDashboard: React.FC = () => {
 
           <button
             type="button"
-            onClick={() => alert('Exporting platform report...')}
+            onClick={() => setIsExportModalOpen(true)}
             className="inline-flex items-center gap-2 px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-semibold rounded-xl transition cursor-pointer shadow-2xs self-start sm:self-auto"
           >
             <Download className="w-4 h-4 text-slate-600" />
@@ -265,6 +295,139 @@ export const AdminDashboard: React.FC = () => {
             </div>
           </div>
         </div>
+        {/* EXPORT REPORT MODAL (Image 2) */}
+        {isExportModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs animate-in fade-in duration-150">
+            <div className="w-full max-w-md bg-white rounded-3xl border border-slate-200/90 shadow-2xl p-6 relative animate-in zoom-in-95 duration-150">
+              {/* Modal Header */}
+              <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+                <h3 className="text-base font-bold text-slate-900">Export report</h3>
+                <button
+                  type="button"
+                  onClick={() => setIsExportModalOpen(false)}
+                  className="w-7 h-7 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 flex items-center justify-center transition cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              <div className="py-4 space-y-4">
+                {/* Date range dropdown */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                    Date range
+                  </label>
+                  <div className="relative">
+                    <select
+                      value={exportDateRange}
+                      onChange={(e) => setExportDateRange(e.target.value)}
+                      className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs text-slate-900 bg-white appearance-none cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-500 font-medium"
+                    >
+                      <option value="Last 7 days">Last 7 days</option>
+                      <option value="Last 30 days">Last 30 days</option>
+                      <option value="Last 90 days">Last 90 days</option>
+                    </select>
+                    <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  </div>
+                </div>
+
+                {/* Format Radio */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-2">
+                    Format
+                  </label>
+                  <div className="flex items-center gap-6">
+                    <label className="inline-flex items-center gap-2 cursor-pointer select-none">
+                      <input
+                        type="radio"
+                        name="exportFormatDash"
+                        checked={exportFormat === 'PDF'}
+                        onChange={() => setExportFormat('PDF')}
+                        className="w-4 h-4 text-blue-600 focus:ring-blue-500 border-slate-300"
+                      />
+                      <span className="text-xs font-medium text-slate-800">PDF</span>
+                    </label>
+
+                    <label className="inline-flex items-center gap-2 cursor-pointer select-none">
+                      <input
+                        type="radio"
+                        name="exportFormatDash"
+                        checked={exportFormat === 'CSV'}
+                        onChange={() => setExportFormat('CSV')}
+                        className="w-4 h-4 text-blue-600 focus:ring-blue-500 border-slate-300"
+                      />
+                      <span className="text-xs font-medium text-slate-800">CSV</span>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Section Checkboxes */}
+                <div className="pt-2 space-y-2.5">
+                  <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                    <div
+                      onClick={() => setExportOverview(!exportOverview)}
+                      className={`w-4 h-4 rounded flex items-center justify-center transition ${
+                        exportOverview
+                          ? 'bg-blue-600 text-white'
+                          : 'border border-slate-300 bg-white'
+                      }`}
+                    >
+                      {exportOverview && <Check className="w-3 h-3 stroke-[3]" />}
+                    </div>
+                    <span className="text-xs font-medium text-slate-700">Overview</span>
+                  </label>
+
+                  <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                    <div
+                      onClick={() => setExportActivityLog(!exportActivityLog)}
+                      className={`w-4 h-4 rounded flex items-center justify-center transition ${
+                        exportActivityLog
+                          ? 'bg-blue-600 text-white'
+                          : 'border border-slate-300 bg-white'
+                      }`}
+                    >
+                      {exportActivityLog && <Check className="w-3 h-3 stroke-[3]" />}
+                    </div>
+                    <span className="text-xs font-medium text-slate-700">Activity log</span>
+                  </label>
+
+                  <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                    <div
+                      onClick={() => setExportIssues(!exportIssues)}
+                      className={`w-4 h-4 rounded flex items-center justify-center transition ${
+                        exportIssues
+                          ? 'bg-blue-600 text-white'
+                          : 'border border-slate-300 bg-white'
+                      }`}
+                    >
+                      {exportIssues && <Check className="w-3 h-3 stroke-[3]" />}
+                    </div>
+                    <span className="text-xs font-medium text-slate-700">Issues</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsExportModalOpen(false)}
+                  className="px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold text-xs rounded-xl transition cursor-pointer shadow-2xs"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmExport}
+                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold text-xs rounded-xl shadow-xs transition cursor-pointer"
+                >
+                  Export
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
 
       <Footer />

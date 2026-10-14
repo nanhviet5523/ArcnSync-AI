@@ -1,8 +1,8 @@
 export type AdminRole = 'Homeowner' | 'Designer' | 'Staff' | 'Supplier';
 
-export type UserStatus = 'Active' | 'Invited' | 'Suspended';
+export type UserStatus = 'Active' | 'Invited' | 'Suspended' | 'Deactivated';
 
-export type UserFilterCategory = 'all' | 'homeowners' | 'company' | 'suppliers';
+export type UserFilterCategory = 'all' | 'homeowners' | 'company' | 'suppliers' | 'pending';
 
 export interface AdminUser {
   id: string;
@@ -34,6 +34,28 @@ export interface ConstraintRuleItem {
   id: string;
   title: string;
   description: string;
+  status: 'Blocks saving' | 'Warns only';
+}
+
+export interface DesignStyleItem {
+  id: string;
+  name: string;
+  description: string;
+  aiKeywords: string;
+}
+
+export interface MaterialFinishItem {
+  id: string;
+  name: string;
+  category: string;
+  enabled: boolean;
+  statusText: string;
+}
+
+export interface ProductCategoryItem {
+  id: string;
+  name: string;
+  count: number;
 }
 
 export interface PromptLibraryItem {

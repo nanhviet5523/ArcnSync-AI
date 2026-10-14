@@ -3,6 +3,9 @@ import type {
   InviteUserPayload,
   BuildingTypeItem,
   ConstraintRuleItem,
+  DesignStyleItem,
+  MaterialFinishItem,
+  ProductCategoryItem,
   PromptLibraryItem,
   RecentActivityItem,
   GenerationStatDay,
@@ -78,6 +81,17 @@ export const INITIAL_ADMIN_USERS: AdminUser[] = [
   },
   {
     id: 'usr-006',
+    name: 'Sang Lighting',
+    email: 'hello@sanglighting.vn',
+    role: 'Supplier',
+    status: 'Active',
+    lastActive: 'Yesterday',
+    avatar: 'SL',
+    avatarBgColor: 'bg-purple-600',
+    permissions: ['Upload catalog', 'Update stock', 'Chat with designers'],
+  },
+  {
+    id: 'usr-007',
     name: 'Le Trang',
     email: 'trang@archsync.vn',
     role: 'Designer',
@@ -91,18 +105,29 @@ export const INITIAL_ADMIN_USERS: AdminUser[] = [
       'See budget & BOM',
     ],
   },
+  {
+    id: 'usr-008',
+    name: 'Viglacera Tiles',
+    email: 'sales@viglacera-tiles.vn',
+    role: 'Supplier',
+    status: 'Invited',
+    lastActive: '—',
+    avatar: 'VT',
+    avatarBgColor: 'bg-purple-600',
+    permissions: ['Upload catalog', 'Update stock', 'Chat with designers'],
+  },
 ];
 
 export const INITIAL_BUILDING_TYPES: BuildingTypeItem[] = [
   {
     id: 'bt-1',
-    name: 'Townhouse (Nhà phố)',
+    name: 'Townhouse (Nha pho)',
     enabled: true,
     statusText: 'Enabled',
   },
   {
     id: 'bt-2',
-    name: 'Level-4 house (Nhà cấp 4)',
+    name: 'Level-4 house (Nha cap 4)',
     enabled: true,
     statusText: 'Enabled',
   },
@@ -136,21 +161,95 @@ export const INITIAL_DESIGN_STYLES: string[] = [
   'Tropical Modern',
 ];
 
+export const INITIAL_DESIGN_STYLES_ITEMS: DesignStyleItem[] = [
+  {
+    id: 'ds-1',
+    name: 'Japandi',
+    description: 'Warm timber, soft neutrals and calm, uncluttered shapes.',
+    aiKeywords: 'warm timber, low furniture, paper lantern',
+  },
+  {
+    id: 'ds-2',
+    name: 'Minimalist',
+    description: 'Clean lines, monochrome tones, maximum function with minimum clutter.',
+    aiKeywords: 'clean lines, neutral tones, hidden storage, simple silhouettes',
+  },
+  {
+    id: 'ds-3',
+    name: 'Indochine',
+    description: 'Blend of French colonial romance and traditional Vietnamese craft.',
+    aiKeywords: 'dark wood, rattan, cement tiles, tropical foliage, brass accents',
+  },
+  {
+    id: 'ds-4',
+    name: 'Scandinavian',
+    description: 'Bright interiors, functional simplicity, cozy textiles and blonde woods.',
+    aiKeywords: 'white walls, light pine wood, cozy throws, organic ceramics',
+  },
+  {
+    id: 'ds-5',
+    name: 'Contemporary',
+    description: 'Current trends with smooth lines, cutting-edge lighting and subtle textures.',
+    aiKeywords: 'open spaces, sculptural lighting, mixed metals, textured fabric',
+  },
+  {
+    id: 'ds-6',
+    name: 'Industrial',
+    description: 'Exposed materials, brickwork, metal beams and raw loft aesthetics.',
+    aiKeywords: 'raw concrete, exposed pipes, weathered leather, iron fixtures',
+  },
+  {
+    id: 'ds-7',
+    name: 'Tropical Modern',
+    description: 'Indoor-outdoor flow, natural airflow, lush greenery and warm earth tones.',
+    aiKeywords: 'large glass doors, terracotta, indoor plants, teak wood, woven bamboo',
+  },
+];
+
+export const INITIAL_PRODUCT_CATEGORIES: ProductCategoryItem[] = [
+  { id: 'pc-1', name: 'Sofa', count: 12 },
+  { id: 'pc-2', name: 'Chair', count: 18 },
+  { id: 'pc-3', name: 'Table', count: 22 },
+  { id: 'pc-4', name: 'Cabinet', count: 15 },
+  { id: 'pc-5', name: 'Storage', count: 11 },
+  { id: 'pc-6', name: 'Textile', count: 9 },
+  { id: 'pc-7', name: 'Lighting', count: 14 },
+];
+
+export const INITIAL_MATERIALS_FINISHES: MaterialFinishItem[] = [
+  { id: 'mf-1', name: 'Light oak', category: 'Wood', enabled: true, statusText: 'Used in AI palettes' },
+  { id: 'mf-2', name: 'Walnut', category: 'Wood', enabled: true, statusText: 'Used in AI palettes' },
+  { id: 'mf-3', name: 'Ash', category: 'Wood', enabled: true, statusText: 'Used in AI palettes' },
+  { id: 'mf-4', name: 'Rattan', category: 'Natural fiber', enabled: true, statusText: 'Used in AI palettes' },
+  { id: 'mf-5', name: 'Linen', category: 'Fabric', enabled: true, statusText: 'Used in AI palettes' },
+  { id: 'mf-6', name: 'Black steel', category: 'Metal', enabled: true, statusText: 'Used in AI palettes' },
+  { id: 'mf-7', name: 'Matte white paint', category: 'Paint', enabled: false, statusText: 'Not used by AI' },
+];
+
 export const INITIAL_CONSTRAINT_RULES: ConstraintRuleItem[] = [
   {
     id: 'cr-1',
     title: 'Layout',
     description: 'Fixed walls, stairs and wet areas cannot move',
+    status: 'Blocks saving',
   },
   {
     id: 'cr-2',
-    title: 'Dimensions',
+    title: 'Size',
     description: 'Room sizes stay inside the lot boundary',
+    status: 'Blocks saving',
   },
   {
     id: 'cr-3',
     title: 'Equipment',
     description: 'Only products that fit the room limits',
+    status: 'Warns only',
+  },
+  {
+    id: 'cr-4',
+    title: 'Budget',
+    description: 'The total estimate stays inside the contract budget range',
+    status: 'Warns only',
   },
 ];
 
@@ -251,5 +350,17 @@ export const adminService = {
     };
 
     return Promise.resolve(newUser);
+  },
+
+  updateUser: async (_id: string, updates: Partial<AdminUser>): Promise<Partial<AdminUser>> => {
+    return Promise.resolve(updates);
+  },
+
+  deactivateUser: async (_id: string): Promise<boolean> => {
+    return Promise.resolve(true);
+  },
+
+  sendPasswordReset: async (_email: string): Promise<boolean> => {
+    return Promise.resolve(true);
   },
 };

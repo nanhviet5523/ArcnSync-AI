@@ -31,18 +31,50 @@ export const Header: React.FC<HeaderProps> = ({
   const navigate = useNavigate();
   const location = useLocation();
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const [notificationMenuOpen, setNotificationMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const notificationRef = useRef<HTMLDivElement>(null);
 
-  // Close dropdown on click outside
+  // Close dropdowns on click outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
         setAccountMenuOpen(false);
       }
+      if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
+        setNotificationMenuOpen(false);
+      }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  const [notifications, setNotifications] = useState([
+    {
+      id: 'n1',
+      title: 'Image generation is slower than usual',
+      time: '2 hours ago',
+      unread: true,
+    },
+    {
+      id: 'n2',
+      title: 'Viglacera Tiles has not accepted the invitation yet',
+      time: 'Yesterday',
+      unread: true,
+    },
+    {
+      id: 'n3',
+      title: 'Pham Duc role changed to Designer',
+      time: 'Yesterday',
+      unread: false,
+    },
+  ]);
+
+  const markAllAsRead = () => {
+    setNotifications((prev) => prev.map((item) => ({ ...item, unread: false })));
+  };
+
+  const unreadCount = notifications.filter((n) => n.unread).length;
 
   const currentUser = getCurrentDemoUser();
 
@@ -252,14 +284,65 @@ export const Header: React.FC<HeaderProps> = ({
             {config.badge}
           </span>
 
-          <button
-            type="button"
-            title="Notifications"
-            className="relative w-8.5 h-8.5 rounded-full border border-slate-200/90 flex items-center justify-center text-slate-700 hover:bg-slate-50 transition cursor-pointer"
-          >
-            <Bell className="w-4 h-4 text-slate-700" />
-            <span className="absolute top-2 right-2 w-1.5 h-1.5 bg-slate-900 rounded-full" />
-          </button>
+          {/* Notification Bell with Dropdown Menu */}
+          <div className="relative" ref={notificationRef}>
+            <button
+              type="button"
+              onClick={() => setNotificationMenuOpen((open) => !open)}
+              aria-expanded={notificationMenuOpen}
+              aria-label="Open notifications menu"
+              title="Notifications"
+              className={`relative w-8.5 h-8.5 rounded-full border border-slate-200/90 flex items-center justify-center transition cursor-pointer ${
+                notificationMenuOpen
+                  ? 'bg-slate-100 text-slate-900'
+                  : 'text-slate-700 hover:bg-slate-50'
+              }`}
+            >
+              <Bell className="w-4 h-4 text-slate-700" />
+              {unreadCount > 0 && (
+                <span className="absolute top-2 right-2 w-1.5 h-1.5 bg-blue-600 rounded-full" />
+              )}
+            </button>
+
+            {notificationMenuOpen && (
+              <div className="absolute right-0 top-11 z-50 w-80 sm:w-96 rounded-2xl border border-slate-200 bg-white p-4 shadow-xl animate-in fade-in zoom-in-95">
+                {/* Dropdown Header */}
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                  <h3 className="text-sm font-bold text-slate-900">Notifications</h3>
+                  {unreadCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={markAllAsRead}
+                      className="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer"
+                    >
+                      Mark all as read
+                    </button>
+                  )}
+                </div>
+
+                {/* Dropdown Items List */}
+                <div className="divide-y divide-slate-100 mt-1">
+                  {notifications.map((item) => (
+                    <div
+                      key={item.id}
+                      className="py-3 flex items-start justify-between gap-3 first:pt-2 last:pb-1"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-bold text-slate-800 leading-snug">
+                          {item.title}
+                        </p>
+                        <p className="text-[11px] text-slate-400 mt-1">{item.time}</p>
+                      </div>
+
+                      {item.unread && (
+                        <div className="w-2 h-2 rounded-full bg-blue-600 shrink-0 mt-1.5" />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* User Avatar with Dropdown Menu */}
           <div className="relative" ref={menuRef}>
