@@ -4,7 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { Button, Logo } from '@/components/common';
 import { ROLE_CONFIG } from '@/types/role';
 import type { UserRole } from '@/types/role';
-import { getCurrentDemoUser, logoutDemo } from '@/services/authService';
+import { getCurrentUser, logout } from '@/services/authService';
 
 interface HeaderProps {
   role?: UserRole;
@@ -57,7 +57,7 @@ export const Header: React.FC<HeaderProps> = ({ role, onLoginClick, onSignUpClic
   }
 
   const config = ROLE_CONFIG[role];
-  const user = getCurrentDemoUser();
+  const user = getCurrentUser();
   const isNavItemActive = (path: string) =>
     location.pathname === path ||
     (path === '/admin-ai-settings' && location.pathname.startsWith('/admin-prompts/')) ||
@@ -101,7 +101,7 @@ export const Header: React.FC<HeaderProps> = ({ role, onLoginClick, onSignUpClic
                 <button type="button" onClick={() => { setAccountMenuOpen(false); navigate('/settings'); }} className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50">Profile &amp; Settings</button>
                 {role === 'supplier' && <button type="button" onClick={() => { setAccountMenuOpen(false); navigate('/supplier-application'); }} className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50">Application status</button>}
                 {role === 'designer' && <button type="button" onClick={() => { setAccountMenuOpen(false); navigate('/designer-portfolio'); }} className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50">My Portfolio</button>}
-                <button type="button" onClick={() => { setAccountMenuOpen(false); logoutDemo(); navigate('/'); }} className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50">Log out</button>
+                <button type="button" onClick={() => { setAccountMenuOpen(false); void logout().finally(() => navigate('/')); }} className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50">Log out</button>
               </div>
             )}
           </div>

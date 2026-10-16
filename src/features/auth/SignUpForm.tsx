@@ -1,31 +1,46 @@
 import React, { useState } from 'react';
 import type { FormEvent } from 'react';
 import { Logo } from '@/components/common';
+import { registerUser } from '@/services/authService';
 
 interface SignUpFormProps {
   onLoginClick?: () => void;
 }
 
 export const SignUpForm: React.FC<SignUpFormProps> = ({ onLoginClick }) => {
-  const [role, setRole] = useState<'homeowner' | 'company' | 'partner'>('homeowner');
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [agreeTerms, setAgreeTerms] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [notice, setNotice] = useState('');
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    console.log('SignUp Submit:', {
-      role,
-      fullName,
-      email,
-      phone,
-      password,
-      confirmPassword,
-      agreeTerms,
-    });
+    setNotice('');
+    if (!fullName.trim() || !email.trim() || !phone.trim() || !password) {
+      setNotice('Please complete all fields.');
+      return;
+    }
+    if (password !== confirmPassword) {
+      setNotice('Passwords do not match.');
+      return;
+    }
+    if (!agreeTerms) {
+      setNotice('Please agree to the terms of use.');
+      return;
+    }
+    setLoading(true);
+    try {
+      const response = await registerUser({ fullName: fullName.trim(), phone: phone.trim(), email: email.trim(), password });
+      setNotice(response.message || 'Account created. Check your email for the verification code.');
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'Registration failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -40,52 +55,8 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onLoginClick }) => {
         Create your account
       </h1>
       <p className="text-sm lg:text-base text-slate-500 mb-5 leading-relaxed">
-        Homeowners sign up here. Team and partners join by invite.
+        Create your account to start a project and collaborate with our design team.
       </p>
-
-      {/* Role Selection */}
-      <div className="mb-4">
-        <label className="block text-xs font-bold text-slate-900 mb-2 uppercase tracking-wide">
-          Create account as
-        </label>
-        <div className="grid grid-cols-3 gap-2.5">
-          {/* Option 1: Homeowner */}
-          <button
-            type="button"
-            onClick={() => setRole('homeowner')}
-            className={`p-3 rounded-xl text-left border transition ${
-              role === 'homeowner'
-                ? 'border-blue-600 bg-blue-50/50'
-                : 'border-slate-200 bg-white'
-            }`}
-          >
-            <div className={`text-xs font-bold ${role === 'homeowner' ? 'text-blue-700' : 'text-slate-800'}`}>
-              Homeowner
-            </div>
-            <div className="text-[11px] text-slate-500 mt-0.5">Plan my project</div>
-          </button>
-
-          {/* Option 2: Company team */}
-          <button
-            type="button"
-            disabled
-            className="p-3 rounded-xl text-left border border-slate-100 bg-slate-50 opacity-60 cursor-not-allowed"
-          >
-            <div className="text-xs font-semibold text-slate-400">Company team</div>
-            <div className="text-[11px] text-slate-300 mt-0.5">Invite only</div>
-          </button>
-
-          {/* Option 3: Partner */}
-          <button
-            type="button"
-            disabled
-            className="p-3 rounded-xl text-left border border-slate-100 bg-slate-50 opacity-60 cursor-not-allowed"
-          >
-            <div className="text-xs font-semibold text-slate-400">Partner</div>
-            <div className="text-[11px] text-slate-300 mt-0.5">Invite only</div>
-          </button>
-        </div>
-      </div>
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-3.5">
@@ -180,11 +151,13 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onLoginClick }) => {
         </div>
 
         {/* Create Account Button */}
+        {notice && <p role="status" className="text-xs font-medium text-slate-600">{notice}</p>}
         <button
           type="submit"
-          className="w-full py-3.5 bg-[#0B132B] hover:bg-slate-900 text-white font-bold text-sm rounded-xl shadow-md transition duration-200 mt-1"
+          disabled={loading}
+          className="w-full py-3.5 bg-[#0B132B] hover:bg-slate-900 text-white font-bold text-sm rounded-xl shadow-md transition duration-200 mt-1 disabled:opacity-60 disabled:cursor-not-allowed"
         >
-          Create Account
+          {loading ? 'Creating account...' : 'Create Account'}
         </button>
       </form>
 

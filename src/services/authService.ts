@@ -1,57 +1,117 @@
-import type { User } from '@/types/role';
+import type { User, UserRole } from '@/types/role';
 
-export interface DemoAccount {
-  email: string;
-  password: string;
-  user: User;
+const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
+const SESSION_KEY = 'archsync-auth-session';
+const ACCESS_TOKEN_KEY = 'archsync-access-token';
+const REFRESH_TOKEN_KEY = 'archsync-refresh-token';
+const AUTH_EVENT = 'archsync-auth-change';
+const USER_ROLES: UserRole[] = ['homeowner', 'staff', 'supplier', 'admin', 'designer'];
+
+export class ApiError extends Error {
+  status: number;
+
+  constructor(message: string, status = 0) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+  }
 }
 
-export const DEMO_PASSWORD = 'Demo123!';
+async function postJson<T>(path: string, body: unknown, fallback: string): Promise<T> {
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+  } catch {
+    throw new ApiError('Cannot connect to the server. Please check your connection and try again.');
+  }
 
-export const DEMO_ACCOUNTS: DemoAccount[] = [
-  { email: 'homeowner.demo@archsync.test', password: DEMO_PASSWORD, user: { id: 'demo-homeowner', name: 'Minh Anh', email: 'homeowner.demo@archsync.test', role: 'homeowner' } },
-  { email: 'designer.demo@archsync.test', password: DEMO_PASSWORD, user: { id: 'demo-designer', name: 'Nguyen Linh', email: 'designer.demo@archsync.test', role: 'designer', badgeTitle: 'Studio Designer' } },
-  { email: 'staff.demo@archsync.test', password: DEMO_PASSWORD, user: { id: 'demo-staff', name: 'Tran Nam', email: 'staff.demo@archsync.test', role: 'staff' } },
-  { email: 'supplier.demo@archsync.test', password: DEMO_PASSWORD, user: { id: 'demo-supplier', name: 'Noi That Viet', email: 'supplier.demo@archsync.test', role: 'supplier', badgeTitle: 'Supplier Partner' } },
-  { email: 'admin.demo@archsync.test', password: DEMO_PASSWORD, user: { id: 'demo-admin', name: 'ArchSync Admin', email: 'admin.demo@archsync.test', role: 'admin' } },
-];
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    const message = Array.isArray(data?.message) ? data.message.join(' ') : data?.message;
+    throw new ApiError(typeof message === 'string' ? message : `${fallback} (${response.status}). Please try again.`, response.status);
+  }
+  return data as T;
+}
 
-const SESSION_KEY = 'archsync-demo-session';
-const AUTH_EVENT = 'archsync-auth-change';
+export interface RegisterPayload {
+  fullName: string;
+  phone: string;
+  email: string;
+  password: string;
+}
 
-export function getCurrentDemoUser(): User | null {
+export interface RegisterResponse {
+  message: string;
+  user: { id: string; email: string; fullName: string; phone: string; role: string; status: string };
+}
+
+export function registerUser(payload: RegisterPayload): Promise<RegisterResponse> {
+  return postJson<RegisterResponse>('/auth/register', payload, 'Registration failed');
+}
+
+export interface LoginResponse {
+  accessToken: string;
+  refreshToken: string;
+  user: RegisterResponse['user'];
+}
+
+const ROLE_MAP: Record<string, UserRole> = {
+  CUSTOMER: 'homeowner', HOMEOWNER: 'homeowner', STAFF: 'staff', DESIGNER: 'designer', SUPPLIER: 'supplier', ADMIN: 'admin',
+};
+
+export function loginUser(payload: { email: string; password: string }): Promise<LoginResponse> {
+  return postJson<LoginResponse>('/auth/login', payload, 'Login failed');
+}
+
+export function saveSession(response: LoginResponse, rememberMe: boolean): User {
+  const role = ROLE_MAP[response.user.role?.toUpperCase()];
+  if (!role) throw new ApiError(`Unsupported account role: ${response.user.role}`);
+  clearAuthSession();
+  const storage = rememberMe ? window.localStorage : window.sessionStorage;
+  const user: User = { id: response.user.id, name: response.user.fullName, email: response.user.email, role };
+  storage.setItem(ACCESS_TOKEN_KEY, response.accessToken);
+  storage.setItem(REFRESH_TOKEN_KEY, response.refreshToken);
+  storage.setItem(SESSION_KEY, JSON.stringify(user));
+  window.dispatchEvent(new Event(AUTH_EVENT));
+  return user;
+}
+
+export function getCurrentUser(): User | null {
   if (typeof window === 'undefined') return null;
-  const saved = window.localStorage.getItem(SESSION_KEY) ?? window.sessionStorage.getItem(SESSION_KEY);
+  const storage = window.localStorage.getItem(ACCESS_TOKEN_KEY) ? window.localStorage : window.sessionStorage;
+  if (!storage.getItem(ACCESS_TOKEN_KEY)) return null;
+  const saved = storage.getItem(SESSION_KEY);
   if (!saved) return null;
-
   try {
     const user = JSON.parse(saved) as User;
-    return DEMO_ACCOUNTS.some((account) => account.user.id === user.id && account.user.role === user.role)
-      ? user
-      : null;
+    return USER_ROLES.includes(user.role) ? user : null;
   } catch {
     return null;
   }
 }
 
-export function loginDemo(email: string, password: string, rememberMe: boolean): User | null {
-  const account = DEMO_ACCOUNTS.find(
-    (candidate) => candidate.email.toLowerCase() === email.trim().toLowerCase() && candidate.password === password,
-  );
-  if (!account || typeof window === 'undefined') return null;
-
-  window.localStorage.removeItem(SESSION_KEY);
-  window.sessionStorage.removeItem(SESSION_KEY);
-  const storage = rememberMe ? window.localStorage : window.sessionStorage;
-  storage.setItem(SESSION_KEY, JSON.stringify(account.user));
-  window.dispatchEvent(new Event(AUTH_EVENT));
-  return account.user;
-}
-
-export function logoutDemo(): void {
+export function clearAuthSession(): void {
   if (typeof window === 'undefined') return;
-  window.localStorage.removeItem(SESSION_KEY);
-  window.sessionStorage.removeItem(SESSION_KEY);
+  for (const storage of [window.localStorage, window.sessionStorage]) {
+    storage.removeItem(SESSION_KEY);
+    storage.removeItem(ACCESS_TOKEN_KEY);
+    storage.removeItem(REFRESH_TOKEN_KEY);
+    storage.removeItem('archsync-demo-session');
+  }
   window.dispatchEvent(new Event(AUTH_EVENT));
 }
 
+export async function logout(): Promise<void> {
+  const refreshToken = window.localStorage.getItem(REFRESH_TOKEN_KEY) ?? window.sessionStorage.getItem(REFRESH_TOKEN_KEY);
+  try {
+    if (refreshToken) await postJson('/auth/logout', { refreshToken }, 'Logout failed');
+  } catch {
+    // Clear the local session even if the server cannot be reached.
+  } finally {
+    clearAuthSession();
+  }
+}

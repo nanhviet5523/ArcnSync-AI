@@ -11,14 +11,14 @@ import {
 } from 'lucide-react';
 import { Header } from '@/components/layout';
 import { Footer } from '@/components/layout';
-import { getCurrentDemoUser } from '@/services/authService';
+import { getCurrentUser } from '@/services/authService';
 import { useDemoWorkspace } from '@/hooks/useDemoWorkspace';
 import { workspaceApi } from '@/services/workspaceApi';
 
 export const Messages: React.FC = () => {
   const navigate = useNavigate();
   const [params] = useSearchParams();
-  const currentUser = getCurrentDemoUser();
+  const currentUser = getCurrentUser();
   const workspace = useDemoWorkspace();
   const [selectedProjectId, setSelectedProjectId] = useState(params.get('projectId') ?? workspace.projects[0]?.id ?? '');
   const selectedProject = workspace.projects.find((project) => project.id === selectedProjectId) ?? workspace.projects[0];

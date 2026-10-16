@@ -1,7 +1,7 @@
 import React from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import type { UserRole } from '@/types/role';
-import { getCurrentDemoUser } from '@/services/authService';
+import { getCurrentUser } from '@/services/authService';
 import { ROUTES, DEFAULT_ROLE_REDIRECT } from './routes.config';
 
 interface ProtectedRouteProps {
@@ -10,7 +10,7 @@ interface ProtectedRouteProps {
 }
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
-  userRole = getCurrentDemoUser()?.role,
+  userRole = getCurrentUser()?.role,
   allowedRoles,
 }) => {
   // 1. Chưa đăng nhập -> Chuyển hướng về trang Login
