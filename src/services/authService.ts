@@ -35,6 +35,9 @@ export function getCurrentDemoUser(): User | null {
   }
 }
 
+// Canonical name used by newer code (and by the main branch); kept as an alias of the original.
+export const getCurrentUser = getCurrentDemoUser;
+
 export function loginDemo(email: string, password: string, rememberMe: boolean): User | null {
   const account = DEMO_ACCOUNTS.find(
     (candidate) => candidate.email.toLowerCase() === email.trim().toLowerCase() && candidate.password === password,
@@ -318,4 +321,19 @@ export interface ResetPasswordPayload {
 
 export function resetPassword(payload: ResetPasswordPayload): Promise<ForgotPasswordResponse> {
   return postJson<ForgotPasswordResponse>('/auth/reset-password', payload, 'Password reset failed');
+}
+
+export interface AcceptInvitePayload {
+  email: string;
+  otp: string;
+  password: string;
+}
+
+export interface AcceptInviteResponse {
+  message: string;
+  user: RegisterResponse['user'];
+}
+
+export function acceptInvite(payload: AcceptInvitePayload): Promise<AcceptInviteResponse> {
+  return postJson<AcceptInviteResponse>('/auth/accept-invite', payload, 'Account activation failed');
 }

@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Users,
   Layers,
   Sparkles,
   AlertTriangle,
@@ -13,6 +12,7 @@ import {
   ChevronDown,
 } from 'lucide-react';
 import { Header, Footer } from '@/components/layout';
+import { TotalAccountsCard } from './users/components/TotalAccountsCard';
 import {
   GENERATION_STATS_WEEK,
   INITIAL_RECENT_ACTIVITY,
@@ -50,12 +50,6 @@ export const AdminDashboard: React.FC = () => {
   };
 
   const statCards = [
-    {
-      label: 'USERS',
-      value: '214',
-      icon: <Users className="w-5 h-5 text-blue-600" />,
-      iconBg: 'bg-blue-50',
-    },
     {
       label: 'ACTIVE PROJECTS',
       value: '18',
@@ -119,6 +113,7 @@ export const AdminDashboard: React.FC = () => {
 
         {/* 4 Stat Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <TotalAccountsCard onClick={() => navigate('/admin-users')} />
           {statCards.map((stat) => (
             <div
               key={stat.label}
