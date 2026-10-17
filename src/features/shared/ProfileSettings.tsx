@@ -28,6 +28,7 @@ export const ProfileSettings: React.FC = () => {
   const [contactPerson, setContactPerson] = useState('Nguyen Van Viet');
   const [warehouse, setWarehouse] = useState('12 Nguyen Van Linh, District 7, Ho Chi Minh City');
   const [supplierNotice, setSupplierNotice] = useState('');
+  const [profileNotice, setProfileNotice] = useState('');
 
   const toggleNotification = (key: keyof typeof notifications) => {
     setNotifications((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -73,13 +74,22 @@ export const ProfileSettings: React.FC = () => {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           <div>
             <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
-              Profile & Settings
+              Profile &amp; Settings
             </h1>
             <p className="text-sm text-slate-500 mt-1">
               One profile page shared by every role. Fields adapt to your role.
             </p>
           </div>
+          <span className="text-xs font-semibold text-slate-500 bg-slate-100/90 px-3.5 py-1.5 rounded-full border border-slate-200/80 self-start md:self-auto select-none">
+            Shared · Homeowner · Staff · Designer · Supplier · Admin
+          </span>
         </div>
+
+        {profileNotice && (
+          <div role="status" className="mb-6 rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-800 font-medium">
+            {profileNotice}
+          </div>
+        )}
 
         {/* Layout Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -220,7 +230,11 @@ export const ProfileSettings: React.FC = () => {
                 </button>
                 <button
                   type="button"
-                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-md transition cursor-pointer"
+                  onClick={() => {
+                    setProfileNotice('Personal information saved successfully in this demo!');
+                    window.setTimeout(() => setProfileNotice(''), 3000);
+                  }}
+                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-bold text-xs rounded-xl shadow-md transition cursor-pointer"
                 >
                   Save changes
                 </button>

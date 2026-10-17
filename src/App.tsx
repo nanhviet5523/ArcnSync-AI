@@ -4,6 +4,10 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { HomePage } from '@/features/home/HomePage';
 import { LoginPage } from '@/features/auth/LoginPage';
 import { SignUpPage } from '@/features/auth/SignUpPage';
+import { VerifyOtpPage } from '@/features/auth/VerifyOtpPage';
+import { ForgotPasswordPage } from '@/features/auth/ForgotPasswordPage';
+import { ResetPasswordPage } from '@/features/auth/ResetPasswordPage';
+import { AcceptInvitation } from '@/features/auth/AcceptInvitation';
 import { StaffDashboard } from '@/features/staff/StaffDashboard';
 import { CreateContract } from '@/features/staff/CreateContract';
 import { StaffRequests } from '@/features/staff/StaffRequests';
@@ -16,10 +20,10 @@ import { StaffProjectDetail } from '@/features/staff/StaffProjectDetail';
 import { Messages } from '@/features/shared/Messages';
 import { CallMeeting } from '@/features/shared/CallMeeting';
 import { ProfileSettings } from '@/features/shared/ProfileSettings';
-import { RolePreviewPage } from '@/features/shared/RolePreviewPage';
+import { AdminUsersRoles } from '@/features/admin/AdminUsersRoles';
 import { AdminDashboard } from '@/features/admin/AdminDashboard';
-import { AdminUsers } from '@/features/admin/AdminUsers';
 import { AdminMasterData } from '@/features/admin/AdminMasterData';
+import { RolePreviewPage } from '@/features/shared/RolePreviewPage';
 import { AdminAISettings } from '@/features/admin/AdminAISettings';
 import { AdminPromptDetail } from '@/features/admin/AdminPromptDetail';
 import { AdminReports } from '@/features/admin/AdminReports';
@@ -112,11 +116,18 @@ function App() {
           </Route>
           <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
             <Route path="/admin-dashboard" element={<AdminDashboard />} />
-            <Route path="/admin-users" element={<AdminUsers />} />
+            <Route path="/admin-users" element={<AdminUsersRoles />} />
             <Route path="/admin-master-data" element={<AdminMasterData />} />
             <Route path="/admin-ai-settings" element={<AdminAISettings />} />
             <Route path="/admin-prompts/:promptId" element={<AdminPromptDetail />} />
             <Route path="/admin-reports" element={<AdminReports />} />
+            <Route path="/admin" element={<AdminUsersRoles />} />
+            <Route path="/admin/users" element={<AdminUsersRoles />} />
+            <Route path="/admin/roles" element={<AdminUsersRoles />} />
+            <Route path="/admin/overview" element={<AdminDashboard />} />
+            <Route path="/admin/dashboard" element={<AdminDashboard />} />
+            <Route path="/admin/master-data" element={<AdminMasterData />} />
+            <Route path="/admin/ai-settings" element={<AdminAISettings />} />
           </Route>
           <Route element={<ProtectedRoute allowedRoles={['supplier']} />}>
             <Route path="/supplier-dashboard" element={<SupplierDashboard />} />
@@ -181,6 +192,12 @@ function App() {
               </motion.div>
             }
           />
+
+          <Route path="/verify-otp" element={<VerifyOtpPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/accept-invitation" element={<AcceptInvitation />} />
+          <Route path="/auth/accept-invitation" element={<AcceptInvitation />} />
         </Routes>
       </AnimatePresence>
     </div>
