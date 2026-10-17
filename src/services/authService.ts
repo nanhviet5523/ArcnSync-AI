@@ -530,3 +530,18 @@ export function resetPassword(
     'Password reset failed',
   );
 }
+
+export interface AcceptInvitePayload {
+  email: string;
+  otp: string;
+  password: string;
+}
+
+export interface AcceptInviteResponse {
+  message: string;
+  user: RegisterResponse['user'];
+}
+
+export function acceptInvite(payload: AcceptInvitePayload): Promise<AcceptInviteResponse> {
+  return postJson<AcceptInviteResponse>('/auth/accept-invite', payload, 'Account activation failed');
+}

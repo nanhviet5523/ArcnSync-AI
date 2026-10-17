@@ -21,6 +21,7 @@ import { Messages } from '@/features/shared/Messages';
 import { CallMeeting } from '@/features/shared/CallMeeting';
 import { ProfileSettings } from '@/features/shared/ProfileSettings';
 import { AdminUsersRoles } from '@/features/admin/AdminUsersRoles';
+import { AdminUsersPage } from '@/features/admin/users/AdminUsersPage';
 import { AdminDashboard } from '@/features/admin/AdminDashboard';
 import { AdminMasterData } from '@/features/admin/AdminMasterData';
 import { RolePreviewPage } from '@/features/shared/RolePreviewPage';
@@ -116,13 +117,13 @@ function App() {
           </Route>
           <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
             <Route path="/admin-dashboard" element={<AdminDashboard />} />
-            <Route path="/admin-users" element={<AdminUsersRoles />} />
+            <Route path="/admin-users" element={<AdminUsersPage />} />
             <Route path="/admin-master-data" element={<AdminMasterData />} />
             <Route path="/admin-ai-settings" element={<AdminAISettings />} />
             <Route path="/admin-prompts/:promptId" element={<AdminPromptDetail />} />
             <Route path="/admin-reports" element={<AdminReports />} />
             <Route path="/admin" element={<AdminUsersRoles />} />
-            <Route path="/admin/users" element={<AdminUsersRoles />} />
+            <Route path="/admin/users" element={<AdminUsersPage />} />
             <Route path="/admin/roles" element={<AdminUsersRoles />} />
             <Route path="/admin/overview" element={<AdminDashboard />} />
             <Route path="/admin/dashboard" element={<AdminDashboard />} />
@@ -198,6 +199,8 @@ function App() {
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/accept-invitation" element={<AcceptInvitation />} />
           <Route path="/auth/accept-invitation" element={<AcceptInvitation />} />
+          <Route path="/accept-invite" element={<AcceptInvitation />} />
+          <Route path="/activate-account" element={<AcceptInvitation />} />
         </Routes>
       </AnimatePresence>
     </div>
