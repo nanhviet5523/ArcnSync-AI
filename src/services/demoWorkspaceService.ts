@@ -75,6 +75,25 @@ export const initialDemoWorkspace: DemoWorkspace = {
     {projectId:'project-district2',productSku:'NTV-AC-077',quantity:2,room:'Living room',status:'Selected'},
     {projectId:'project-district2',productSku:'NTV-CT-088',quantity:1,room:'Living room',status:'Selected'},
   ],
+  requests: [
+    {id:'request-014',projectId:'project-modern-thuduc',status:'AI brief ready',submittedAt:'07 Oct 2026'},
+    {id:'request-013',projectId:'project-district7',status:'Consult booked',submittedAt:'06 Oct 2026'},
+    {id:'request-012',projectId:'project-level4-thuduc',status:'Contract draft',submittedAt:'05 Oct 2026'},
+    {id:'request-011',projectId:'project-binhthanh',status:'Needs 2D input',submittedAt:'04 Oct 2026'},
+    {id:'request-010',projectId:'project-govap',status:'Signed',submittedAt:'03 Oct 2026'},
+    {id:'request-015',projectId:'project-district2',status:'AI brief ready',submittedAt:'12 Oct 2026'},
+  ],
+  contracts: [
+    {id:'C-2026-014',projectId:'project-modern-thuduc',packageName:'Standard',fee:68000000,rounds:3,timeline:'10 weeks',status:'Awaiting signature',updatedAt:'Today, 10:20'},
+    {id:'C-2026-013',projectId:'project-binhthanh',packageName:'Premium',fee:95000000,rounds:4,timeline:'12 weeks',status:'Draft',updatedAt:'Yesterday'},
+    {id:'C-2026-012',projectId:'project-govap',packageName:'Essential',fee:45000000,rounds:2,timeline:'8 weeks',status:'Signed',updatedAt:'03 Oct 2026'},
+  ],
+  messages: [
+    {id:'message-1',projectId:'project-modern-thuduc',sender:'Nguyen Linh',senderRole:'Designer',text:'Here is the latest 3D layout update for the living room.',sentAt:'10:18'},
+    {id:'message-2',projectId:'project-modern-thuduc',sender:'Minh Anh',senderRole:'Homeowner',text:'Could we make the walkway to the kitchen a little wider?',sentAt:'10:20'},
+    {id:'message-3',projectId:'project-modern-thuduc',sender:'System',senderRole:'System',text:'Version 3 submitted for review.',sentAt:'10:21',isSystem:true},
+    {id:'message-4',projectId:'project-modern-thuduc',sender:'Tran Nam',senderRole:'Staff',text:'Contract C-2026-014 is ready for your review.',sentAt:'10:24'},
+  ],
   activity: [
     {id:'activity-1',projectId:'project-modern-thuduc',actor:'Nguyen Linh',role:'Designer',action:'Submitted v3 for review',target:'Modern Townhouse · Thu Duc',at:'Today 10:05'},
     {id:'activity-2',projectId:'project-modern-thuduc',actor:'Minh Anh',role:'Homeowner',action:'Signed up',target:'Modern Townhouse · Thu Duc',at:'Today 09:40'},
@@ -101,7 +120,13 @@ function loadWorkspace(): DemoWorkspace {
     const saved = window.localStorage.getItem(STORAGE_KEY);
     if (!saved) return initialDemoWorkspace;
     const parsed = JSON.parse(saved) as Partial<DemoWorkspace>;
-    return {...initialDemoWorkspace,...parsed};
+    return {
+      ...initialDemoWorkspace,
+      ...parsed,
+      requests: parsed.requests ?? initialDemoWorkspace.requests,
+      contracts: parsed.contracts ?? initialDemoWorkspace.contracts,
+      messages: parsed.messages ?? initialDemoWorkspace.messages,
+    };
   } catch { return initialDemoWorkspace; }
 }
 

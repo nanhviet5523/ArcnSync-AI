@@ -11,11 +11,11 @@ import {
 } from 'lucide-react';
 import { Header } from '@/components/layout';
 import { Footer } from '@/components/layout';
-import { getCurrentDemoUser } from '@/services/authService';
+import { getCurrentUser } from '@/services/authService';
 
 export const Messages: React.FC = () => {
   const navigate = useNavigate();
-  const currentUser = getCurrentDemoUser();
+  const currentUser = getCurrentUser();
 
   // State quản lý danh sách hội thoại
   const [conversations] = useState([
