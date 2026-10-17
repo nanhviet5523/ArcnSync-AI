@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Bell, Settings, LogOut } from 'lucide-react';
 import { Button, Logo } from '@/components/common';
-import { getCurrentDemoUser, logout } from '@/services/authService';
+import { getCurrentUser, logout } from '@/services/authService';
 import { ROLE_CONFIG } from '@/types/role';
 import type { UserRole } from '@/types/role';
 
@@ -41,10 +42,14 @@ export const Header: React.FC<HeaderProps> = ({
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
         setAccountMenuOpen(false);
       }
-      if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
+      if (
+        notificationRef.current &&
+        !notificationRef.current.contains(event.target as Node)
+      ) {
         setNotificationMenuOpen(false);
       }
     };
+
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
@@ -71,12 +76,14 @@ export const Header: React.FC<HeaderProps> = ({
   ]);
 
   const markAllAsRead = () => {
-    setNotifications((prev) => prev.map((item) => ({ ...item, unread: false })));
+    setNotifications((prev) =>
+      prev.map((item) => ({ ...item, unread: false }))
+    );
   };
 
   const unreadCount = notifications.filter((n) => n.unread).length;
 
-  const currentUser = getCurrentDemoUser();
+  const currentUser = getCurrentUser();
 
   // Auto-detect role from prop, current user session, or current path
   const detectedRole: UserRole | undefined =
@@ -108,7 +115,10 @@ export const Header: React.FC<HeaderProps> = ({
             <Logo size={32} />
           </button>
 
-          <nav className="hidden lg:flex gap-8 text-sm font-medium text-slate-700" aria-label="Main">
+          <nav
+            className="hidden lg:flex gap-8 text-sm font-medium text-slate-700"
+            aria-label="Main"
+          >
             {publicLinks.map(([label, href]) => (
               <a
                 key={label}
@@ -116,7 +126,9 @@ export const Header: React.FC<HeaderProps> = ({
                 onClick={(event) => {
                   event.preventDefault();
                   navigate('/');
-                  document.querySelector(href)?.scrollIntoView({ behavior: 'smooth' });
+                  document
+                    .querySelector(href)
+                    ?.scrollIntoView({ behavior: 'smooth' });
                 }}
                 className="text-slate-600 hover:text-slate-900 transition-colors"
               >
@@ -159,6 +171,7 @@ export const Header: React.FC<HeaderProps> = ({
 
   const getAvatarInitials = () => {
     if (detectedRole === 'admin') return 'AD';
+
     if (currentUser?.name) {
       return currentUser.name
         .trim()
@@ -167,6 +180,7 @@ export const Header: React.FC<HeaderProps> = ({
         .slice(0, 2)
         .join('');
     }
+
     switch (detectedRole) {
       case 'designer':
         return 'NL';
@@ -186,8 +200,14 @@ export const Header: React.FC<HeaderProps> = ({
 
     if (activeTab) {
       const normalizedTab = activeTab.toLowerCase().replace(/[^a-z0-9]/g, '');
-      const normalizedLabel = itemLabel.toLowerCase().replace(/[^a-z0-9]/g, '');
-      if (normalizedLabel.includes(normalizedTab) || normalizedTab.includes(normalizedLabel)) {
+      const normalizedLabel = itemLabel
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '');
+
+      if (
+        normalizedLabel.includes(normalizedTab) ||
+        normalizedTab.includes(normalizedLabel)
+      ) {
         return true;
       }
     }
@@ -198,25 +218,39 @@ export const Header: React.FC<HeaderProps> = ({
     if (detectedRole === 'admin') {
       if (
         itemLabel === 'Dashboard' &&
-        (path === '/admin-dashboard' || path === '/admin/overview' || path === '/admin/dashboard')
+        (path === '/admin-dashboard' ||
+          path === '/admin/overview' ||
+          path === '/admin/dashboard')
       ) {
         return true;
       }
+
       if (
         itemLabel === 'Users & Roles' &&
-        (path === '/admin-users' || path === '/admin/users' || path === '/admin/roles' || path === '/admin')
+        (path === '/admin-users' ||
+          path === '/admin/users' ||
+          path === '/admin/roles' ||
+          path === '/admin')
       ) {
         return true;
       }
-      if (itemLabel === 'Master Data' && (path === '/admin-master-data' || path === '/admin/master-data')) {
+
+      if (
+        itemLabel === 'Master Data' &&
+        (path === '/admin-master-data' || path === '/admin/master-data')
+      ) {
         return true;
       }
+
       if (
         itemLabel === 'AI Settings' &&
-        (path === '/admin-ai-settings' || path === '/admin/ai-settings' || path.startsWith('/admin-prompts/'))
+        (path === '/admin-ai-settings' ||
+          path === '/admin/ai-settings' ||
+          path.startsWith('/admin-prompts/'))
       ) {
         return true;
       }
+
       if (itemLabel === 'Reports' && path === '/admin-reports') {
         return true;
       }
@@ -225,15 +259,28 @@ export const Header: React.FC<HeaderProps> = ({
     // Supplier & Designer sub-routes
     if (
       itemPath === '/supplier-catalog' &&
-      (path.startsWith('/supplier-products/') || path === '/supplier-catalog/import')
+      (path.startsWith('/supplier-products/') ||
+        path === '/supplier-catalog/import')
     ) {
       return true;
     }
-    if (itemPath === '/designer-projects' && /^\/designer-projects\//.test(path)) {
+
+    if (
+      itemPath === '/designer-projects' &&
+      /^\/designer-projects\//.test(path)
+    ) {
       return true;
     }
 
-    return false;
+    return (
+      (itemPath === '/admin-ai-settings' &&
+        path.startsWith('/admin-prompts/')) ||
+      (itemPath === '/supplier-catalog' &&
+        (path.startsWith('/supplier-products/') ||
+          path === '/supplier-catalog/import')) ||
+      (itemPath === '/designer-projects' &&
+        /^\/designer-projects\//.test(path))
+    );
   };
 
   return (
@@ -255,6 +302,7 @@ export const Header: React.FC<HeaderProps> = ({
           >
             {config.navItems.map((item) => {
               const active = isNavItemActive(item.path, item.label);
+
               return (
                 <button
                   key={item.path}
@@ -308,7 +356,10 @@ export const Header: React.FC<HeaderProps> = ({
               <div className="absolute right-0 top-11 z-50 w-80 sm:w-96 rounded-2xl border border-slate-200 bg-white p-4 shadow-xl animate-in fade-in zoom-in-95">
                 {/* Dropdown Header */}
                 <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                  <h3 className="text-sm font-bold text-slate-900">Notifications</h3>
+                  <h3 className="text-sm font-bold text-slate-900">
+                    Notifications
+                  </h3>
+
                   {unreadCount > 0 && (
                     <button
                       type="button"
@@ -331,7 +382,9 @@ export const Header: React.FC<HeaderProps> = ({
                         <p className="text-xs font-bold text-slate-800 leading-snug">
                           {item.title}
                         </p>
-                        <p className="text-[11px] text-slate-400 mt-1">{item.time}</p>
+                        <p className="text-[11px] text-slate-400 mt-1">
+                          {item.time}
+                        </p>
                       </div>
 
                       {item.unread && (

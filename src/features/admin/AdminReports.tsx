@@ -1,7 +1,26 @@
+
 import React, { useMemo, useState } from 'react';
-import { Download, Search, ChevronDown, User, Layers, Edit3, Sparkles, X, Check } from 'lucide-react';
+import {
+  Download,
+  Search,
+  ChevronDown,
+  User,
+  Layers,
+  Edit3,
+  Sparkles,
+  X,
+  Check,
+} from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
-import { Header, Footer } from '@/components/layout';
+import {
+  AdminButton,
+  AdminCard,
+  AdminPageFrame,
+  AdminTable,
+} from './AdminPageFrame';
+import { useDemoWorkspace } from '@/hooks/useDemoWorkspace';
+
+type ReportTab = 'Overview' | 'Activity log' | 'Issues';
 
 interface ActivityLogItem {
   id: string;
@@ -14,89 +33,6 @@ interface ActivityLogItem {
   target: string;
 }
 
-const INITIAL_LOGS: ActivityLogItem[] = [
-  {
-    id: 'l1',
-    time: 'Today 10:24',
-    user: 'Tran Nam',
-    initials: 'TN',
-    avatarBg: 'bg-purple-600',
-    role: 'Staff',
-    action: 'Created contract',
-    target: 'C-2026-014',
-  },
-  {
-    id: 'l2',
-    time: 'Today 10:05',
-    user: 'Nguyen Linh',
-    initials: 'NL',
-    avatarBg: 'bg-blue-600',
-    role: 'Designer',
-    action: 'Submitted v3 for review',
-    target: 'Modern Townhouse · Thu Duc',
-  },
-  {
-    id: 'l3',
-    time: 'Today 09:40',
-    user: 'Minh Anh',
-    initials: 'MA',
-    avatarBg: 'bg-teal-600',
-    role: 'Homeowner',
-    action: 'Signed up',
-    target: 'minh.anh@gmail.com',
-  },
-  {
-    id: 'l4',
-    time: 'Today 09:12',
-    user: 'Noi That Viet',
-    initials: 'NV',
-    avatarBg: 'bg-slate-800',
-    role: 'Supplier',
-    action: 'Imported 92 products',
-    target: 'ntv-sept-2026.csv',
-  },
-  {
-    id: 'l5',
-    time: 'Yesterday',
-    user: 'Admin',
-    initials: 'AD',
-    avatarBg: 'bg-slate-900',
-    role: 'Admin',
-    action: 'Published prompt Concept render (designer) v5',
-    target: 'Prompt library',
-  },
-  {
-    id: 'l6',
-    time: 'Yesterday',
-    user: 'Admin',
-    initials: 'AD',
-    avatarBg: 'bg-slate-900',
-    role: 'Admin',
-    action: 'Changed role to Designer',
-    target: 'Pham Duc',
-  },
-  {
-    id: 'l7',
-    time: 'Yesterday',
-    user: 'Admin',
-    initials: 'AD',
-    avatarBg: 'bg-slate-900',
-    role: 'Admin',
-    action: 'Invited Designer',
-    target: 'Le Trang',
-  },
-  {
-    id: 'l8',
-    time: '02 Oct',
-    user: 'Admin',
-    initials: 'AD',
-    avatarBg: 'bg-slate-900',
-    role: 'Admin',
-    action: 'Created partner account',
-    target: 'Viglacera Tiles',
-  },
-];
-
 interface IssueItem {
   id: string;
   title: string;
@@ -106,11 +42,14 @@ interface IssueItem {
   since: string;
 }
 
+const tabs: ReportTab[] = ['Overview', 'Activity log', 'Issues'];
+
 const INITIAL_ISSUES: IssueItem[] = [
   {
     id: 'iss1',
     title: 'Image generation is slower than usual',
-    detail: 'Average 38 s per concept in the last 2 hours (normal is 20 s).',
+    detail:
+      'Average 38 s per concept in the last 2 hours (normal is 20 s).',
     severity: 'Warning',
     dotColor: 'bg-amber-600',
     since: '2 h ago',
@@ -118,7 +57,8 @@ const INITIAL_ISSUES: IssueItem[] = [
   {
     id: 'iss2',
     title: 'File storage above 60%',
-    detail: '62% of 500 GB used. Delivery files are the largest share.',
+    detail:
+      '62% of 500 GB used. Delivery files are the largest share.',
     severity: 'Info',
     dotColor: 'bg-blue-600',
     since: 'Yesterday',
@@ -126,813 +66,929 @@ const INITIAL_ISSUES: IssueItem[] = [
   {
     id: 'iss3',
     title: 'Catalog import failed for Noi That Viet',
-    detail: 'ntv-lighting.csv had 34 errors. The supplier has the error report.',
+    detail:
+      'ntv-lighting.csv had 34 errors. The supplier has the error report.',
     severity: 'Warning',
     dotColor: 'bg-amber-600',
     since: '21 Aug',
   },
 ];
 
+const ROLE_OPTIONS = [
+  'All roles',
+  'Homeowner',
+  'Designer',
+  'Staff',
+  'Supplier',
+  'Admin',
+] as const;
+
+const getRoleBadgeStyle = (role: string) => {
+  switch (role) {
+    case 'Staff':
+      return 'bg-cyan-50 text-cyan-700 border-cyan-100';
+    case 'Designer':
+      return 'bg-blue-50 text-blue-700 border-blue-100';
+    case 'Homeowner':
+      return 'bg-slate-100 text-slate-700 border-slate-200';
+    case 'Supplier':
+      return 'bg-purple-50 text-purple-700 border-purple-100';
+    case 'Admin':
+      return 'bg-amber-50 text-amber-700 border-amber-100';
+    default:
+      return 'bg-slate-100 text-slate-700 border-slate-200';
+  }
+};
+
+const escapeCsv = (value: unknown) =>
+  `"${String(value ?? '').replace(/"/g, '""')}"`;
+
 export const AdminReports: React.FC = () => {
+  const workspace = useDemoWorkspace();
   const [params, setParams] = useSearchParams();
+
   const tabParam = params.get('tab');
 
-  // Sub-tabs: Overview | Activity log | Issues
-  const currentTab: 'overview' | 'activity' | 'issues' =
+  const currentTab: ReportTab =
     tabParam === 'issues'
-      ? 'issues'
+      ? 'Issues'
       : tabParam === 'activity' || tabParam === 'log'
-      ? 'activity'
-      : 'overview';
+        ? 'Activity log'
+        : 'Overview';
 
-  const setTab = (tab: 'overview' | 'activity' | 'issues') => {
-    if (tab === 'overview') {
+  const selectTab = (tab: ReportTab) => {
+    if (tab === 'Overview') {
       setParams({});
-    } else if (tab === 'activity') {
-      setParams({ tab: 'activity' });
     } else {
-      setParams({ tab: 'issues' });
+      setParams({ tab: tab === 'Issues' ? 'issues' : 'activity' });
     }
   };
 
-  // Date range state in Overview
-  const [dateRange, setDateRange] = useState<'Last 7 days' | 'Last 30 days' | 'Last 90 days'>(
-    'Last 30 days'
-  );
+  const [dateRange, setDateRange] = useState<
+    'Last 7 days' | 'Last 30 days' | 'Last 90 days'
+  >('Last 30 days');
 
-  // Activity log search and filter
-  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('All roles');
-  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [currentPage, setCurrentPage] = useState(1);
 
-  // Issues state: resolved issue IDs & acknowledged issue IDs
   const [resolvedIssues, setResolvedIssues] = useState<string[]>([]);
   const [acknowledgedIssues, setAcknowledgedIssues] = useState<string[]>([]);
 
-  // Open issues count
-  const openIssuesCount = INITIAL_ISSUES.length - resolvedIssues.length;
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [exportDateRange, setExportDateRange] = useState<
+    'Last 7 days' | 'Last 30 days' | 'Last 90 days'
+  >('Last 30 days');
+  const [exportFormat, setExportFormat] = useState<'PDF' | 'CSV'>('CSV');
+  const [exportOverview, setExportOverview] = useState(true);
+  const [exportActivityLog, setExportActivityLog] = useState(true);
+  const [exportIssues, setExportIssues] = useState(true);
 
-  // Filtered activity logs
+  const activityLogs: ActivityLogItem[] = useMemo(() => {
+    return workspace.activity.map((item, index) => {
+      const user = String(item.actor ?? 'Unknown user');
+      const role = String(item.role ?? 'Admin');
+      const initials = user
+        .split(/\s+/)
+        .filter(Boolean)
+        .map((part) => part[0])
+        .join('')
+        .slice(0, 2)
+        .toUpperCase();
+
+      const supportedRoles: ActivityLogItem['role'][] = [
+        'Staff',
+        'Designer',
+        'Homeowner',
+        'Supplier',
+        'Admin',
+      ];
+
+      return {
+        id: `activity-${index}-${String(item.at ?? '')}`,
+        time: String(item.at ?? ''),
+        user,
+        initials: initials || 'UN',
+        avatarBg:
+          role === 'Designer'
+            ? 'bg-blue-600'
+            : role === 'Homeowner'
+              ? 'bg-teal-600'
+              : role === 'Supplier'
+                ? 'bg-purple-600'
+                : role === 'Staff'
+                  ? 'bg-cyan-600'
+                  : 'bg-slate-800',
+        role: supportedRoles.includes(role as ActivityLogItem['role'])
+          ? (role as ActivityLogItem['role'])
+          : 'Admin',
+        action: String(item.action ?? ''),
+        target: String(item.target ?? ''),
+      };
+    });
+  }, [workspace.activity]);
+
   const filteredLogs = useMemo(() => {
-    return INITIAL_LOGS.filter((item) => {
-      const matchesRole = roleFilter === 'All roles' || item.role === roleFilter;
-      const q = searchQuery.toLowerCase().trim();
+    const query = searchQuery.toLowerCase().trim();
+
+    return activityLogs.filter((item) => {
+      const matchesRole =
+        roleFilter === 'All roles' || item.role === roleFilter;
+
       const matchesQuery =
-        !q ||
-        item.user.toLowerCase().includes(q) ||
-        item.action.toLowerCase().includes(q) ||
-        item.target.toLowerCase().includes(q) ||
-        item.time.toLowerCase().includes(q) ||
-        item.role.toLowerCase().includes(q);
+        !query ||
+        [
+          item.time,
+          item.user,
+          item.role,
+          item.action,
+          item.target,
+        ]
+          .join(' ')
+          .toLowerCase()
+          .includes(query);
 
       return matchesRole && matchesQuery;
     });
-  }, [searchQuery, roleFilter]);
+  }, [activityLogs, roleFilter, searchQuery]);
 
-  // Dynamic stats based on date range
+  const pageSize = 5;
+  const totalPages = Math.max(1, Math.ceil(filteredLogs.length / pageSize));
+  const safePage = Math.min(currentPage, totalPages);
+
+  const paginatedLogs = filteredLogs.slice(
+    (safePage - 1) * pageSize,
+    safePage * pageSize,
+  );
+
+  const openIssuesCount = INITIAL_ISSUES.filter(
+    (issue) => !resolvedIssues.includes(issue.id),
+  ).length;
+
+  const overviewStats = [
+    {
+      label: 'New requests',
+      value: workspace.requests.filter(
+        (request) => request.status === 'AI brief ready',
+      ).length,
+      icon: User,
+      iconClass: 'bg-blue-50 text-blue-600',
+    },
+    {
+      label: 'Projects started',
+      value: workspace.projects.length,
+      icon: Layers,
+      iconClass: 'bg-cyan-50 text-cyan-600',
+    },
+    {
+      label: 'Contracts signed',
+      value: workspace.contracts.filter(
+        (contract) => contract.status === 'Signed',
+      ).length,
+      icon: Edit3,
+      iconClass: 'bg-amber-50 text-amber-600',
+    },
+    {
+      label: 'Design versions',
+      value: workspace.versions.length,
+      icon: Sparkles,
+      iconClass: 'bg-purple-50 text-purple-600',
+    },
+  ];
+
+  const stageCounts: [string, number][] = [
+    [
+      'Requirements',
+      workspace.projects.filter(
+        (project) => project.stage === 'Requirements',
+      ).length,
+    ],
+    [
+      'Concept',
+      workspace.projects.filter((project) => project.stage === 'Concept')
+        .length,
+    ],
+    [
+      'Review',
+      workspace.projects.filter(
+        (project) => project.stage === 'Design review',
+      ).length,
+    ],
+    [
+      'Products & BOM',
+      workspace.projects.filter(
+        (project) => project.stage === 'Product selection',
+      ).length,
+    ],
+    ['Approval', 0],
+    [
+      'Handover',
+      workspace.projects.filter((project) => project.stage === 'Handover')
+        .length,
+    ],
+  ];
+
+  const contractPackages = (['Essential', 'Standard', 'Premium'] as const).map(
+    (name) => {
+      const contracts = workspace.contracts.filter(
+        (contract) => contract.packageName === name,
+      );
+
+      return {
+        name,
+        count: contracts.length,
+        total: contracts.reduce((sum, contract) => sum + contract.fee, 0),
+      };
+    },
+  );
+
+  const totalContractValue = workspace.contracts.reduce(
+    (sum, contract) => sum + contract.fee,
+    0,
+  );
+
   const statValues = useMemo(() => {
-    switch (dateRange) {
-      case 'Last 7 days':
-        return { users: '6', projects: '2', contracts: '1', generations: '331' };
-      case 'Last 90 days':
-        return { users: '78', projects: '27', contracts: '14', generations: '3,890' };
-      case 'Last 30 days':
-      default:
-        return { users: '26', projects: '9', contracts: '5', generations: '1,248' };
-    }
-  }, [dateRange]);
+    const factor =
+      dateRange === 'Last 7 days'
+        ? 1
+        : dateRange === 'Last 90 days'
+          ? 3
+          : 1;
 
-  // Export modal state (Image 2)
-  const [isExportModalOpen, setIsExportModalOpen] = useState<boolean>(false);
-  const [exportDateRange, setExportDateRange] = useState<string>('Last 30 days');
-  const [exportFormat, setExportFormat] = useState<'PDF' | 'CSV'>('PDF');
-  const [exportOverview, setExportOverview] = useState<boolean>(true);
-  const [exportActivityLog, setExportActivityLog] = useState<boolean>(true);
-  const [exportIssues, setExportIssues] = useState<boolean>(true);
+    return {
+      requests: workspace.requests.filter(
+        (request) => request.status === 'AI brief ready',
+      ).length * factor,
+      projects: workspace.projects.length * factor,
+      contracts: workspace.contracts.filter(
+        (contract) => contract.status === 'Signed',
+      ).length * factor,
+      versions: workspace.versions.length * factor,
+    };
+  }, [
+    dateRange,
+    workspace.requests,
+    workspace.projects,
+    workspace.contracts,
+    workspace.versions,
+  ]);
 
-  // Confirm export handler
-  const handleConfirmExport = () => {
-    const filename = `archsync-report-${exportDateRange.toLowerCase().replace(/\s+/g, '-')}.${exportFormat.toLowerCase()}`;
-    const content =
-      exportFormat === 'CSV'
-        ? 'Time,User,Role,Action,Target\n' +
-          filteredLogs
-            .map((r) => `"${r.time}","${r.user}","${r.role}","${r.action}","${r.target}"`)
-            .join('\n')
-        : `ArchSync AI Platform Report\nDate Range: ${exportDateRange}\nSections: ${[
-            exportOverview && 'Overview',
-            exportActivityLog && 'Activity log',
-            exportIssues && 'Issues',
-          ]
-            .filter(Boolean)
-            .join(', ')}`;
-
-    const blob = new Blob([content], {
-      type: exportFormat === 'CSV' ? 'text/csv' : 'text/plain',
+  const downloadCsv = (rows: string[][], filename: string) => {
+    const csv = rows.map((row) => row.map(escapeCsv).join(',')).join('\n');
+    const blob = new Blob(['\uFEFF', csv], {
+      type: 'text/csv;charset=utf-8;',
     });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
+
     link.href = url;
     link.download = filename;
     link.click();
+
     URL.revokeObjectURL(url);
+  };
+
+  const handleConfirmExport = () => {
+    const sections: string[] = [
+      'ArchSync AI Platform Report',
+      `Date Range: ${exportDateRange}`,
+      '',
+    ];
+
+    if (exportOverview) {
+      sections.push('OVERVIEW');
+      overviewStats.forEach((stat) => {
+        sections.push(`${stat.label}: ${stat.value}`);
+      });
+      sections.push('');
+    }
+
+    if (exportActivityLog) {
+      sections.push('ACTIVITY LOG');
+      filteredLogs.forEach((item) => {
+        sections.push(
+          `${item.time} | ${item.user} | ${item.role} | ${item.action} | ${item.target}`,
+        );
+      });
+      sections.push('');
+    }
+
+    if (exportIssues) {
+      sections.push('ISSUES');
+      INITIAL_ISSUES.forEach((issue) => {
+        const status = resolvedIssues.includes(issue.id)
+          ? 'Resolved'
+          : acknowledgedIssues.includes(issue.id)
+            ? 'Acknowledged'
+            : 'Open';
+
+        sections.push(
+          `${issue.title} | ${issue.severity} | ${status} | ${issue.detail}`,
+        );
+      });
+    }
+
+    if (exportFormat === 'CSV') {
+      const rows: string[][] = [];
+
+      if (exportOverview) {
+        rows.push(['Overview']);
+        rows.push(['Metric', 'Value']);
+        overviewStats.forEach((stat) => {
+          rows.push([stat.label, String(stat.value)]);
+        });
+        rows.push([]);
+      }
+
+      if (exportActivityLog) {
+        rows.push(['Activity log']);
+        rows.push(['Time', 'User', 'Role', 'Action', 'Target']);
+        filteredLogs.forEach((item) => {
+          rows.push([
+            item.time,
+            item.user,
+            item.role,
+            item.action,
+            item.target,
+          ]);
+        });
+        rows.push([]);
+      }
+
+      if (exportIssues) {
+        rows.push(['Issues']);
+        rows.push(['Title', 'Severity', 'Status', 'Detail', 'Since']);
+        INITIAL_ISSUES.forEach((issue) => {
+          const status = resolvedIssues.includes(issue.id)
+            ? 'Resolved'
+            : acknowledgedIssues.includes(issue.id)
+              ? 'Acknowledged'
+              : 'Open';
+
+          rows.push([
+            issue.title,
+            issue.severity,
+            status,
+            issue.detail,
+            issue.since,
+          ]);
+        });
+      }
+
+      downloadCsv(
+        rows,
+        `archsync-report-${exportDateRange
+          .toLowerCase()
+          .replace(/\s+/g, '-')}.csv`,
+      );
+    } else {
+      const printWindow = window.open('', '_blank');
+
+      if (printWindow) {
+        printWindow.document.write(`
+          <!doctype html>
+          <html>
+            <head>
+              <title>ArchSync Report</title>
+              <style>
+                body {
+                  font-family: Arial, sans-serif;
+                  padding: 32px;
+                  color: #0f172a;
+                  line-height: 1.6;
+                }
+                h1 { font-size: 24px; }
+                pre {
+                  white-space: pre-wrap;
+                  overflow-wrap: anywhere;
+                  font-family: Arial, sans-serif;
+                }
+                @media print { body { padding: 0; } }
+              </style>
+            </head>
+            <body>
+              <h1>ArchSync AI Platform Report</h1>
+              <pre>${sections
+                .join('\n')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')}</pre>
+              <script>
+                window.onload = () => {
+                  window.print();
+                };
+              </script>
+            </body>
+          </html>
+        `);
+        printWindow.document.close();
+      }
+    }
+
     setIsExportModalOpen(false);
   };
 
-  const getRoleBadgeStyle = (role: ActivityLogItem['role']) => {
-    switch (role) {
-      case 'Staff':
-        return 'bg-cyan-50 text-cyan-700 border-cyan-100';
-      case 'Designer':
-        return 'bg-blue-50 text-blue-700 border-blue-100';
-      case 'Homeowner':
-        return 'bg-slate-100 text-slate-700 border-slate-200';
-      case 'Supplier':
-        return 'bg-purple-50 text-purple-700 border-purple-100';
-      case 'Admin':
-        return 'bg-amber-50 text-amber-700 border-amber-100';
-      default:
-        return 'bg-slate-100 text-slate-700 border-slate-200';
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-slate-50/60 font-sans flex flex-col justify-between">
-      <Header role="admin" activeTab="reports" />
-
-      <main className="w-full max-w-[1440px] mx-auto px-6 lg:px-12 py-8 flex-1">
-        {/* Top Header Section */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-          <div>
-            <span className="text-[11px] font-bold tracking-wider text-blue-600 uppercase mb-1 block">
-              Admin · Reports
-            </span>
-            <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
-              Reports & activity
-            </h1>
-            <p className="text-sm text-slate-500 mt-1">
-              How the platform is used, who did what, and what needs attention.
-            </p>
-          </div>
-
+    <AdminPageFrame
+      title="Reports & activity"
+      description="Review platform usage, account activity, and issues that need attention."
+      action={
+        <AdminButton
+          secondary
+          onClick={() => setIsExportModalOpen(true)}
+        >
+          <Download size={16} />
+          Export report
+        </AdminButton>
+      }
+    >
+      <div className="mb-5 flex gap-1 overflow-x-auto rounded-xl border border-slate-200 bg-white p-1">
+        {tabs.map((tab) => (
           <button
+            key={tab}
             type="button"
-            onClick={() => setIsExportModalOpen(true)}
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold text-xs rounded-xl shadow-2xs transition cursor-pointer self-start sm:self-auto"
-          >
-            <Download className="w-4 h-4 text-slate-600" />
-            <span>Export report</span>
-          </button>
-        </div>
-
-        {/* Sub-tab Navigation */}
-        <div className="inline-flex p-1 bg-slate-200/60 rounded-xl mb-6">
-          <button
-            type="button"
-            onClick={() => setTab('overview')}
-            className={`px-4 py-2 text-xs font-semibold rounded-lg transition cursor-pointer ${
-              currentTab === 'overview'
-                ? 'bg-white text-slate-900 shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
+            onClick={() => selectTab(tab)}
+            className={`whitespace-nowrap rounded-lg px-4 py-2.5 text-sm font-semibold ${
+              currentTab === tab
+                ? 'bg-blue-50 text-blue-700'
+                : 'text-slate-500 hover:bg-slate-50'
             }`}
           >
-            Overview
+            {tab}
+            {tab === 'Issues' ? ` (${openIssuesCount})` : ''}
           </button>
-          <button
-            type="button"
-            onClick={() => setTab('activity')}
-            className={`px-4 py-2 text-xs font-semibold rounded-lg transition cursor-pointer ${
-              currentTab === 'activity'
-                ? 'bg-white text-slate-900 shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            Activity log
-          </button>
-          <button
-            type="button"
-            onClick={() => setTab('issues')}
-            className={`px-4 py-2 text-xs font-semibold rounded-lg transition cursor-pointer ${
-              currentTab === 'issues'
-                ? 'bg-white text-slate-900 shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            Issues {openIssuesCount}
-          </button>
-        </div>
+        ))}
+      </div>
 
-        {/* TAB 1: OVERVIEW */}
-        {currentTab === 'overview' && (
-          <div className="space-y-6">
-            {/* Date Range Selector */}
-            <div className="inline-flex p-1 bg-slate-100/90 rounded-xl border border-slate-200/60">
-              {(['Last 7 days', 'Last 30 days', 'Last 90 days'] as const).map((range) => (
-                <button
-                  key={range}
-                  type="button"
-                  onClick={() => setDateRange(range)}
-                  className={`px-3.5 py-1.5 text-xs font-semibold rounded-lg transition cursor-pointer ${
-                    dateRange === range
-                      ? 'bg-white text-slate-900 shadow-xs border border-slate-200/80'
-                      : 'text-slate-500 hover:text-slate-800'
-                  }`}
-                >
-                  {range}
-                </button>
-              ))}
-            </div>
-
-            {/* 4 Stat Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {/* Stat 1 */}
-              <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-5 flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-                  <User className="w-5 h-5 text-blue-600" />
-                </div>
-                <div>
-                  <span className="text-[10px] font-bold tracking-wider text-slate-400 uppercase">
-                    New users
-                  </span>
-                  <div className="text-2xl font-extrabold text-slate-900 tracking-tight mt-0.5">
-                    {statValues.users}
-                  </div>
-                </div>
-              </div>
-
-              {/* Stat 2 */}
-              <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-5 flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-cyan-50 text-cyan-600 flex items-center justify-center shrink-0">
-                  <Layers className="w-5 h-5 text-cyan-600" />
-                </div>
-                <div>
-                  <span className="text-[10px] font-bold tracking-wider text-slate-400 uppercase">
-                    Projects started
-                  </span>
-                  <div className="text-2xl font-extrabold text-slate-900 tracking-tight mt-0.5">
-                    {statValues.projects}
-                  </div>
-                </div>
-              </div>
-
-              {/* Stat 3 */}
-              <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-5 flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
-                  <Edit3 className="w-5 h-5 text-amber-600" />
-                </div>
-                <div>
-                  <span className="text-[10px] font-bold tracking-wider text-slate-400 uppercase">
-                    Contracts signed
-                  </span>
-                  <div className="text-2xl font-extrabold text-slate-900 tracking-tight mt-0.5">
-                    {statValues.contracts}
-                  </div>
-                </div>
-              </div>
-
-              {/* Stat 4 */}
-              <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-5 flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
-                  <Sparkles className="w-5 h-5 text-purple-600" />
-                </div>
-                <div>
-                  <span className="text-[10px] font-bold tracking-wider text-slate-400 uppercase">
-                    AI generations
-                  </span>
-                  <div className="text-2xl font-extrabold text-slate-900 tracking-tight mt-0.5">
-                    {statValues.generations}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* 2 Big Visual Cards */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-              {/* Card 1: Projects by stage */}
-              <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-6">
-                <h2 className="text-base font-bold text-slate-900 mb-5">
-                  Projects by stage
-                </h2>
-
-                <div className="space-y-4">
-                  {/* Requirements */}
-                  <div className="flex items-center gap-4">
-                    <span className="w-28 text-xs font-medium text-slate-600 shrink-0">
-                      Requirements
-                    </span>
-                    <div className="flex-1 h-3.5 bg-slate-100 rounded-full overflow-hidden">
-                      <div className="h-full bg-blue-300 rounded-full w-[60%]" />
-                    </div>
-                    <span className="w-5 text-right text-xs font-bold text-slate-900 shrink-0">
-                      3
-                    </span>
-                  </div>
-
-                  {/* Concept */}
-                  <div className="flex items-center gap-4">
-                    <span className="w-28 text-xs font-medium text-slate-600 shrink-0">
-                      Concept
-                    </span>
-                    <div className="flex-1 h-3.5 bg-slate-100 rounded-full overflow-hidden">
-                      <div className="h-full bg-blue-600 rounded-full w-[80%]" />
-                    </div>
-                    <span className="w-5 text-right text-xs font-bold text-slate-900 shrink-0">
-                      5
-                    </span>
-                  </div>
-
-                  {/* Review */}
-                  <div className="flex items-center gap-4">
-                    <span className="w-28 text-xs font-medium text-slate-600 shrink-0">
-                      Review
-                    </span>
-                    <div className="flex-1 h-3.5 bg-slate-100 rounded-full overflow-hidden">
-                      <div className="h-full bg-blue-300 rounded-full w-[60%]" />
-                    </div>
-                    <span className="w-5 text-right text-xs font-bold text-slate-900 shrink-0">
-                      3
-                    </span>
-                  </div>
-
-                  {/* Products & BOM */}
-                  <div className="flex items-center gap-4">
-                    <span className="w-28 text-xs font-medium text-slate-600 shrink-0">
-                      Products & BOM
-                    </span>
-                    <div className="flex-1 h-3.5 bg-slate-100 rounded-full overflow-hidden">
-                      <div className="h-full bg-blue-300 rounded-full w-[60%]" />
-                    </div>
-                    <span className="w-5 text-right text-xs font-bold text-slate-900 shrink-0">
-                      3
-                    </span>
-                  </div>
-
-                  {/* Approval */}
-                  <div className="flex items-center gap-4">
-                    <span className="w-28 text-xs font-medium text-slate-600 shrink-0">
-                      Approval
-                    </span>
-                    <div className="flex-1 h-3.5 bg-slate-100 rounded-full overflow-hidden">
-                      <div className="h-full bg-blue-300 rounded-full w-[40%]" />
-                    </div>
-                    <span className="w-5 text-right text-xs font-bold text-slate-900 shrink-0">
-                      2
-                    </span>
-                  </div>
-
-                  {/* Handover */}
-                  <div className="flex items-center gap-4">
-                    <span className="w-28 text-xs font-medium text-slate-600 shrink-0">
-                      Handover
-                    </span>
-                    <div className="flex-1 h-3.5 bg-slate-100 rounded-full overflow-hidden">
-                      <div className="h-full bg-blue-300 rounded-full w-[40%]" />
-                    </div>
-                    <span className="w-5 text-right text-xs font-bold text-slate-900 shrink-0">
-                      2
-                    </span>
-                  </div>
-                </div>
-
-                <p className="mt-5 text-xs text-slate-400 font-medium">
-                  18 active projects
-                </p>
-              </div>
-
-              {/* Card 2: Contract value by package */}
-              <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-6">
-                <h2 className="text-base font-bold text-slate-900 mb-5">
-                  Contract value by package
-                </h2>
-
-                <div className="space-y-5">
-                  {/* Essential */}
-                  <div>
-                    <div className="flex items-center justify-between text-xs font-bold text-slate-900 mb-1.5">
-                      <span>Essential</span>
-                      <span>VND 135M</span>
-                    </div>
-                    <div className="h-3.5 bg-slate-100 rounded-full overflow-hidden mb-1">
-                      <div className="h-full bg-blue-300 rounded-full w-[35%]" />
-                    </div>
-                    <span className="text-[11px] text-slate-400 font-medium">
-                      3 contracts
-                    </span>
-                  </div>
-
-                  {/* Standard */}
-                  <div>
-                    <div className="flex items-center justify-between text-xs font-bold text-slate-900 mb-1.5">
-                      <span>Standard</span>
-                      <span>VND 272M</span>
-                    </div>
-                    <div className="h-3.5 bg-slate-100 rounded-full overflow-hidden mb-1">
-                      <div className="h-full bg-blue-600 rounded-full w-[70%]" />
-                    </div>
-                    <span className="text-[11px] text-slate-400 font-medium">
-                      4 contracts
-                    </span>
-                  </div>
-
-                  {/* Premium */}
-                  <div>
-                    <div className="flex items-center justify-between text-xs font-bold text-slate-900 mb-1.5">
-                      <span>Premium</span>
-                      <span>VND 190M</span>
-                    </div>
-                    <div className="h-3.5 bg-slate-100 rounded-full overflow-hidden mb-1">
-                      <div className="h-full bg-blue-300 rounded-full w-[50%]" />
-                    </div>
-                    <span className="text-[11px] text-slate-400 font-medium">
-                      2 contracts
-                    </span>
-                  </div>
-                </div>
-
-                <p className="mt-5 text-xs text-slate-400 font-medium">
-                  Total VND 597M across 9 contracts
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* TAB 2: ACTIVITY LOG */}
-        {currentTab === 'activity' && (
-          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-6">
-            {/* Top Filter and Search Bar */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-end justify-between gap-4 mb-5">
-              {/* Search Activity Input */}
-              <div className="relative flex-1 max-w-xl">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => {
-                    setSearchQuery(e.target.value);
-                    setCurrentPage(1);
-                  }}
-                  placeholder="Search activity"
-                  className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
-              </div>
-
-              {/* Role Filter */}
-              <div className="flex flex-col gap-1 w-full sm:w-44">
-                <label className="text-[11px] font-semibold text-slate-500 text-left sm:text-right sm:pr-1">
-                  Role
-                </label>
-                <div className="relative">
-                  <select
-                    value={roleFilter}
-                    onChange={(e) => {
-                      setRoleFilter(e.target.value);
-                      setCurrentPage(1);
-                    }}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs text-slate-900 bg-white appearance-none cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-500 pr-8 font-medium"
-                  >
-                    <option value="All roles">All roles</option>
-                    <option value="Staff">Staff</option>
-                    <option value="Designer">Designer</option>
-                    <option value="Homeowner">Homeowner</option>
-                    <option value="Supplier">Supplier</option>
-                    <option value="Admin">Admin</option>
-                  </select>
-                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                </div>
-              </div>
-            </div>
-
-            {/* Table */}
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse min-w-[700px]">
-                <thead>
-                  <tr className="bg-slate-100/70 rounded-xl">
-                    <th className="py-2.5 px-4 text-[10px] font-bold tracking-wider text-slate-500 uppercase rounded-l-xl">
-                      Time
-                    </th>
-                    <th className="py-2.5 px-4 text-[10px] font-bold tracking-wider text-slate-500 uppercase">
-                      User
-                    </th>
-                    <th className="py-2.5 px-4 text-[10px] font-bold tracking-wider text-slate-500 uppercase">
-                      Role
-                    </th>
-                    <th className="py-2.5 px-4 text-[10px] font-bold tracking-wider text-slate-500 uppercase">
-                      Action
-                    </th>
-                    <th className="py-2.5 px-4 text-[10px] font-bold tracking-wider text-slate-500 uppercase rounded-r-xl">
-                      Target
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {filteredLogs.length === 0 ? (
-                    <tr>
-                      <td colSpan={5} className="py-24 text-center">
-                        <p className="text-sm font-bold text-slate-900">
-                          No activity matches.
-                        </p>
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredLogs.map((item) => (
-                      <tr key={item.id} className="hover:bg-slate-50/60 transition">
-                        {/* Time */}
-                        <td className="py-3 px-4 text-xs text-slate-500 whitespace-nowrap">
-                          {item.time}
-                        </td>
-
-                        {/* User with avatar */}
-                        <td className="py-3 px-4 whitespace-nowrap">
-                          <div className="flex items-center gap-2.5">
-                            <div
-                              className={`w-7 h-7 rounded-full ${item.avatarBg} text-white flex items-center justify-center font-bold text-[11px] shrink-0`}
-                            >
-                              {item.initials}
-                            </div>
-                            <span className="text-xs font-bold text-slate-900">
-                              {item.user}
-                            </span>
-                          </div>
-                        </td>
-
-                        {/* Role pill badge */}
-                        <td className="py-3 px-4 whitespace-nowrap">
-                          <span
-                            className={`inline-block px-2.5 py-0.5 text-xs font-semibold rounded-full border ${getRoleBadgeStyle(
-                              item.role
-                            )}`}
-                          >
-                            {item.role}
-                          </span>
-                        </td>
-
-                        {/* Action */}
-                        <td className="py-3 px-4 text-xs text-slate-700">
-                          {item.action}
-                        </td>
-
-                        {/* Target */}
-                        <td className="py-3 px-4 text-xs font-medium text-slate-800">
-                          {item.target}
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Table Footer */}
-            <div className="mt-5 pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-              <span>Showing {filteredLogs.length} events</span>
-
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  disabled={currentPage <= 1 || filteredLogs.length === 0}
-                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition shadow-2xs"
-                >
-                  Previous
-                </button>
-                <button
-                  type="button"
-                  disabled={filteredLogs.length === 0}
-                  onClick={() => setCurrentPage((p) => p + 1)}
-                  className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition shadow-2xs"
-                >
-                  Next
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* TAB 3: ISSUES */}
-        {currentTab === 'issues' && (
-          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-6">
-            {/* Header: Title and Badge */}
-            <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-100">
-              <h2 className="text-base font-bold text-slate-900">Issues</h2>
-              <span
-                className={`px-2.5 py-0.5 text-xs font-semibold rounded-full ${
-                  openIssuesCount > 0
-                    ? 'bg-amber-50 text-amber-700 border border-amber-200/60'
-                    : 'bg-emerald-50 text-emerald-700 border border-emerald-200/60'
+      {currentTab === 'Overview' && (
+        <>
+          <div className="mb-5 flex flex-wrap gap-2">
+            {(
+              ['Last 7 days', 'Last 30 days', 'Last 90 days'] as const
+            ).map((range) => (
+              <button
+                key={range}
+                type="button"
+                onClick={() => setDateRange(range)}
+                className={`rounded-lg px-3 py-2 text-sm font-semibold ${
+                  dateRange === range
+                    ? 'bg-blue-600 text-white'
+                    : 'border border-slate-200 bg-white text-slate-600'
                 }`}
               >
-                {openIssuesCount} open
+                {range}
+              </button>
+            ))}
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {overviewStats.map((stat, index) => {
+              const Icon = stat.icon;
+              const value = [
+                statValues.requests,
+                statValues.projects,
+                statValues.contracts,
+                statValues.versions,
+              ][index];
+
+              return (
+                <div
+                  key={stat.label}
+                  className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={`flex h-11 w-11 items-center justify-center rounded-xl ${stat.iconClass}`}
+                    >
+                      <Icon size={20} />
+                    </div>
+                    <div>
+                      <p className="text-sm text-slate-500">{stat.label}</p>
+                      <b className="mt-1 block text-2xl text-slate-900">
+                        {value}
+                      </b>
+                    </div>
+                  </div>
+                  <span className="mt-3 block text-xs text-slate-400">
+                    Based on current demo data
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="mt-5 grid gap-5 lg:grid-cols-2">
+            <AdminCard title="Projects by stage">
+              {stageCounts.map(([label, value]) => (
+                <div key={label} className="mb-4 last:mb-0">
+                  <div className="mb-1 flex justify-between text-sm">
+                    <span className="text-slate-600">{label}</span>
+                    <b>{value}</b>
+                  </div>
+                  <div className="h-2 rounded-full bg-slate-100">
+                    <div
+                      className="h-2 rounded-full bg-teal-500"
+                      style={{
+                        width: `${
+                          (value / Math.max(workspace.projects.length, 1)) *
+                          100
+                        }%`,
+                      }}
+                    />
+                  </div>
+                </div>
+              ))}
+              <p className="mt-4 text-xs text-slate-400">
+                {workspace.projects.length} shared projects
+              </p>
+            </AdminCard>
+
+            <AdminCard title="Contract value by package">
+              {contractPackages.map((item) => (
+                <div key={item.name} className="mb-4 last:mb-0">
+                  <div className="mb-1 flex justify-between text-sm">
+                    <span className="font-medium text-slate-700">
+                      {item.name}
+                      <small className="ml-2 text-slate-400">
+                        {item.count} contracts
+                      </small>
+                    </span>
+                    <b>
+                      VND {(item.total / 1e6).toLocaleString()}M
+                    </b>
+                  </div>
+                  <div className="h-2 rounded-full bg-slate-100">
+                    <div
+                      className="h-2 rounded-full bg-blue-500"
+                      style={{
+                        width: `${
+                          (item.total / Math.max(totalContractValue, 1)) * 100
+                        }%`,
+                      }}
+                    />
+                  </div>
+                </div>
+              ))}
+              <p className="mt-4 text-xs text-slate-400">
+                Total VND {(totalContractValue / 1e6).toLocaleString()}M across{' '}
+                {workspace.contracts.length} contracts
+              </p>
+            </AdminCard>
+          </div>
+        </>
+      )}
+
+      {currentTab === 'Activity log' && (
+        <AdminCard>
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row">
+            <div className="relative min-w-0 flex-1">
+              <Search
+                size={16}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+              />
+              <input
+                value={searchQuery}
+                onChange={(event) => {
+                  setSearchQuery(event.target.value);
+                  setCurrentPage(1);
+                }}
+                placeholder="Search activity"
+                className="w-full rounded-xl border border-slate-200 py-2.5 pl-9 pr-3 text-sm"
+              />
+            </div>
+
+            <div className="relative">
+              <select
+                value={roleFilter}
+                onChange={(event) => {
+                  setRoleFilter(event.target.value);
+                  setCurrentPage(1);
+                }}
+                className="w-full appearance-none rounded-xl border border-slate-200 bg-white px-3 py-2.5 pr-9 text-sm sm:w-44"
+              >
+                {ROLE_OPTIONS.map((role) => (
+                  <option key={role} value={role}>
+                    {role}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown
+                size={15}
+                className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
+              />
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <AdminTable
+              headings={['Time', 'User', 'Role', 'Action', 'Target']}
+            >
+              {paginatedLogs.map((item) => (
+                <tr key={item.id} className="hover:bg-slate-50/60">
+                  <td className="whitespace-nowrap px-4 py-3.5 text-slate-600">
+                    {item.time}
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-3.5">
+                    <div className="flex items-center gap-2.5">
+                      <span
+                        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-white ${item.avatarBg}`}
+                      >
+                        {item.initials}
+                      </span>
+                      <span className="text-sm font-medium text-slate-800">
+                        {item.user}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3.5">
+                    <span
+                      className={`inline-block rounded-full border px-2.5 py-1 text-xs font-semibold ${getRoleBadgeStyle(item.role)}`}
+                    >
+                      {item.role}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3.5 text-slate-600">
+                    {item.action}
+                  </td>
+                  <td className="px-4 py-3.5 text-slate-600">
+                    {item.target}
+                  </td>
+                </tr>
+              ))}
+            </AdminTable>
+
+            {filteredLogs.length === 0 && (
+              <p className="py-10 text-center text-sm text-slate-500">
+                No activity matches your search.
+              </p>
+            )}
+          </div>
+
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4 text-xs text-slate-500">
+            <span>
+              Showing {filteredLogs.length === 0 ? 0 : (safePage - 1) * pageSize + 1}
+              {'–'}
+              {Math.min(safePage * pageSize, filteredLogs.length)} of{' '}
+              {filteredLogs.length} events
+            </span>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                disabled={safePage <= 1}
+                onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                className="rounded-lg border border-slate-200 px-3 py-1.5 font-medium disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Previous
+              </button>
+              <span>
+                Page {safePage} of {totalPages}
               </span>
+              <button
+                type="button"
+                disabled={safePage >= totalPages}
+                onClick={() =>
+                  setCurrentPage((page) => Math.min(totalPages, page + 1))
+                }
+                className="rounded-lg border border-slate-200 px-3 py-1.5 font-medium disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        </AdminCard>
+      )}
+
+      {currentTab === 'Issues' && (
+        <AdminCard title="Platform issues">
+          <div className="mb-5 flex items-center justify-between border-b border-slate-100 pb-4">
+            <p className="text-sm text-slate-500">
+              Review issues and update their status.
+            </p>
+            <span
+              className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                openIssuesCount > 0
+                  ? 'bg-amber-50 text-amber-700'
+                  : 'bg-emerald-50 text-emerald-700'
+              }`}
+            >
+              {openIssuesCount} open
+            </span>
+          </div>
+
+          <div className="divide-y divide-slate-100">
+            {INITIAL_ISSUES.map((issue) => {
+              const isResolved = resolvedIssues.includes(issue.id);
+              const isAcknowledged = acknowledgedIssues.includes(issue.id);
+
+              return (
+                <div
+                  key={issue.id}
+                  className="flex flex-col gap-3 py-4 first:pt-0 last:pb-0 md:flex-row md:items-center"
+                >
+                  <span
+                    className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${issue.dotColor}`}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-slate-800">
+                      {issue.title}
+                    </p>
+                    <p className="mt-1 text-sm leading-6 text-slate-500">
+                      {issue.detail}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-400">
+                      {issue.severity} · since {issue.since}
+                    </p>
+                  </div>
+
+                  {isResolved ? (
+                    <span className="rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700">
+                      Resolved
+                    </span>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      <AdminButton
+                        secondary
+                        onClick={() => {
+                          if (!isAcknowledged) {
+                            setAcknowledgedIssues((current) => [
+                              ...current,
+                              issue.id,
+                            ]);
+                          }
+                        }}
+                      >
+                        {isAcknowledged ? (
+                          <>
+                            <Check size={14} />
+                            Acknowledged
+                          </>
+                        ) : (
+                          'Acknowledge'
+                        )}
+                      </AdminButton>
+
+                      <AdminButton
+                        onClick={() =>
+                          setResolvedIssues((current) =>
+                            current.includes(issue.id)
+                              ? current
+                              : [...current, issue.id],
+                          )
+                        }
+                      >
+                        Resolve
+                      </AdminButton>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </AdminCard>
+      )}
+
+      {isExportModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              setIsExportModalOpen(false);
+            }
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="export-report-title"
+            className="relative w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl"
+          >
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+              <h2
+                id="export-report-title"
+                className="text-base font-bold text-slate-900"
+              >
+                Export report
+              </h2>
+              <button
+                type="button"
+                aria-label="Close export dialog"
+                onClick={() => setIsExportModalOpen(false)}
+                className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+              >
+                <X size={16} />
+              </button>
             </div>
 
-            {/* Issues List */}
-            <div className="divide-y divide-slate-100">
-              {INITIAL_ISSUES.map((issue) => {
-                const isResolved = resolvedIssues.includes(issue.id);
-                const isAcknowledged = acknowledgedIssues.includes(issue.id);
+            <div className="space-y-4 py-5">
+              <div>
+                <label
+                  htmlFor="export-date-range"
+                  className="mb-1.5 block text-xs font-semibold text-slate-700"
+                >
+                  Date range
+                </label>
+                <select
+                  id="export-date-range"
+                  value={exportDateRange}
+                  onChange={(event) =>
+                    setExportDateRange(
+                      event.target.value as typeof exportDateRange,
+                    )
+                  }
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm"
+                >
+                  <option value="Last 7 days">Last 7 days</option>
+                  <option value="Last 30 days">Last 30 days</option>
+                  <option value="Last 90 days">Last 90 days</option>
+                </select>
+              </div>
 
-                return (
-                  <div
-                    key={issue.id}
-                    className="py-5 first:pt-0 last:pb-0 flex flex-col md:flex-row md:items-center justify-between gap-4"
+              <fieldset>
+                <legend className="mb-2 text-xs font-semibold text-slate-700">
+                  Format
+                </legend>
+                <div className="flex items-center gap-6">
+                  {(['PDF', 'CSV'] as const).map((format) => (
+                    <label
+                      key={format}
+                      className="inline-flex cursor-pointer items-center gap-2 text-sm"
+                    >
+                      <input
+                        type="radio"
+                        name="exportFormat"
+                        checked={exportFormat === format}
+                        onChange={() => setExportFormat(format)}
+                        className="h-4 w-4"
+                      />
+                      {format}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+
+              <fieldset className="space-y-3">
+                <legend className="mb-2 text-xs font-semibold text-slate-700">
+                  Include sections
+                </legend>
+
+                {[
+                  {
+                    label: 'Overview',
+                    checked: exportOverview,
+                    setChecked: setExportOverview,
+                  },
+                  {
+                    label: 'Activity log',
+                    checked: exportActivityLog,
+                    setChecked: setExportActivityLog,
+                  },
+                  {
+                    label: 'Issues',
+                    checked: exportIssues,
+                    setChecked: setExportIssues,
+                  },
+                ].map((section) => (
+                  <label
+                    key={section.label}
+                    className="flex cursor-pointer items-center gap-2.5 text-sm text-slate-700"
                   >
-                    {/* Left: Dot, Title, Details */}
-                    <div className="flex items-start gap-3 flex-1 min-w-0">
-                      <div
-                        className={`w-2 h-2 rounded-full ${issue.dotColor} mt-1.5 shrink-0`}
-                      />
-                      <div className="min-w-0">
-                        <h3 className="text-sm font-bold text-slate-900">
-                          {issue.title}
-                        </h3>
-                        <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-                          {issue.detail}
-                        </p>
-                        <p className="text-[11px] text-slate-400 mt-1.5 font-medium">
-                          {issue.severity} · since {issue.since}
-                        </p>
-                      </div>
-                    </div>
+                    <input
+                      type="checkbox"
+                      checked={section.checked}
+                      onChange={(event) =>
+                        section.setChecked(event.target.checked)
+                      }
+                      className="h-4 w-4 rounded"
+                    />
+                    {section.label}
+                  </label>
+                ))}
+              </fieldset>
+            </div>
 
-                    {/* Right: Actions or Resolved Badge */}
-                    <div className="flex items-center gap-2.5 self-start md:self-center shrink-0">
-                      {isResolved ? (
-                        <span className="px-3.5 py-1 bg-emerald-50 text-emerald-700 text-xs font-bold rounded-full border border-emerald-200/60">
-                          Resolved
-                        </span>
-                      ) : (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (!isAcknowledged) {
-                                setAcknowledgedIssues((prev) => [...prev, issue.id]);
-                              }
-                            }}
-                            className={`px-3.5 py-1.5 border border-slate-200 text-xs font-semibold rounded-xl transition shadow-2xs ${
-                              isAcknowledged
-                                ? 'bg-slate-50 text-slate-400 cursor-default'
-                                : 'bg-white hover:bg-slate-50 text-slate-700 cursor-pointer'
-                            }`}
-                          >
-                            {isAcknowledged ? 'Acknowledged' : 'Acknowledge'}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setResolvedIssues((prev) => [...prev, issue.id]);
-                            }}
-                            className="px-3.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 text-xs font-semibold rounded-xl transition cursor-pointer"
-                          >
-                            Resolve
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
+            <div className="flex justify-end gap-3 border-t border-slate-100 pt-4">
+              <AdminButton
+                secondary
+                onClick={() => setIsExportModalOpen(false)}
+              >
+                Cancel
+              </AdminButton>
+              <AdminButton
+                onClick={handleConfirmExport}
+                disabled={
+                  !exportOverview && !exportActivityLog && !exportIssues
+                }
+              >
+                <Download size={15} />
+                Export
+              </AdminButton>
             </div>
           </div>
-        )}
-        {/* EXPORT REPORT MODAL (Image 2) */}
-        {isExportModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs animate-in fade-in duration-150">
-            <div className="w-full max-w-md bg-white rounded-3xl border border-slate-200/90 shadow-2xl p-6 relative animate-in zoom-in-95 duration-150">
-              {/* Modal Header */}
-              <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-                <h3 className="text-base font-bold text-slate-900">Export report</h3>
-                <button
-                  type="button"
-                  onClick={() => setIsExportModalOpen(false)}
-                  className="w-7 h-7 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 flex items-center justify-center transition cursor-pointer"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              {/* Modal Body */}
-              <div className="py-4 space-y-4">
-                {/* Date range dropdown */}
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                    Date range
-                  </label>
-                  <div className="relative">
-                    <select
-                      value={exportDateRange}
-                      onChange={(e) => setExportDateRange(e.target.value)}
-                      className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs text-slate-900 bg-white appearance-none cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-500 font-medium"
-                    >
-                      <option value="Last 7 days">Last 7 days</option>
-                      <option value="Last 30 days">Last 30 days</option>
-                      <option value="Last 90 days">Last 90 days</option>
-                    </select>
-                    <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                  </div>
-                </div>
-
-                {/* Format Radio */}
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-2">
-                    Format
-                  </label>
-                  <div className="flex items-center gap-6">
-                    <label className="inline-flex items-center gap-2 cursor-pointer select-none">
-                      <input
-                        type="radio"
-                        name="exportFormat"
-                        checked={exportFormat === 'PDF'}
-                        onChange={() => setExportFormat('PDF')}
-                        className="w-4 h-4 text-blue-600 focus:ring-blue-500 border-slate-300"
-                      />
-                      <span className="text-xs font-medium text-slate-800">PDF</span>
-                    </label>
-
-                    <label className="inline-flex items-center gap-2 cursor-pointer select-none">
-                      <input
-                        type="radio"
-                        name="exportFormat"
-                        checked={exportFormat === 'CSV'}
-                        onChange={() => setExportFormat('CSV')}
-                        className="w-4 h-4 text-blue-600 focus:ring-blue-500 border-slate-300"
-                      />
-                      <span className="text-xs font-medium text-slate-800">CSV</span>
-                    </label>
-                  </div>
-                </div>
-
-                {/* Section Checkboxes */}
-                <div className="pt-2 space-y-2.5">
-                  <label className="flex items-center gap-2.5 cursor-pointer select-none">
-                    <div
-                      onClick={() => setExportOverview(!exportOverview)}
-                      className={`w-4 h-4 rounded flex items-center justify-center transition ${
-                        exportOverview
-                          ? 'bg-blue-600 text-white'
-                          : 'border border-slate-300 bg-white'
-                      }`}
-                    >
-                      {exportOverview && <Check className="w-3 h-3 stroke-[3]" />}
-                    </div>
-                    <span className="text-xs font-medium text-slate-700">Overview</span>
-                  </label>
-
-                  <label className="flex items-center gap-2.5 cursor-pointer select-none">
-                    <div
-                      onClick={() => setExportActivityLog(!exportActivityLog)}
-                      className={`w-4 h-4 rounded flex items-center justify-center transition ${
-                        exportActivityLog
-                          ? 'bg-blue-600 text-white'
-                          : 'border border-slate-300 bg-white'
-                      }`}
-                    >
-                      {exportActivityLog && <Check className="w-3 h-3 stroke-[3]" />}
-                    </div>
-                    <span className="text-xs font-medium text-slate-700">Activity log</span>
-                  </label>
-
-                  <label className="flex items-center gap-2.5 cursor-pointer select-none">
-                    <div
-                      onClick={() => setExportIssues(!exportIssues)}
-                      className={`w-4 h-4 rounded flex items-center justify-center transition ${
-                        exportIssues
-                          ? 'bg-blue-600 text-white'
-                          : 'border border-slate-300 bg-white'
-                      }`}
-                    >
-                      {exportIssues && <Check className="w-3 h-3 stroke-[3]" />}
-                    </div>
-                    <span className="text-xs font-medium text-slate-700">Issues</span>
-                  </label>
-                </div>
-              </div>
-
-              {/* Modal Footer */}
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => setIsExportModalOpen(false)}
-                  className="px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold text-xs rounded-xl transition cursor-pointer shadow-2xs"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleConfirmExport}
-                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold text-xs rounded-xl shadow-xs transition cursor-pointer"
-                >
-                  Export
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-      </main>
-
-      <Footer />
-    </div>
+        </div>
+      )}
+    </AdminPageFrame>
   );
 };
 

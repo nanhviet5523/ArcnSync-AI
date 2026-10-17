@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { Header } from '@/components/layout';
 import { Footer } from '@/components/layout';
-import { getCurrentDemoUser } from '@/services/authService';
+import { getCurrentUser } from '@/services/authService';
 
 export const ProfileSettings: React.FC = () => {
-  const currentUser = getCurrentDemoUser();
+  const currentUser = getCurrentUser();
   // States thông tin cá nhân
   const [fullName, setFullName] = useState(currentUser?.name ?? 'Nguyen Linh');
   const [phone, setPhone] = useState('+84 903 112 233');

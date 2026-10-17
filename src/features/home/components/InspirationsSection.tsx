@@ -25,7 +25,7 @@ const INSPIRATION_CARDS = [
   },
 ];
 
-export const InspirationsSection: React.FC = () => {
+export const InspirationsSection: React.FC<{ onFeatureClick: () => void }> = ({ onFeatureClick }) => {
   return (
     <section className="w-full bg-[#f8fafc] px-6 lg:px-12 py-20">
       <div className="max-w-7xl mx-auto">
@@ -45,6 +45,7 @@ export const InspirationsSection: React.FC = () => {
           </div>
 
           <Button
+            onClick={onFeatureClick}
             variant="outline"
             fullWidth={false}
             className="px-5 py-2 text-xs font-semibold shrink-0"

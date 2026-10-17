@@ -3,97 +3,45 @@ import { useNavigate } from 'react-router-dom';
 import { FileText, Edit3, Layers, Users, Video, Plus } from 'lucide-react';
 import { Header } from '@/components/layout';
 import { Footer } from '@/components/layout';
+import { useDemoWorkspace } from '@/hooks/useDemoWorkspace';
 
 export const StaffDashboard: React.FC = () => {
   const navigate = useNavigate();
+  const workspace = useDemoWorkspace();
 
   // Data giả lập cho 4 Stat Cards
   const stats = [
     {
       title: 'NEW REQUESTS',
-      value: '6',
+      value: String(workspace.requests.filter((request) => request.status === 'AI brief ready').length),
       icon: <FileText className="w-5 h-5 text-blue-600" />,
       bgColor: 'bg-blue-50',
     },
     {
       title: 'CONTRACTS PENDING',
-      value: '4',
+      value: String(workspace.contracts.filter((contract) => contract.status !== 'Signed').length),
       icon: <Edit3 className="w-5 h-5 text-amber-600" />,
       bgColor: 'bg-amber-50',
     },
     {
       title: 'ACTIVE PROJECTS',
-      value: '18',
+      value: String(workspace.projects.filter((project) => project.stage !== 'Handover').length),
       icon: <Layers className="w-5 h-5 text-emerald-600" />,
       bgColor: 'bg-emerald-50',
     },
     {
       title: 'AWAITING TEAM',
-      value: '3',
+      value: String(workspace.projects.filter((project) => project.status === 'New · assigned today').length),
       icon: <Users className="w-5 h-5 text-purple-600" />,
       bgColor: 'bg-purple-50',
     },
   ];
 
-  // Data giả lập cho Bảng Incoming Requests
-  const requests = [
-    {
-      homeowner: 'Minh Anh',
-      project: 'Modern Townhouse · Thu Duc',
-      type: 'Townhouse',
-      budget: '600–900M',
-      status: 'AI brief ready',
-      statusBg: 'bg-blue-50 text-blue-600',
-      action: 'Create contract',
-      actionStyle: 'bg-blue-600 text-white hover:bg-blue-700',
-      isCreateContract: true,
-    },
-    {
-      homeowner: 'Hoang Gia',
-      project: 'Level-4 House · Long An',
-      type: 'Level-4',
-      budget: '400–550M',
-      status: 'Consult booked',
-      statusBg: 'bg-amber-50 text-amber-700',
-      action: 'Open',
-      actionStyle: 'border border-slate-200 text-slate-700 hover:bg-slate-50',
-      isCreateContract: false,
-    },
-    {
-      homeowner: 'Phuong Vy',
-      project: 'Narrow Townhouse · Binh Thanh',
-      type: 'Townhouse',
-      budget: '0.8–1.1B',
-      status: 'Contract draft',
-      statusBg: 'bg-slate-100 text-slate-700',
-      action: 'Continue',
-      actionStyle: 'border border-slate-200 text-slate-700 hover:bg-slate-50',
-      isCreateContract: false,
-    },
-    {
-      homeowner: 'Tuan Kiet',
-      project: 'Level-4 House · Dong Nai',
-      type: 'Level-4',
-      budget: '350–480M',
-      status: 'Needs 2D input',
-      statusBg: 'bg-rose-50 text-rose-600',
-      action: 'Contact',
-      actionStyle: 'border border-slate-200 text-slate-700 hover:bg-slate-50',
-      isCreateContract: false,
-    },
-    {
-      homeowner: 'Bao Chau',
-      project: 'Townhouse · District 7',
-      type: 'Townhouse',
-      budget: '1.0–1.4B',
-      status: 'Signed',
-      statusBg: 'bg-emerald-50 text-emerald-600',
-      action: 'Assign team',
-      actionStyle: 'bg-blue-50 text-blue-600 hover:bg-blue-100',
-      isCreateContract: false,
-    },
-  ];
-
+  const requests = workspace.requests.map((request) => {
+    const project = workspace.projects.find((item) => item.id === request.projectId);
+    const statusBg = request.status === 'Signed' ? 'bg-emerald-50 text-emerald-700' : request.status === 'AI brief ready' ? 'bg-blue-50 text-blue-600' : request.status === 'Designer assigned' ? 'bg-violet-50 text-violet-700' : 'bg-amber-50 text-amber-700';
+    return project ? { projectId: project.id, homeowner: project.homeowner, project: project.name, type: project.buildingType, budget: `${Math.round(project.budgetMin / 1e6)}–${Math.round(project.budgetMax / 1e6)}M`, status: request.status, statusBg, designer: project.designer, action: 'Open', actionStyle: 'border border-slate-200 text-slate-700 hover:bg-slate-50', isCreateContract: false } : null;
+  }).filter((item): item is NonNullable<typeof item> => item !== null).slice(0, 5);
   // Data giả lập Today's consultations
   const consultations = [
     {
@@ -116,28 +64,12 @@ export const StaffDashboard: React.FC = () => {
     },
   ];
 
-  // Data giả lập Contracts in progress
-  const contracts = [
-    {
-      id: 'C-2026-014',
-      name: 'Minh Anh',
-      status: 'Awaiting signature',
-      statusBg: 'bg-amber-50 text-amber-700',
-    },
-    {
-      id: 'C-2026-013',
-      name: 'Phuong Vy',
-      status: 'Draft',
-      statusBg: 'bg-slate-100 text-slate-600',
-    },
-    {
-      id: 'C-2026-012',
-      name: 'Bao Chau',
-      status: 'Signed',
-      statusBg: 'bg-emerald-50 text-emerald-600',
-    },
-  ];
-
+  const contracts = workspace.contracts.map((contract) => ({
+    id: contract.id,
+    name: workspace.projects.find((project) => project.id === contract.projectId)?.homeowner ?? 'Homeowner',
+    status: contract.status,
+    statusBg: contract.status === 'Signed' ? 'bg-emerald-50 text-emerald-600' : contract.status === 'Draft' ? 'bg-slate-100 text-slate-600' : 'bg-amber-50 text-amber-700',
+  }));
   return (
     <div className="min-h-screen bg-slate-50/60 font-sans flex flex-col justify-between">
       <Header role="staff" />
@@ -236,11 +168,7 @@ export const StaffDashboard: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => {
-                            if (item.isCreateContract) {
-                              navigate('/create-contract');
-                            } else {
-                              navigate('/staff-request-detail');
-                            }
+                            navigate(`/staff-request-detail?projectId=${item.projectId}`);
                           }}
                           className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${item.actionStyle}`}
                         >
@@ -299,7 +227,7 @@ export const StaffDashboard: React.FC = () => {
                 {contracts.map((item, idx) => (
                   <div
                     key={idx}
-                    onClick={() => navigate('/staff-contract-detail')}
+                    onClick={() => navigate(`/staff-contract-detail?contractId=${item.id}`)}
                     className="flex items-center justify-between p-3.5 rounded-xl border border-slate-100 cursor-pointer hover:bg-slate-50"
                   >
                     <div>

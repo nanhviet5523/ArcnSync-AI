@@ -1,60 +1,22 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Bell, Plus } from 'lucide-react';
 import { Header } from '@/components/layout';
 import { Footer } from '@/components/layout';
+import { useDemoWorkspace } from '@/hooks/useDemoWorkspace';
 
 export const StaffProjectDetail: React.FC = () => {
   const navigate = useNavigate();
-  // Data danh sách nhân sự tham gia dự án
-  const [members, setMembers] = useState([
-    {
-      role: 'Homeowner',
-      person: 'Minh Anh',
-      type: 'External',
-      typeBg: 'bg-slate-100 text-slate-600',
-      access: 'View · Comment · Approve',
-      hasAction: false,
-      actionText: '',
-    },
-    {
-      role: 'Lead Designer',
-      person: 'Nguyen Linh',
-      type: 'Company',
-      typeBg: 'bg-blue-50 text-blue-600',
-      access: 'Edit design · Versions',
-      hasAction: true,
-      actionText: 'Change',
-    },
-    {
-      role: 'Support Designer',
-      person: 'Pham Duc',
-      type: 'Company',
-      typeBg: 'bg-blue-50 text-blue-600',
-      access: 'Edit 3D · Renders',
-      hasAction: true,
-      actionText: 'Change',
-    },
-    {
-      role: 'Staff coordinator',
-      person: 'Tran Nam',
-      type: 'Company',
-      typeBg: 'bg-blue-50 text-blue-600',
-      access: 'Contract · Billing',
-      hasAction: false,
-      actionText: '',
-    },
-    {
-      role: 'Supplier partner',
-      person: 'Noi That Viet',
-      type: 'Partner',
-      typeBg: 'bg-purple-50 text-purple-600',
-      access: 'Catalog · Quotes',
-      hasAction: true,
-      actionText: 'Remove',
-    },
-  ]);
-
+  const [params] = useSearchParams();
+  const workspace = useDemoWorkspace();
+  const project = workspace.projects.find((item) => item.id === params.get('projectId')) ?? workspace.projects[0];
+  const members = [
+    { role: 'Homeowner', person: project?.homeowner ?? 'Homeowner', type: 'External', typeBg: 'bg-slate-100 text-slate-600', access: 'View · Comment · Approve', hasAction: false, actionText: '' },
+    { role: 'Lead Designer', person: project?.designer ?? 'Unassigned', type: 'Company', typeBg: 'bg-blue-50 text-blue-600', access: 'Edit design · Versions', hasAction: true, actionText: 'Change' },
+    { role: 'Staff coordinator', person: project?.staff ?? 'Tran Nam', type: 'Company', typeBg: 'bg-blue-50 text-blue-600', access: 'Contract · Billing', hasAction: false, actionText: '' },
+    { role: 'Supplier partner', person: 'Noi That Viet', type: 'Partner', typeBg: 'bg-purple-50 text-purple-600', access: 'Catalog · Quotes', hasAction: true, actionText: 'Remove' },
+  ];
+  const [extraMembers, setExtraMembers] = useState<Array<{role:string;person:string;type:string;typeBg:string;access:string;hasAction:boolean;actionText:string}>>([]);
   // Data danh sách nhà cung cấp
   const [suppliers, setSuppliers] = useState([
     {
@@ -83,8 +45,8 @@ export const StaffProjectDetail: React.FC = () => {
     e.preventDefault();
     if (!selectedPerson) return;
 
-    setMembers([
-      ...members,
+    setExtraMembers([
+      ...extraMembers,
       {
         role: selectedRole,
         person: selectedPerson,
@@ -111,7 +73,7 @@ export const StaffProjectDetail: React.FC = () => {
               Project team & roles
             </h1>
             <p className="text-sm text-slate-500 mt-1">
-              Modern Townhouse · Thu Duc · Contract signed 03 Oct 2026
+              {project?.name} · {project?.status}
             </p>
           </div>
 
@@ -145,7 +107,7 @@ export const StaffProjectDetail: React.FC = () => {
                   Roles on this project
                 </h2>
                 <span className="px-3 py-1 bg-slate-100 text-slate-600 text-xs font-semibold rounded-full">
-                  {members.length} members
+                  {members.length + extraMembers.length} members
                 </span>
               </div>
 
@@ -162,7 +124,7 @@ export const StaffProjectDetail: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-xs">
-                    {members.map((item, idx) => (
+                    {[...members, ...extraMembers].map((item, idx) => (
                       <tr key={idx} className="hover:bg-slate-50/50 transition">
                         <td className="py-4 px-4 font-bold text-slate-900">
                           {item.role}

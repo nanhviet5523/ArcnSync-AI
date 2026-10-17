@@ -3,7 +3,7 @@ import { ArrowRight, Sparkles } from 'lucide-react';
 import { Button } from '@/components/common';
 
 
-export const HeroSection: React.FC = () => {
+export const HeroSection: React.FC<{ onFeatureClick: () => void }> = ({ onFeatureClick }) => {
   return (
     <section className="relative w-full min-h-[560px] flex items-center px-6 lg:px-12 py-20 lg:py-28 bg-slate-900 text-white bg-cover bg-center bg-no-repeat bg-[linear-gradient(to_right,rgba(11,19,43,0.92),rgba(11,19,43,0.6)),url('https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?q=80&w=1600&auto=format&fit=crop')]">
       <div className="max-w-7xl mx-auto w-full flex flex-col items-start">
@@ -27,6 +27,7 @@ export const HeroSection: React.FC = () => {
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full sm:w-auto">
           <Button
+            onClick={onFeatureClick}
             fullWidth={false}
             className="px-6 py-3 text-sm font-semibold bg-blue-600 hover:bg-blue-700 border-transparent text-white"
           >
@@ -35,6 +36,7 @@ export const HeroSection: React.FC = () => {
           </Button>
 
           <Button
+            onClick={onFeatureClick}
             variant="outline"
             fullWidth={false}
             className="px-6 py-3 text-sm font-semibold text-white border-white/30 bg-white/10 hover:bg-white/20 backdrop-blur-sm"

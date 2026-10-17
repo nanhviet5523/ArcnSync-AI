@@ -103,6 +103,37 @@ export interface WorkspaceSelection {
   status: 'Selected' | 'Quoted' | 'Ordered' | 'Delivered';
 }
 
+export interface WorkspaceRequest {
+  id: string;
+  projectId: string;
+  status: string;
+  submittedAt: string;
+}
+
+export interface WorkspaceContract {
+  id: string;
+  projectId: string;
+  packageName: 'Essential' | 'Standard' | 'Premium';
+  fee: number;
+  rounds: number;
+  timeline: string;
+  status: 'Draft' | 'Awaiting signature' | 'Signed';
+  updatedAt: string;
+}
+
+export interface WorkspaceMessage {
+  id: string;
+  projectId: string;
+  sender: string;
+  senderRole: string;
+  text: string;
+  sentAt: string;
+  isSystem?: boolean;
+  hasFile?: boolean;
+  fileName?: string;
+  fileSize?: string;
+}
+
 export interface DemoWorkspace {
   projects: WorkspaceProject[];
   products: WorkspaceProduct[];
@@ -111,6 +142,9 @@ export interface DemoWorkspace {
   versions: WorkspaceVersion[];
   files: WorkspaceFile[];
   selections: WorkspaceSelection[];
+  requests: WorkspaceRequest[];
+  contracts: WorkspaceContract[];
+  messages: WorkspaceMessage[];
   activity: { id: string; projectId?: string; actor: string; role: string; action: string; target: string; at: string }[];
   portfolio: { id: string; title: string; type: string; style: string; area: number; year: number; published: boolean }[];
   qualifications: { id: string; name: string; year: string }[];
