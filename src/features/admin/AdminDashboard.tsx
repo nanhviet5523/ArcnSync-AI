@@ -8,16 +8,13 @@ import {
   Sparkles,
   AlertTriangle,
   Download,
-  UserPlus,
-  Box,
   X,
-  Check,
   ChevronDown,
   ArrowRight,
   Activity,
 } from 'lucide-react';
 import { Header, Footer } from '@/components/layout';
-import { AdminButton, AdminCard, AdminPageFrame } from './AdminPageFrame';
+import { AdminButton, AdminCard } from './AdminPageFrame';
 import { useDemoWorkspace } from '@/hooks/useDemoWorkspace';
 import {
   GENERATION_STATS_WEEK,

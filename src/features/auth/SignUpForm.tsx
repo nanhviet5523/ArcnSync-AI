@@ -1,4 +1,3 @@
-```tsx
 import React, { useState } from 'react';
 import type { FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -445,4 +444,3 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({
     </div>
   );
 };
-```

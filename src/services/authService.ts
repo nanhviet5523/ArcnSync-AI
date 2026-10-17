@@ -1,11 +1,10 @@
-```ts
 import type { User, UserRole } from '@/types/role';
 
 const API_BASE_URL =
   import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
 
 const SESSION_KEY = 'archsync-auth-session';
-const DEMO_SESSION_KEY = 'archsync-demo-session';
+const LEGACY_DEMO_SESSION_KEY = 'archsync-demo-session';
 const ACCESS_TOKEN_KEY = 'archsync-access-token';
 const REFRESH_TOKEN_KEY = 'archsync-refresh-token';
 const AUTH_EVENT = 'archsync-auth-change';
@@ -238,16 +237,12 @@ export function clearAuthSession(): void {
     window.sessionStorage,
   ]) {
     storage.removeItem(SESSION_KEY);
-    storage.removeItem(DEMO_SESSION_KEY);
+    storage.removeItem(LEGACY_DEMO_SESSION_KEY);
     storage.removeItem(ACCESS_TOKEN_KEY);
     storage.removeItem(REFRESH_TOKEN_KEY);
   }
 
   dispatchAuthChange();
-}
-
-export function logoutDemo(): void {
-  clearAuthSession();
 }
 
 function getSessionStorage(): Storage | null {
@@ -266,6 +261,10 @@ function getSessionStorage(): Storage | null {
 
 export function getCurrentUser(): User | null {
   if (typeof window === 'undefined') return null;
+
+  // Ignore and remove sessions created by the old frontend-only role switcher.
+  window.localStorage.removeItem(LEGACY_DEMO_SESSION_KEY);
+  window.sessionStorage.removeItem(LEGACY_DEMO_SESSION_KEY);
 
   const storages = [
     window.localStorage,
@@ -289,20 +288,6 @@ export function getCurrentUser(): User | null {
       }
     }
 
-    // Demo sessions do not use API tokens.
-    const demoSession = storage.getItem(DEMO_SESSION_KEY);
-
-    if (demoSession) {
-      try {
-        const user = JSON.parse(demoSession) as User;
-
-        if (USER_ROLES.includes(user.role)) {
-          return user;
-        }
-      } catch {
-        // Ignore invalid demo sessions.
-      }
-    }
   }
 
   return null;
@@ -371,52 +356,6 @@ export function saveSession(
   dispatchAuthChange();
 
   return user;
-}
-
-// ---------------------------------------------------------------------------
-// Demo login
-// ---------------------------------------------------------------------------
-
-// Keep the existing demo accounts here if your project defines them.
-// No demo credentials were included in the supplied conflict snippet.
-interface DemoAccount {
-  email: string;
-  password: string;
-  user: User;
-}
-
-const DEMO_ACCOUNTS: DemoAccount[] = [];
-
-export function loginDemo(
-  email: string,
-  password: string,
-  rememberMe: boolean,
-): User | null {
-  if (typeof window === 'undefined') return null;
-
-  const account = DEMO_ACCOUNTS.find(
-    (candidate) =>
-      candidate.email.toLowerCase() ===
-        email.trim().toLowerCase() &&
-      candidate.password === password,
-  );
-
-  if (!account) return null;
-
-  clearAuthSession();
-
-  const storage = rememberMe
-    ? window.localStorage
-    : window.sessionStorage;
-
-  storage.setItem(
-    DEMO_SESSION_KEY,
-    JSON.stringify(account.user),
-  );
-
-  dispatchAuthChange();
-
-  return account.user;
 }
 
 // ---------------------------------------------------------------------------
@@ -591,4 +530,3 @@ export function resetPassword(
     'Password reset failed',
   );
 }
-```

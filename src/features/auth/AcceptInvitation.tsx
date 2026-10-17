@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Check } from 'lucide-react';
 import { Logo } from '@/components/common';
-import { DEMO_ACCOUNTS } from '@/services/authService';
 
 export const AcceptInvitation: React.FC = () => {
   const navigate = useNavigate();
@@ -11,13 +10,11 @@ export const AcceptInvitation: React.FC = () => {
   // State param from URL: 'default' | 'error' | 'success' | 'expired'
   const stateQuery = searchParams.get('state');
 
-  const [password, setPassword] = useState<string>('Password123');
-  const [confirmPassword, setConfirmPassword] = useState<string>(
-    stateQuery === 'error' ? 'DifferentPassword' : 'Password123'
-  );
+  const [password, setPassword] = useState<string>('');
+  const [confirmPassword, setConfirmPassword] = useState<string>('');
   const [agreeTerms, setAgreeTerms] = useState<boolean>(false);
   const [hasError, setHasError] = useState<boolean>(stateQuery === 'error');
-  const [isSuccess, setIsSuccess] = useState<boolean>(stateQuery === 'success');
+  const [notice, setNotice] = useState('');
   const isExpired = stateQuery === 'expired';
 
   // Validation rules
@@ -38,22 +35,12 @@ export const AcceptInvitation: React.FC = () => {
     }
 
     if (!agreeTerms) {
-      // In demo, we allow or require terms
-      setAgreeTerms(true);
+      setNotice('Please agree to the terms of use.');
+      return;
     }
 
     setHasError(false);
-    setIsSuccess(true);
-  };
-
-  const handleGoToProjects = () => {
-    // Log in as Designer demo account
-    const designerAccount = DEMO_ACCOUNTS.find((acc) => acc.user.role === 'designer');
-    if (designerAccount) {
-      window.localStorage.setItem('archsync-demo-session', JSON.stringify(designerAccount.user));
-      window.dispatchEvent(new Event('archsync-auth-change'));
-    }
-    navigate('/designer-projects');
+    setNotice('Invitation acceptance is not connected yet. The /auth/accept-invite endpoint is still pending.');
   };
 
   return (
@@ -95,29 +82,6 @@ export const AcceptInvitation: React.FC = () => {
               className="w-full py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold text-xs rounded-xl transition cursor-pointer shadow-2xs"
             >
               Back to sign in
-            </button>
-          </div>
-        ) : isSuccess ? (
-          /* STATE 3: SUCCESS (Image 1) */
-          <div className="w-full max-w-[390px] bg-white rounded-3xl border border-slate-200/80 shadow-xs p-8 text-center animate-in fade-in zoom-in-95 duration-200">
-            {/* Checkmark Circle Icon */}
-            <div className="w-11 h-11 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto mb-4">
-              <Check className="w-5 h-5 stroke-[2.5]" />
-            </div>
-
-            <h1 className="text-xl font-extrabold text-slate-900 tracking-tight">
-              Your account is ready
-            </h1>
-            <p className="text-xs text-slate-500 mt-2 mb-6">
-              You can now sign in as Designer.
-            </p>
-
-            <button
-              type="button"
-              onClick={handleGoToProjects}
-              className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold text-xs rounded-xl shadow-xs transition cursor-pointer"
-            >
-              Go to My Projects
             </button>
           </div>
         ) : (
@@ -297,11 +261,12 @@ export const AcceptInvitation: React.FC = () => {
               </div>
 
               {/* Submit Button */}
+              {notice && <p role="status" className="text-xs font-medium text-amber-700">{notice}</p>}
               <button
                 type="submit"
                 className="w-full mt-4 py-2.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold text-xs rounded-xl shadow-xs transition cursor-pointer"
               >
-                Set password and continue
+                Accept invitation
               </button>
 
               {/* Link expiration note */}

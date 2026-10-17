@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   Search,
   Plus,
@@ -12,45 +12,128 @@ import {
 import { Header } from '@/components/layout';
 import { Footer } from '@/components/layout';
 import { getCurrentUser } from '@/services/authService';
-import { useDemoWorkspace } from '@/hooks/useDemoWorkspace';
-import { workspaceApi } from '@/services/workspaceApi';
 
 export const Messages: React.FC = () => {
   const navigate = useNavigate();
-  const [params] = useSearchParams();
   const currentUser = getCurrentUser();
-  const workspace = useDemoWorkspace();
-  const [selectedProjectId, setSelectedProjectId] = useState(params.get('projectId') ?? workspace.projects[0]?.id ?? '');
-  const selectedProject = workspace.projects.find((project) => project.id === selectedProjectId) ?? workspace.projects[0];
-  const members = [
-    { name: selectedProject?.homeowner, role: 'Homeowner', color: 'bg-emerald-600' },
-    { name: selectedProject?.designer, role: 'Designer', color: 'bg-blue-600' },
-    { name: selectedProject?.staff, role: 'Staff', color: 'bg-purple-600' },
-  ].filter((member) => member.name);
 
-  const conversations = workspace.projects.filter((project) => workspace.messages.some((message) => message.projectId === project.id)).map((project) => {
-    const latest = [...workspace.messages].filter((message) => message.projectId === project.id).at(-1);
-    return { id: project.id, title: project.name, subtitle: latest ? `${latest.sender}: ${latest.text}` : 'No messages yet', time: latest?.sentAt ?? '', unread: 0, avatar: project.homeowner.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase(), avatarBg: 'bg-blue-600', active: project.id === selectedProject?.id };
-  });
-  const projectMessages = workspace.messages.filter((message) => message.projectId === selectedProject?.id).map((message) => ({
-    ...message,
-    time: message.sentAt,
-    avatar: message.sender.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase(),
-    avatarBg: message.senderRole === 'Homeowner' ? 'bg-emerald-600' : message.senderRole === 'Staff' ? 'bg-purple-600' : 'bg-blue-600',
-    isMe: message.sender === (currentUser?.name ?? 'Guest'),
-  }));
+  // State quản lý danh sách hội thoại
+  const [conversations] = useState([
+    {
+      id: '1',
+      title: 'Modern Townhouse · Thu Duc',
+      subtitle: 'Nguyen Linh: Sure, I will open the kitchen...',
+      time: '10:24',
+      unread: 2,
+      avatar: 'NL',
+      avatarBg: 'bg-blue-600',
+      active: true,
+    },
+    {
+      id: '2',
+      title: 'Tran Nam · Staff',
+      subtitle: 'Contract signed. Welcome aboard!',
+      time: 'Yesterday',
+      unread: 0,
+      avatar: 'TN',
+      avatarBg: 'bg-slate-900',
+      active: false,
+    },
+    {
+      id: '3',
+      title: 'Industrial Loft Living',
+      subtitle: 'Round 1 changes are ready.',
+      time: 'Mon',
+      unread: 0,
+      avatar: 'PD',
+      avatarBg: 'bg-slate-800',
+      active: false,
+    },
+    {
+      id: '4',
+      title: 'ArchSync Support',
+      subtitle: 'How can we help you today?',
+      time: '20 Sep',
+      unread: 0,
+      avatar: 'AS',
+      avatarBg: 'bg-slate-900',
+      active: false,
+    },
+  ]);
+
+  // State quản lý tin nhắn
+  const [messages, setMessages] = useState([
+    {
+      id: 'm1',
+      sender: 'Lam',
+      avatar: 'NL',
+      avatarBg: 'bg-blue-600',
+      time: '10:18',
+      text: 'Here is the latest 3D layout update for the living room.',
+      hasFile: true,
+      fileName: 'Living room - v3.pdf',
+      fileSize: '2.4 MB',
+      isMe: false,
+    },
+    {
+      id: 'm2',
+      sender: 'You',
+      avatar: 'MA',
+      avatarBg: 'bg-emerald-600',
+      time: '10:20',
+      text: 'Yeah!',
+      isMe: true,
+    },
+    {
+      id: 'm3',
+      sender: 'System',
+      avatar: '',
+      avatarBg: '',
+      time: '10:21',
+      text: 'v3 submitted for review',
+      isSystem: true,
+    },
+    {
+      id: 'm4',
+      sender: 'Lam',
+      avatar: 'NL',
+      avatarBg: 'bg-blue-600',
+      time: '10:24',
+      text: 'ok',
+      isMe: false,
+    },
+    {
+      id: 'm5',
+      sender: 'Viet',
+      avatar: 'TN',
+      avatarBg: 'bg-purple-600',
+      time: '10:26',
+      text: ':v',
+      isMe: false,
+    },
+  ]);
+
   const [inputMessage, setInputMessage] = useState('');
-  const [sending, setSending] = useState(false);
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
-    const text = inputMessage.trim();
-    if (!text || !selectedProject) return;
-    setSending(true);
-    void workspaceApi.sendMessage(selectedProject.id, currentUser?.name ?? 'Demo user', currentUser?.role ?? 'Staff', text)
-      .then(() => setInputMessage(''))
-      .finally(() => setSending(false));
+    if (!inputMessage.trim()) return;
+
+    setMessages([
+      ...messages,
+      {
+        id: Date.now().toString(),
+        sender: 'You',
+        avatar: 'MA',
+        avatarBg: 'bg-emerald-600',
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        text: inputMessage,
+        isMe: true,
+      },
+    ]);
+    setInputMessage('');
   };
+
   return (
     <div className="min-h-screen bg-slate-50/60 font-sans flex flex-col justify-between">
       <Header role={currentUser?.role} />
@@ -93,7 +176,6 @@ export const Messages: React.FC = () => {
               {conversations.map((chat) => (
                 <div
                   key={chat.id}
-                  onClick={() => setSelectedProjectId(chat.id)}
                   className={`p-3 rounded-xl cursor-pointer transition flex items-start gap-3 ${
                     chat.active
                       ? 'bg-blue-50/60 border border-blue-200'
@@ -137,10 +219,10 @@ export const Messages: React.FC = () => {
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-slate-900">
-                    {selectedProject?.name}
+                    Modern Townhouse · Thu Duc
                   </h3>
                   <p className="text-[11px] text-slate-400">
-                    {[selectedProject?.designer, selectedProject?.staff, selectedProject?.homeowner].filter(Boolean).join(', ')}
+                    Nguyen Linh, Tran Nam, You
                   </p>
                 </div>
               </div>
@@ -162,7 +244,7 @@ export const Messages: React.FC = () => {
                 </span>
               </div>
 
-              {projectMessages.map((msg) => {
+              {messages.map((msg) => {
                 if (msg.isSystem) {
                   return (
                     <div key={msg.id} className="flex justify-center my-2">
@@ -233,7 +315,7 @@ export const Messages: React.FC = () => {
               <div className="relative flex-1">
                 <input
                   type="text"
-                  placeholder="Type a message..." disabled={sending}
+                  placeholder="Type a message..."
                   value={inputMessage}
                   onChange={(e) => setInputMessage(e.target.value)}
                   className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 placeholder:text-slate-400"
@@ -248,10 +330,9 @@ export const Messages: React.FC = () => {
 
               <button
                 type="submit"
-                disabled={sending}
                 className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-sm transition cursor-pointer"
               >
-                <span>{sending ? 'Sending…' : 'Send'}</span>
+                <span>Send</span>
                 <Send size={13} />
               </button>
             </form>
@@ -268,17 +349,17 @@ export const Messages: React.FC = () => {
               <div className="divide-y divide-slate-200 text-xs">
                 <div className="flex justify-between items-center py-2.5">
                   <span className="text-slate-500">Stage</span>
-                  <span className="font-bold text-slate-900">{selectedProject?.stage}</span>
+                  <span className="font-bold text-slate-900">Review</span>
                 </div>
 
                 <div className="flex justify-between items-center py-2.5">
                   <span className="text-slate-500">Version</span>
-                  <span className="font-bold text-slate-900">v{selectedProject?.currentVersion}</span>
+                  <span className="font-bold text-slate-900">v3</span>
                 </div>
 
                 <div className="flex justify-between items-center py-2.5">
                   <span className="text-slate-500">Rounds</span>
-                  <span className="font-bold text-slate-900">{selectedProject?.currentRound} / {selectedProject?.totalRounds}</span>
+                  <span className="font-bold text-slate-900">2 / 3</span>
                 </div>
               </div>
             </div>
@@ -290,7 +371,18 @@ export const Messages: React.FC = () => {
               </h2>
 
               <div className="divide-y divide-slate-200 text-xs">
-                {workspace.files.filter((file) => file.projectId === selectedProject?.id).map((file) => <div key={file.id} className="flex items-center gap-2 py-2.5 text-slate-700"><FileText size={14} className="shrink-0 text-slate-400"/><span className="truncate font-medium">{file.name}</span></div>)}
+                <div className="flex items-center gap-2 text-slate-700 hover:text-blue-600 cursor-pointer transition py-2.5">
+                  <FileText size={14} className="text-slate-400" />
+                  <span className="truncate font-medium">Living room - v3.pdf</span>
+                </div>
+                <div className="flex items-center gap-2 text-slate-700 hover:text-blue-600 cursor-pointer transition py-2.5">
+                  <FileText size={14} className="text-slate-400" />
+                  <span className="truncate font-medium">Contract.pdf</span>
+                </div>
+                <div className="flex items-center gap-2 text-slate-700 hover:text-blue-600 cursor-pointer transition py-2.5">
+                  <FileText size={14} className="text-slate-400" />
+                  <span className="truncate font-medium">Floor plans.zip</span>
+                </div>
               </div>
             </div>
 
@@ -301,17 +393,41 @@ export const Messages: React.FC = () => {
               </h2>
 
               <div className="divide-y divide-slate-200">
-                {members.map((member) => (
-                  <div key={member.role} className="flex items-center gap-2.5 py-2.5">
-                    <div className={`w-7 h-7 rounded-full ${member.color} text-white font-bold text-[10px] flex items-center justify-center flex-shrink-0`}>
-                      {member.name!.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase()}
-                    </div>
-                    <div>
-                      <h4 className="text-xs font-bold text-slate-900">{member.name}</h4>
-                      <span className="text-[10px] text-slate-400 block -mt-0.5">{member.role}</span>
-                    </div>
+                <div className="flex items-center gap-2.5 py-2.5">
+                  <div className="w-7 h-7 rounded-full bg-emerald-600 text-white font-bold text-[10px] flex items-center justify-center flex-shrink-0">
+                    MA
                   </div>
-                ))}
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-900">Tuan Anh</h4>
+                    <span className="text-[10px] text-slate-400 block -mt-0.5">
+                      Homeowner
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2.5 py-2.5">
+                  <div className="w-7 h-7 rounded-full bg-blue-600 text-white font-bold text-[10px] flex items-center justify-center flex-shrink-0">
+                    NL
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-900">Lam</h4>
+                    <span className="text-[10px] text-slate-400 block -mt-0.5">
+                      Designer
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2.5 py-2.5">
+                  <div className="w-7 h-7 rounded-full bg-purple-600 text-white font-bold text-[10px] flex items-center justify-center flex-shrink-0">
+                    TN
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-900">Viet</h4>
+                    <span className="text-[10px] text-slate-400 block -mt-0.5">
+                      Staff
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

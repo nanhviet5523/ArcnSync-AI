@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Bell, Settings, LogOut } from 'lucide-react';
 import { Button, Logo } from '@/components/common';
-import { getCurrentDemoUser, logout } from '@/services/authService';
+import { getCurrentUser, logout } from '@/services/authService';
 import { ROLE_CONFIG } from '@/types/role';
 import type { UserRole } from '@/types/role';
 
@@ -83,7 +83,7 @@ export const Header: React.FC<HeaderProps> = ({
 
   const unreadCount = notifications.filter((n) => n.unread).length;
 
-  const currentUser = getCurrentDemoUser();
+  const currentUser = getCurrentUser();
 
   // Auto-detect role from prop, current user session, or current path
   const detectedRole: UserRole | undefined =

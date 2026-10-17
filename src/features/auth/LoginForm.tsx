@@ -5,7 +5,6 @@ import { useNavigate } from 'react-router-dom';
 import { Logo, PasswordInput } from '@/components/common';
 import {
   ApiError,
-  loginDemo,
   loginUser,
   saveSession,
 } from '@/services/authService';
@@ -54,18 +53,6 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSignUpClick }) => {
       return;
     }
 
-    // Try frontend demo accounts first.
-    // These accounts can work without calling the backend.
-    const demoUser = loginDemo(normalizedEmail, password, rememberMe);
-
-    if (demoUser) {
-      navigate(ROLE_CONFIG[demoUser.role].defaultPath, {
-        replace: true,
-      });
-      return;
-    }
-
-    // Authenticate with the backend when the credentials are not a demo account.
     setLoading(true);
 
     try {
@@ -247,19 +234,9 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSignUpClick }) => {
         </button>
       </p>
 
-      {/* Role Access Notice Box */}
+      {/* Account Access Notice */}
       <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 text-xs lg:text-sm text-slate-500 leading-relaxed mb-4">
-        <p className="mb-2">
-          Access follows your role. Homeowners see only their own projects.
-          Team and partners use company-issued accounts.
-        </p>
-
-        <a
-          href="#company-login"
-          className="font-bold text-blue-600 hover:underline inline-flex items-center gap-1"
-        >
-          Company team or partner? Log in here →
-        </a>
+        Access follows the role assigned to your account. All users sign in through this page.
       </div>
 
       {/* Footer Copyright */}
