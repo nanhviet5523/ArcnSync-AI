@@ -20,7 +20,7 @@ export const Footer: React.FC = () => {
     <footer className="w-full bg-white border-t border-gray-200 px-6 lg:px-12 py-10 text-slate-900">
       <div className="max-w-7xl mx-auto flex flex-col lg:flex-row justify-between items-start gap-8">
         
-        {/* Cột 1: Logo & Tagline */}
+        {/* Column 1: Logo and tagline */}
         <div className="max-w-xs">
           <Logo size={32} />
           <p className="text-xs text-gray-500 mt-3 leading-relaxed">
@@ -28,7 +28,7 @@ export const Footer: React.FC = () => {
           </p>
         </div>
 
-        {/* Cột 2, 3, 4: Navigation Links */}
+        {/* Columns 2, 3, and 4: Navigation links */}
         <div className="flex flex-wrap gap-12 lg:gap-16">
           {FOOTER_SECTIONS.map((section) => (
             <div key={section.title}>
@@ -51,7 +51,7 @@ export const Footer: React.FC = () => {
           ))}
         </div>
 
-        {/* Cột 5: Copyright góc phải */}
+        {/* Column 5: Copyright aligned to the right */}
         <div className="text-xs text-gray-400 whitespace-nowrap self-start lg:self-auto">
           © 2026 ArchSync AI
         </div>

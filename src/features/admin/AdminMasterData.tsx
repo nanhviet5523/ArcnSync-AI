@@ -1,18 +1,17 @@
-import React, { useState } from 'react';
-import { Plus, Edit2, X, CheckCircle, Lock, ChevronDown } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Plus, Edit2, X, CheckCircle, Lock, ChevronDown, Image as ImageIcon, LoaderCircle } from 'lucide-react';
 import { Header, Footer } from '@/components/layout';
+import { ApiError } from '@/services/authService';
+import { designStyleService, type DesignStyle } from '@/services/designStyleService';
+import { catalogService, type CatalogCategory } from '@/services/catalogService';
 import {
   INITIAL_BUILDING_TYPES,
-  INITIAL_DESIGN_STYLES_ITEMS,
-  INITIAL_PRODUCT_CATEGORIES,
   INITIAL_MATERIALS_FINISHES,
   INITIAL_CONSTRAINT_RULES,
 } from '@/features/admin/services/adminService';
 import type {
   BuildingTypeItem,
-  DesignStyleItem,
   MaterialFinishItem,
-  ProductCategoryItem,
   ConstraintRuleItem,
 } from '@/types/admin';
 
@@ -71,6 +70,17 @@ const INITIAL_MILESTONES: PaymentMilestones = {
   handover: 30,
 };
 
+const DesignStyleImage: React.FC<{ src: string; alt: string; className: string }> = ({ src, alt, className }) => {
+  const [failed, setFailed] = useState(!src);
+
+  useEffect(() => setFailed(!src), [src]);
+
+  if (!src || failed) {
+    return <div title={src ? 'Image URL could not be loaded. Use a direct image file URL.' : 'No image URL provided.'} className={`grid place-items-center rounded-lg bg-slate-100 text-slate-400 ${className}`}><ImageIcon size={22}/></div>;
+  }
+
+  return <img src={src} alt={alt} onError={() => setFailed(true)} className={`rounded-lg bg-slate-100 object-cover ${className}`}/>;
+};
 export const AdminMasterData: React.FC = () => {
   const [activeSubTab, setActiveSubTab] = useState<MasterDataSubTab>('building');
 
@@ -78,18 +88,25 @@ export const AdminMasterData: React.FC = () => {
   const [buildingTypes, setBuildingTypes] = useState<BuildingTypeItem[]>(INITIAL_BUILDING_TYPES);
 
   // Sub-tab 2: Design styles
-  const [designStyles, setDesignStyles] = useState<DesignStyleItem[]>(INITIAL_DESIGN_STYLES_ITEMS);
-  const [editingStyle, setEditingStyle] = useState<DesignStyleItem | null>(null);
+  const [designStyles, setDesignStyles] = useState<DesignStyle[]>([]);
+  const [stylesLoading, setStylesLoading] = useState(false);
+  const [stylesSaving, setStylesSaving] = useState(false);
+  const [styleDetailsLoadingId, setStyleDetailsLoadingId] = useState<string | null>(null);
+  const [styleReloadKey, setStyleReloadKey] = useState(0);
+  const [stylesError, setStylesError] = useState('');
+  const [editingStyle, setEditingStyle] = useState<DesignStyle | null>(null);
   const [isStyleModalOpen, setIsStyleModalOpen] = useState<boolean>(false);
+  const [styleCode, setStyleCode] = useState<string>('');
   const [styleName, setStyleName] = useState<string>('');
   const [styleDescription, setStyleDescription] = useState<string>('');
-  const [styleKeywords, setStyleKeywords] = useState<string>('');
+  const [styleImageUrl, setStyleImageUrl] = useState<string>('');
+  const [styleIsActive, setStyleIsActive] = useState<boolean>(true);
 
   // Sub-tab 3: Furniture & materials
-  const [productCategories, setProductCategories] = useState<ProductCategoryItem[]>(INITIAL_PRODUCT_CATEGORIES);
+  const [apiCategories, setApiCategories] = useState<CatalogCategory[]>([]);
+  const [adminCategoryDetail, setAdminCategoryDetail] = useState<CatalogCategory | null>(null);
+  const [categoryApiError, setCategoryApiError] = useState('');
   const [materialsFinishes, setMaterialsFinishes] = useState<MaterialFinishItem[]>(INITIAL_MATERIALS_FINISHES);
-  const [isAddingCategory, setIsAddingCategory] = useState<boolean>(false);
-  const [newCategoryName, setNewCategoryName] = useState<string>('');
 
   // Sub-tab 4: Constraint rules & Edit Rule Modal (Image 1)
   const [constraintRules, setConstraintRules] = useState<ConstraintRuleItem[]>(INITIAL_CONSTRAINT_RULES);
@@ -110,6 +127,47 @@ export const AdminMasterData: React.FC = () => {
 
   // Save changes toast notification
   const [savedNotification, setSavedNotification] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (activeSubTab !== 'styles') return;
+    let cancelled = false;
+    setStylesLoading(true);
+    setStylesError('');
+    designStyleService.getAll().then((items) => {
+      if (!cancelled) setDesignStyles(items);
+    }).catch((error: unknown) => {
+      if (!cancelled) setStylesError(error instanceof ApiError && error.status === 401
+        ? 'Your session expired or is not authorized. Sign in again, then retry.'
+        : error instanceof ApiError && error.status === 403
+          ? 'You do not have permission to view design styles.'
+          : error instanceof ApiError && error.status
+            ? `Could not load design styles (HTTP ${error.status}). ${error.message}`
+            : error instanceof ApiError && error.message
+              ? error.message
+            : 'Could not connect to the design styles API. Check that the backend is running, then retry.');
+    }).finally(() => {
+      if (!cancelled) setStylesLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [activeSubTab, styleReloadKey]);
+
+  useEffect(() => {
+    if (activeSubTab !== 'furniture') return;
+    let cancelled = false;
+    setCategoryApiError('');
+    catalogService.listAdminCategories().then((page) => {
+      if (!cancelled) setApiCategories(page.items);
+    }).catch((error: unknown) => {
+      if (!cancelled) setCategoryApiError(error instanceof ApiError ? `${error.message} (HTTP ${error.status || 'network'}).` : 'Could not load product categories.');
+    });
+    return () => { cancelled = true; };
+  }, [activeSubTab]);
+
+  const showAdminCategory = async (id: string) => {
+    setCategoryApiError('');
+    try { setAdminCategoryDetail(await catalogService.getAdminCategory(id)); }
+    catch (error) { setCategoryApiError(error instanceof ApiError ? `${error.message} (HTTP ${error.status || 'network'}).` : 'Could not load category details.'); }
+  };
 
   const subNavTabs: { id: MasterDataSubTab; label: string }[] = [
     { id: 'building', label: 'Building types' },
@@ -170,19 +228,32 @@ export const AdminMasterData: React.FC = () => {
   };
 
   // Open Edit Style Modal
-  const openEditStyle = (style: DesignStyleItem) => {
-    setEditingStyle(style);
-    setStyleName(style.name);
-    setStyleDescription(style.description);
-    setStyleKeywords(style.aiKeywords);
-    setIsStyleModalOpen(true);
+  const openEditStyle = async (style: DesignStyle) => {
+    setStyleDetailsLoadingId(style.id);
+    setStylesError('');
+    try {
+      const current = await designStyleService.getById(style.id);
+      setEditingStyle(current);
+      setStyleCode(current.code);
+      setStyleName(current.name);
+      setStyleDescription(current.description);
+      setStyleImageUrl(current.imageUrl);
+      setStyleIsActive(current.isActive);
+      setIsStyleModalOpen(true);
+    } catch {
+      setStylesError('Could not load this design style. Please try again.');
+    } finally {
+      setStyleDetailsLoadingId(null);
+    }
   };
 
   const openAddStyle = () => {
     setEditingStyle(null);
+    setStyleCode('');
     setStyleName('');
     setStyleDescription('');
-    setStyleKeywords('');
+    setStyleImageUrl('');
+    setStyleIsActive(true);
     setIsStyleModalOpen(true);
   };
 
@@ -191,38 +262,78 @@ export const AdminMasterData: React.FC = () => {
     setEditingStyle(null);
   };
 
-  const handleSaveStyle = (e: React.FormEvent) => {
+  const handleSaveStyle = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!styleName.trim()) return;
+    if (!styleName.trim() || (!editingStyle && !styleCode.trim())) return;
 
-    if (editingStyle) {
-      setDesignStyles((prev) =>
-        prev.map((item) =>
-          item.id === editingStyle.id
-            ? {
-                ...item,
-                name: styleName.trim(),
-                description: styleDescription.trim(),
-                aiKeywords: styleKeywords.trim(),
-              }
-            : item
-        )
-      );
-    } else {
-      const newStyle: DesignStyleItem = {
-        id: `ds-${Date.now()}`,
-        name: styleName.trim(),
-        description: styleDescription.trim(),
-        aiKeywords: styleKeywords.trim(),
-      };
-      setDesignStyles((prev) => [...prev, newStyle]);
+    setStylesSaving(true);
+    setStylesError('');
+    try {
+      const saved = editingStyle
+        ? await designStyleService.update(editingStyle.id, {
+            name: styleName.trim(),
+            description: styleDescription.trim(),
+            ...(styleImageUrl.trim() ? { imageUrl: styleImageUrl.trim() } : {}),
+            isActive: styleIsActive,
+          })
+        : await designStyleService.create({
+            code: styleCode.trim(),
+            name: styleName.trim(),
+            description: styleDescription.trim(),
+            imageUrl: styleImageUrl.trim(),
+            isActive: styleIsActive,
+          });
+      setDesignStyles((prev) => editingStyle
+        ? prev.map((item) => item.id === saved.id ? saved : item)
+        : [...prev, saved]);
+      closeStyleModal();
+      setSavedNotification(editingStyle ? 'Design style updated successfully.' : 'Design style created successfully.');
+      window.setTimeout(() => setSavedNotification(null), 3500);
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 409) {
+        setStylesError('This design style code already exists. Choose a different code.');
+      } else if (error instanceof ApiError && error.status === 401) {
+        setStylesError('Your session expired. Please sign in again.');
+      } else if (error instanceof ApiError && error.status === 403) {
+        setStylesError('You do not have permission to manage design styles.');
+      } else if (error instanceof ApiError && error.status > 0) {
+        setStylesError(`The design styles API rejected the request (HTTP ${error.status}): ${error.message}`);
+      } else if (error instanceof ApiError && error.message) {
+        setStylesError(error.message);
+      } else {
+        setStylesError('Could not save the design style. Please check the fields and try again.');
+      }
+    } finally {
+      setStylesSaving(false);
     }
-
-    closeStyleModal();
   };
 
-  const removeStyle = (id: string) => {
-    setDesignStyles((prev) => prev.filter((s) => s.id !== id));
+  const toggleStyleActive = async (style: DesignStyle) => {
+    setStylesSaving(true);
+    setStylesError('');
+    try {
+      const updated = await designStyleService.update(style.id, {
+        name: style.name,
+        description: style.description,
+        ...(style.imageUrl.trim() ? { imageUrl: style.imageUrl } : {}),
+        isActive: !style.isActive,
+      });
+      setDesignStyles((prev) => prev.map((item) => item.id === updated.id ? updated : item));
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 401) {
+        setStylesError('Your session expired. Please sign in again.');
+      } else if (error instanceof ApiError && error.status === 403) {
+        setStylesError('You do not have permission to manage design styles.');
+      } else if (error instanceof ApiError && error.status > 0) {
+        setStylesError(`The design styles API rejected the request (HTTP ${error.status}): ${error.message}`);
+      } else if (error instanceof ApiError && error.message) {
+        setStylesError(error.message);
+      } else {
+        setStylesError('Could not update the design style status. Please try again.');
+      }
+    } finally {
+      setStylesSaving(false);
+    }
   };
 
   // Toggle material finish
@@ -240,20 +351,6 @@ export const AdminMasterData: React.FC = () => {
         return mf;
       })
     );
-  };
-
-  // Add Product Category
-  const handleAddCategory = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newCategoryName.trim()) return;
-    const newCat: ProductCategoryItem = {
-      id: `pc-${Date.now()}`,
-      name: newCategoryName.trim(),
-      count: 0,
-    };
-    setProductCategories((prev) => [...prev, newCat]);
-    setNewCategoryName('');
-    setIsAddingCategory(false);
   };
 
   // Open Edit Constraint Rule Modal (Image 1)
@@ -318,9 +415,6 @@ export const AdminMasterData: React.FC = () => {
         {/* Page Title & Save Changes Action */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
-            <span className="text-[11px] font-bold tracking-wider text-blue-600 uppercase mb-1 block">
-              Admin · Configuration
-            </span>
             <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
               Master data
             </h1>
@@ -329,13 +423,11 @@ export const AdminMasterData: React.FC = () => {
             </p>
           </div>
 
-          <button
+          {activeSubTab !== 'styles' && <button
             type="button"
             onClick={handleSaveChanges}
             className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-sm font-semibold rounded-xl shadow-xs transition cursor-pointer self-start sm:self-auto"
-          >
-            Save changes
-          </button>
+          >Save changes</button>}
         </div>
 
         {/* Sub-Navigation Pills Bar */}
@@ -408,7 +500,7 @@ export const AdminMasterData: React.FC = () => {
           </div>
         )}
 
-        {/* SUB-TAB 2: DESIGN STYLES (Image 2) */}
+        {/* SUB-TAB 2: DESIGN STYLES */}
         {activeSubTab === 'styles' && (
           <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-6 max-w-4xl">
             <div className="flex items-center justify-between mb-5">
@@ -430,34 +522,20 @@ export const AdminMasterData: React.FC = () => {
               </div>
             </div>
 
-            {/* Tag Pills */}
-            <div className="flex flex-wrap gap-2.5">
+            {stylesError && <div role="alert" className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700"><p>{stylesError}</p><button type="button" onClick={() => setStyleReloadKey((key) => key + 1)} className="rounded-lg border border-rose-300 bg-white px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-100">Try again</button></div>}
+            {stylesLoading && designStyles.length === 0 ? <div className="flex items-center justify-center gap-2 py-12 text-sm text-slate-500"><LoaderCircle className="h-4 w-4 animate-spin"/>Loading design styles…</div> : designStyles.length === 0 ? <div className="rounded-xl border border-dashed border-slate-300 py-12 text-center"><ImageIcon className="mx-auto h-8 w-8 text-slate-300"/><p className="mt-3 text-sm font-semibold text-slate-700">{stylesError ? 'Design styles are unavailable.' : 'No design styles found.'}</p><p className="mt-1 text-xs text-slate-500">{stylesError ? 'The styles API did not return data. Retry to check the server again.' : 'Styles shown here come from the design styles API.'}</p></div> : <div className="grid gap-3 sm:grid-cols-2">
               {designStyles.map((style) => (
-                <span
-                  key={style.id}
-                  onClick={() => openEditStyle(style)}
-                  title="Click to edit style"
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50/80 hover:bg-blue-100/90 text-blue-700 text-xs font-semibold rounded-full border border-blue-200 transition cursor-pointer group select-none"
-                >
-                  <span>{style.name}</span>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      removeStyle(style.id);
-                    }}
-                    title="Remove style"
-                    className="text-blue-400 hover:text-blue-800 transition cursor-pointer"
-                  >
-                    <X className="w-3.5 h-3.5 stroke-[2.5]" />
-                  </button>
-                </span>
+                <article key={style.id} className={`flex gap-4 rounded-xl border p-3 ${style.isActive ? 'border-slate-200' : 'border-slate-200 bg-slate-50 opacity-75'}`}>
+                  <DesignStyleImage src={style.imageUrl} alt={style.name} className="h-20 w-24 shrink-0"/>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-2"><div><h3 className="font-bold text-slate-900">{style.name}</h3><p className="text-xs font-semibold tracking-wide text-slate-400">{style.code}</p></div><span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${style.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-200 text-slate-600'}`}>{style.isActive ? 'Active' : 'Hidden'}</span></div>
+                    <p className="mt-2 line-clamp-2 text-xs text-slate-500">{style.description}</p>
+                    <div className="mt-3 flex gap-3 text-xs font-semibold"><button type="button" onClick={() => void openEditStyle(style)} disabled={stylesSaving || styleDetailsLoadingId !== null} className="text-blue-700 hover:text-blue-900 disabled:opacity-50">{styleDetailsLoadingId === style.id ? 'Loading…' : 'Edit'}</button><button type="button" onClick={() => void toggleStyleActive(style)} disabled={stylesSaving || styleDetailsLoadingId !== null} className="text-slate-600 hover:text-slate-900 disabled:opacity-50">{style.isActive ? 'Hide' : 'Activate'}</button></div>
+                  </div>
+                </article>
               ))}
-            </div>
-
-            <p className="text-xs text-slate-400 mt-5">
-              Click a style to edit its description and AI keywords. Removing a style hides it from new projects; existing projects keep it.
-            </p>
+            </div>}
+            <p className="text-xs text-slate-400 mt-5">Hidden styles remain in the database and can be activated again. The style code cannot be changed after creation.</p>
           </div>
         )}
 
@@ -470,59 +548,37 @@ export const AdminMasterData: React.FC = () => {
                 <h2 className="text-base font-bold text-slate-900">
                   Product categories
                 </h2>
-                <button
-                  type="button"
-                  onClick={() => setIsAddingCategory(!isAddingCategory)}
-                  className="inline-flex items-center gap-1 px-3 py-1.5 border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-xl transition cursor-pointer shadow-2xs"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Add category</span>
-                </button>
+                <span className="text-xs text-slate-500">{apiCategories.length} categories</span>
               </div>
 
-              {isAddingCategory && (
-                <form onSubmit={handleAddCategory} className="flex gap-2 mb-4">
-                  <input
-                    type="text"
-                    value={newCategoryName}
-                    onChange={(e) => setNewCategoryName(e.target.value)}
-                    placeholder="Enter category name"
-                    className="flex-1 px-3 py-1.5 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  />
-                  <button
-                    type="submit"
-                    className="px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-xl hover:bg-blue-700 cursor-pointer"
-                  >
-                    Add
-                  </button>
-                </form>
-              )}
+              {categoryApiError && <p role="alert" className="mb-3 rounded-lg bg-rose-50 p-3 text-xs text-rose-700">{categoryApiError}</p>}
 
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="border-b border-slate-100 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
                       <th className="py-2.5 px-3">Category</th>
-                      <th className="py-2.5 px-3 text-right">Products</th>
+                      <th className="py-2.5 px-3">Supplier</th>
+                      <th className="py-2.5 px-3 text-right">Status</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-sm">
-                    {productCategories.map((cat) => (
+                    {apiCategories.map((cat) => (
                       <tr key={cat.id} className="hover:bg-slate-50/60 transition-colors">
-                        <td className="py-3 px-3 font-semibold text-slate-900 text-xs">
-                          {cat.name}
-                        </td>
-                        <td className="py-3 px-3 text-xs text-slate-600 text-right">
-                          {cat.count}
-                        </td>
+                        <td className="py-3 px-3 text-xs"><button type="button" onClick={() => void showAdminCategory(cat.id)} className="font-semibold text-blue-700">{cat.name}</button><span className="ml-2 text-slate-400">{cat.code}</span></td>
+                        <td className="py-3 px-3 text-xs text-slate-600">{cat.supplier?.companyName ?? '—'}</td>
+                        <td className="py-3 px-3 text-xs text-right">{cat.isActive ? 'Active' : 'Hidden'}</td>
                       </tr>
                     ))}
+                    {!categoryApiError && apiCategories.length === 0 && <tr><td colSpan={3} className="py-8 text-center text-xs text-slate-500">No product categories returned by the API.</td></tr>}
                   </tbody>
                 </table>
               </div>
 
+              {adminCategoryDetail && <div className="mt-4 rounded-xl bg-slate-50 p-3 text-xs text-slate-600"><div className="flex items-center justify-between"><b className="text-sm text-slate-900">Category details</b><button type="button" onClick={() => setAdminCategoryDetail(null)} className="text-slate-500">Close</button></div><p className="mt-2">{adminCategoryDetail.name} ({adminCategoryDetail.code})</p><p>Supplier: {adminCategoryDetail.supplier?.companyName ?? '—'}</p><p>Status: {adminCategoryDetail.isActive ? 'Active' : 'Hidden'}</p></div>}
+
               <p className="text-xs text-slate-400 mt-4">
-                Suppliers pick from these categories when they add products.
+                Categories shown here are loaded from the admin product-categories API.
               </p>
             </div>
 
@@ -890,12 +946,27 @@ export const AdminMasterData: React.FC = () => {
             </div>
 
             <form onSubmit={handleSaveStyle} className="mt-4 flex flex-col gap-4">
+              {stylesError && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">{stylesError}</p>}
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">Code</label>
+                <input
+                  type="text"
+                  required={!editingStyle}
+                  value={styleCode}
+                  onChange={(e) => setStyleCode(e.target.value.toUpperCase().replace(/\s+/g, '_'))}
+                  readOnly={Boolean(editingStyle)}
+                  placeholder="e.g. JAPANDI"
+                  className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm text-slate-900 uppercase read-only:bg-slate-100 read-only:text-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+                {editingStyle && <p className="mt-1 text-xs text-slate-400">Style codes cannot be changed after creation.</p>}
+              </div>
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1.5">
                   Name
                 </label>
                 <input
                   type="text"
+                  required
                   value={styleName}
                   onChange={(e) => setStyleName(e.target.value)}
                   placeholder="e.g. Japandi"
@@ -918,19 +989,21 @@ export const AdminMasterData: React.FC = () => {
 
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1.5">
-                  AI keywords
+                  Image URL
                 </label>
                 <input
-                  type="text"
-                  value={styleKeywords}
-                  onChange={(e) => setStyleKeywords(e.target.value)}
-                  placeholder="e.g. warm timber, low furniture, paper lantern"
+                  type="url"
+                  value={styleImageUrl}
+                  onChange={(e) => setStyleImageUrl(e.target.value)}
+                  placeholder="https://example.com/style.jpg"
                   className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
-                <p className="text-xs text-slate-400 mt-1.5">
-                  Added to the prompt when a homeowner or designer picks this style.
-                </p>
+                <p className="mt-1.5 text-xs text-slate-500">Use a direct image file URL (.jpg, .png, or .webp), not a Google Images results page.</p>
+                {styleImageUrl.trim() && <DesignStyleImage key={styleImageUrl} src={styleImageUrl.trim()} alt={`${styleName || 'Design style'} preview`} className="mt-2 h-28 w-full"/>}
+              
               </div>
+
+              <label className="flex items-center gap-2 text-sm font-medium text-slate-700"><input type="checkbox" checked={styleIsActive} onChange={(e) => setStyleIsActive(e.target.checked)} className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"/>Active and available for selection</label>
 
               <div className="mt-2 flex items-center justify-end gap-3 pt-2">
                 <button
@@ -942,9 +1015,10 @@ export const AdminMasterData: React.FC = () => {
                 </button>
                 <button
                   type="submit"
+                  disabled={stylesSaving}
                   className="px-5 py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold text-xs rounded-xl shadow-xs transition cursor-pointer"
                 >
-                  Save style
+                  {stylesSaving ? 'Saving…' : 'Save style'}
                 </button>
               </div>
             </form>

@@ -5,11 +5,12 @@ export interface User {
   name: string;
   email: string;
   role: UserRole;
+  phone?: string;
   avatar?: string;
-  badgeTitle?: string; // Ví dụ: "Staff", "Supplier Partner", "Studio Designer", "Admin"
+  badgeTitle?: string; // For example: "Staff", "Supplier Partner", "Studio Designer", "Admin"
 }
 
-// Cấu hình Route mặc định & Navigation Navbar cho từng Role
+// Default routes and navbar navigation for each role.
 export const ROLE_CONFIG: Record<UserRole, { defaultPath: string; badge: string; navItems: { label: string; path: string }[] }> = {
   homeowner: {
     defaultPath: '/homeowner-dashboard',
@@ -29,6 +30,7 @@ export const ROLE_CONFIG: Record<UserRole, { defaultPath: string; badge: string;
       { label: 'Requests', path: '/staff-requests' },
       { label: 'Contracts', path: '/staff-contracts' },
       { label: 'Projects', path: '/staff-projects' },
+      { label: 'Customers', path: '/customers' },
       { label: 'Messages', path: '/messages' },
     ],
   },
@@ -58,9 +60,11 @@ export const ROLE_CONFIG: Record<UserRole, { defaultPath: string; badge: string;
     navItems: [
       { label: 'Dashboard', path: '/admin-dashboard' },
       { label: 'Users & Roles', path: '/admin-users' },
+      { label: 'Products', path: '/admin-products' },
       { label: 'Master Data', path: '/admin-master-data' },
       { label: 'AI Settings', path: '/admin-ai-settings' },
       { label: 'Reports', path: '/admin-reports' },
+      { label: 'Customers', path: '/customers' },
       { label: 'Messages', path: '/messages' },
     ],
   },

@@ -2,7 +2,6 @@ import React, { useRef } from 'react';
 import {
   Search,
   Plus,
-  ArrowRight,
   Lock,
   Check,
   ChevronDown,
@@ -34,7 +33,6 @@ export const AdminUsersRoles: React.FC = () => {
     permissions,
     togglePermission,
     handleInviteUser,
-    isSubmitting,
     notification,
 
     // Drawer
@@ -317,13 +315,18 @@ export const AdminUsersRoles: React.FC = () => {
             >
               {/* Card Header with 'New' Badge */}
               <div className="flex items-center justify-between">
-                <h2 className="text-base font-bold text-slate-900">
+              <h2 className="text-base font-bold text-slate-900">
                   Invite user
                 </h2>
                 <span className="px-2 py-0.5 bg-blue-50 text-blue-600 text-xs font-semibold rounded-full select-none">
                   New
                 </span>
               </div>
+
+              <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">
+                The available API only searches registered, active customer accounts. There is no endpoint to send a project invitation or add a customer to a project yet.
+              </p>
+              <a href="/customers" className="text-sm font-semibold text-blue-700 hover:text-blue-800">Browse active customer accounts</a>
 
               {/* Form */}
               <form onSubmit={handleInviteUser} className="flex flex-col gap-4">
@@ -423,11 +426,11 @@ export const AdminUsersRoles: React.FC = () => {
                 {/* Submit Button */}
                 <button
                   type="submit"
-                  disabled={isSubmitting}
-                  className="mt-2 w-full py-3 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:bg-blue-400 text-white font-semibold text-sm rounded-xl shadow-xs flex items-center justify-center gap-2 transition cursor-pointer"
+                  disabled
+                  className="mt-2 w-full py-3 bg-slate-300 text-slate-600 font-semibold text-sm rounded-xl flex items-center justify-center gap-2 cursor-not-allowed"
                 >
-                  <ArrowRight className="w-4 h-4" />
-                  <span>{isSubmitting ? 'Sending...' : 'Send invitation'}</span>
+                  <Lock className="w-4 h-4" />
+                  <span>Invitation API unavailable</span>
                 </button>
               </form>
             </div>

@@ -12,12 +12,12 @@ export const CreateContract: React.FC = () => {
   const workspace = useDemoWorkspace();
   const project = workspace.projects.find((item) => item.id === params.get('projectId')) ?? workspace.projects.find((item) => item.id === 'project-modern-thuduc') ?? workspace.projects[0];
   const [saving, setSaving] = useState(false);
-  // States quản lý form
+  // Form state.
   const [selectedPackage, setSelectedPackage] = useState<'essential' | 'standard' | 'premium'>('standard');
   const [designRounds, setDesignRounds] = useState('3');
   const [timeline, setTimeline] = useState('10 weeks');
   
-  // States quản lý tính năng
+  // Feature state.
   const [features, setFeatures] = useState({
     conceptDesign: true,
     visuals3D: true,
@@ -78,7 +78,7 @@ export const CreateContract: React.FC = () => {
 
         {/* 2 Columns Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* CỘT TRÁI (2 Cols): Form điền thông tin */}
+          {/* LEFT COLUMN (2 cols): Contract form */}
           <div className="lg:col-span-2 space-y-6">
             {/* Box 1: Parties */}
             <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
@@ -110,7 +110,7 @@ export const CreateContract: React.FC = () => {
             <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
               <h2 className="text-sm font-bold text-slate-900 mb-4">Service package</h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {/* Gói Essential */}
+                {/* Essential package */}
                 <div
                   onClick={() => setSelectedPackage('essential')}
                   className={`p-4 rounded-xl border cursor-pointer transition relative ${
@@ -138,7 +138,7 @@ export const CreateContract: React.FC = () => {
                   </ul>
                 </div>
 
-                {/* Gói Standard */}
+                {/* Standard package */}
                 <div
                   onClick={() => setSelectedPackage('standard')}
                   className={`p-4 rounded-xl border cursor-pointer transition relative ${
@@ -175,7 +175,7 @@ export const CreateContract: React.FC = () => {
                   </ul>
                 </div>
 
-                {/* Gói Premium */}
+                {/* Premium package */}
                 <div
                   onClick={() => setSelectedPackage('premium')}
                   className={`p-4 rounded-xl border cursor-pointer transition relative ${
@@ -334,9 +334,9 @@ export const CreateContract: React.FC = () => {
             </div>
           </div>
 
-          {/* CỘT PHẢI (1 Col): Preview Hợp Đồng & Action */}
+          {/* RIGHT COLUMN (1 col): Contract preview and actions */}
           <div className="space-y-5">
-            {/* Box Preview Hợp đồng */}
+            {/* Contract preview card */}
             <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 space-y-4">
               <div className="border-b border-slate-100 pb-3">
                 <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider block">
@@ -347,7 +347,7 @@ export const CreateContract: React.FC = () => {
                 </h3>
               </div>
 
-              {/* Các đường vạch phác thảo thiết kế */}
+              {/* Sketch lines for the design preview */}
               <div className="space-y-1.5 py-1">
                 <div className="w-full h-2 bg-slate-100 rounded-full"></div>
                 <div className="w-3/4 h-2 bg-slate-100 rounded-full"></div>
@@ -374,14 +374,14 @@ export const CreateContract: React.FC = () => {
                 </div>
               </div>
 
-              {/* Các đường vạch mờ trang trí */}
+              {/* Subtle decorative lines */}
               <div className="space-y-1.5 py-2">
                 <div className="w-full h-1.5 bg-slate-100 rounded-full"></div>
                 <div className="w-5/6 h-1.5 bg-slate-100 rounded-full"></div>
                 <div className="w-2/3 h-1.5 bg-slate-100 rounded-full"></div>
               </div>
 
-              {/* Ô Chữ ký giả lập */}
+              {/* Mock signature box */}
               <div className="grid grid-cols-2 gap-3 pt-2">
                 <div className="h-12 border border-slate-200 rounded-xl bg-slate-50/50 flex items-end p-2 text-[10px] text-slate-400">
                   Homeowner
@@ -411,7 +411,7 @@ export const CreateContract: React.FC = () => {
               <span>Download PDF</span>
             </button>
 
-            {/* Thông báo xanh */}
+            {/* Success notice */}
             <div className="bg-sky-50 border border-sky-100 rounded-xl p-3.5 flex items-start gap-2.5 text-xs text-sky-800 leading-relaxed">
               <Lock size={15} className="text-sky-600 flex-shrink-0 mt-0.5" />
               <span>

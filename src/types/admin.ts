@@ -37,13 +37,6 @@ export interface ConstraintRuleItem {
   status: 'Blocks saving' | 'Warns only';
 }
 
-export interface DesignStyleItem {
-  id: string;
-  name: string;
-  description: string;
-  aiKeywords: string;
-}
-
 export interface MaterialFinishItem {
   id: string;
   name: string;

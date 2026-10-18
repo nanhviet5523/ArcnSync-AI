@@ -108,6 +108,7 @@ function buildApiError(
   const body = data as {
     message?: unknown;
     errors?: unknown;
+    details?: unknown;
   } | null;
 
   const messages: string[] = [];
@@ -124,7 +125,7 @@ function buildApiError(
     messages.push(body.message);
   }
 
-  const errors = body?.errors;
+  const errors = body?.errors ?? body?.details;
 
   if (Array.isArray(errors)) {
     for (const item of errors) {
@@ -146,10 +147,25 @@ function buildApiError(
     }
   } else if (errors && typeof errors === 'object') {
     for (const [field, value] of Object.entries(errors)) {
-      const message = Array.isArray(value) ? value[0] : value;
+      const nested = value && typeof value === 'object' && !Array.isArray(value)
+        ? (value as { message?: unknown; constraints?: Record<string, unknown> })
+        : null;
+      const message = Array.isArray(value) ? value[0]
+        : typeof value === 'string' ? value
+          : nested?.message ?? (nested?.constraints ? Object.values(nested.constraints)[0] : undefined);
 
       if (typeof message === 'string') {
         fieldErrors[field] = message;
+      }
+    }
+  }
+
+  if (errors && typeof errors === 'object' && !Array.isArray(errors)) {
+    const nestedErrors = (errors as { fieldErrors?: unknown }).fieldErrors;
+    if (nestedErrors && typeof nestedErrors === 'object' && !Array.isArray(nestedErrors)) {
+      for (const [field, value] of Object.entries(nestedErrors)) {
+        const message = Array.isArray(value) ? value[0] : value;
+        if (typeof message === 'string') fieldErrors[field] = message;
       }
     }
   }
@@ -304,6 +320,29 @@ export function getAccessToken(): string | null {
 
 export function getRefreshToken(): string | null {
   return getSessionStorage()?.getItem(REFRESH_TOKEN_KEY) ?? null;
+}
+
+export function updateCurrentUserProfile(updates: Pick<User, 'name' | 'phone'>): void {
+  if (typeof window === 'undefined') return;
+  for (const storage of [window.localStorage, window.sessionStorage]) {
+    const savedSession = storage.getItem(SESSION_KEY);
+    if (!savedSession) continue;
+    try {
+      const user = JSON.parse(savedSession) as User;
+      storage.setItem(SESSION_KEY, JSON.stringify({ ...user, ...updates }));
+    } catch {
+      storage.removeItem(SESSION_KEY);
+    }
+  }
+  dispatchAuthChange();
+}
+
+export function replaceSessionTokens(accessToken: string, refreshToken: string): void {
+  const storage = getSessionStorage();
+  if (!storage) return;
+  storage.setItem(ACCESS_TOKEN_KEY, accessToken);
+  storage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+  dispatchAuthChange();
 }
 
 // ---------------------------------------------------------------------------

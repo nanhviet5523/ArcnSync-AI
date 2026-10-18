@@ -1,28 +1,83 @@
-import React, { useMemo, useState } from 'react';
-import { Download, Plus, Search, Upload } from 'lucide-react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useDemoWorkspace } from '@/hooks/useDemoWorkspace';
-import { workspaceApi } from '@/services/workspaceApi';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Plus, Search, RefreshCw, Eye, EyeOff, Pencil } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { ApiError } from '@/services/authService';
+import { catalogService, formatCatalogPrice, productStockLabel, type CatalogCategory, type CatalogProduct } from '@/services/catalogService';
 import { SupplierBadge, SupplierButton, SupplierCard, SupplierPageFrame } from './SupplierPageFrame';
 
-const tabs=[['products','Products'],['pricing','Pricing & stock'],['usage','Usage in projects'],['imports','Import history']];
-const imports=[['ntv-sept-2026.csv','02 Oct, 14:05','118','92','24','2'],['ntv-august-2026.csv','04 Sep, 09:30','96','40','56','0'],['ntv-lighting.csv','21 Aug, 16:10','34','0','0','34']];
-
 export const SupplierCatalog: React.FC = () => {
-  const navigate=useNavigate(); const [params,setParams]=useSearchParams(); const workspace=useDemoWorkspace(); const products=workspace.products.filter((item)=>item.supplier==='Noi That Viet'); const active=params.get('tab')||'products';
-  const [query,setQuery]=useState(''); const [category,setCategory]=useState('All categories'); const [status,setStatus]=useState('All status'); const [notice,setNotice]=useState('');const [saving,setSaving]=useState(false);
-  const [priceDraft,setPriceDraft]=useState<Record<string,string>>({}); const [stockDraft,setStockDraft]=useState<Record<string,string>>({});
-  const filtered=useMemo(()=>products.filter((p)=>`${p.name} ${p.sku}`.toLowerCase().includes(query.toLowerCase())&&(category==='All categories'||p.category===category)&&(status==='All status'||(status==='Out of stock'?p.stock===0:status==='Low stock'?p.stock>0&&p.stock<=5:p.stock>5))),[products,query,category,status]);
-  const savePricing=async()=>{setSaving(true);await workspaceApi.updateSupplierPricing(products.map((product)=>({id:product.id,price:priceDraft[product.id]===undefined?product.price:Number(priceDraft[product.id]),stock:stockDraft[product.id]===undefined?product.stock:Number(stockDraft[product.id])})),'Noi That Viet');setSaving(false);setNotice('Price and stock updates saved in the shared catalog.');window.setTimeout(()=>setNotice(''),2500)};
-  const updateTab=(tab:string)=>{setParams(tab==='products'?{}:{tab});};
-  return <SupplierPageFrame title="Product catalog" description="Noi That Viet · 128 products" action={<div className="flex gap-2"><SupplierButton secondary onClick={()=>navigate('/supplier-catalog/import')}><Upload size={16}/> Import CSV</SupplierButton><SupplierButton onClick={()=>navigate('/supplier-products/new')}><Plus size={16}/> Add product</SupplierButton></div>}>
-    {notice&&<div role="status" className="mb-4 rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{notice}</div>}
-    <div className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{[['Products',products.length],['Low stock',products.filter((p)=>p.stock<=5).length],['Open inquiries',workspace.inquiries.filter((item)=>item.status!=='Answered').length],['Used in projects',workspace.selections.filter((item)=>products.some((product)=>product.sku===item.productSku)).length]].map(([label,value])=><div key={label} className="rounded-2xl border border-slate-200 bg-white p-4"><p className="text-sm text-slate-500">{label}</p><b className="mt-1 block text-2xl text-slate-900">{value}</b></div>)}</div>
-    <div className="mb-5 flex gap-1 overflow-x-auto rounded-xl border border-slate-200 bg-white p-1">{tabs.map(([key,label])=><button key={key} onClick={()=>updateTab(key)} className={`whitespace-nowrap rounded-lg px-4 py-2.5 text-sm font-semibold ${active===key?'bg-blue-50 text-blue-700':'text-slate-500 hover:bg-slate-50'}`}>{label}</button>)}</div>
-    {active==='products'&&<SupplierCard><div className="mb-4 flex flex-col gap-3 md:flex-row"><label className="relative flex-1"><Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"/><input value={query} onChange={(e)=>setQuery(e.target.value)} placeholder="Search by name or SKU" className="w-full rounded-xl border border-slate-200 py-2.5 pl-9 pr-3 text-sm"/></label><select value={category} onChange={(e)=>setCategory(e.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm"><option>All categories</option>{['Sofa','Table','Chair','Cabinet','Textile','Storage','Lighting'].map((c)=><option key={c}>{c}</option>)}</select><select value={status} onChange={(e)=>setStatus(e.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm">{['All status','In stock','Low stock','Out of stock'].map((c)=><option key={c}>{c}</option>)}</select></div><div className="overflow-x-auto"><table className="w-full min-w-[850px] text-left text-sm"><thead className="bg-slate-50 text-xs uppercase text-slate-400"><tr>{['Product','SKU','Category','Size W×D×H (m)','Price','Stock'].map((h)=><th key={h} className="px-3 py-3">{h}</th>)}</tr></thead><tbody className="divide-y divide-slate-100">{filtered.map((p)=><tr key={p.id} onClick={()=>navigate(`/supplier-products/${p.id}`)} className="cursor-pointer hover:bg-slate-50"><td className="px-3 py-3.5 font-semibold text-slate-800">{p.name}</td><td className="px-3 py-3.5 text-slate-500">{p.sku}</td><td className="px-3 py-3.5 text-slate-600">{p.category}</td><td className="px-3 py-3.5 text-slate-500">{[p.width,p.depth,p.height].filter(Boolean).join(' × ')}</td><td className="px-3 py-3.5 font-semibold">VND {p.price.toLocaleString()}</td><td className="px-3 py-3.5"><SupplierBadge tone={p.stock===0?'red':p.stock<=5?'amber':'green'}>{p.stock===0?'Out of stock':p.stock<=5?`Low · ${p.stock}`:`In stock · ${p.stock}`}</SupplierBadge></td></tr>)}</tbody></table></div><p className="mt-3 text-xs text-slate-400">Showing {filtered.length} of {products.length} demo products</p></SupplierCard>}
-    {active==='pricing'&&<SupplierCard title="Pricing & stock"><div className="mb-4 flex flex-wrap items-center justify-between gap-3"><p className="text-sm text-slate-500">Update values in the table, then save all changes.</p><SupplierButton disabled={saving} onClick={savePricing}>{saving ? 'Saving…' : 'Save changes'}</SupplierButton></div><div className="overflow-x-auto"><table className="w-full min-w-[780px] text-left text-sm"><thead className="bg-slate-50 text-xs uppercase text-slate-400"><tr>{['Product','SKU','Current price','New price (VND)','Current stock','New stock'].map((h)=><th key={h} className="px-3 py-3">{h}</th>)}</tr></thead><tbody className="divide-y divide-slate-100">{products.map((p)=><tr key={p.id}><td className="px-3 py-3 font-semibold">{p.name}</td><td className="px-3 py-3 text-slate-500">{p.sku}</td><td className="px-3 py-3">{p.price.toLocaleString()}</td><td className="px-3 py-2"><input type="number" value={priceDraft[p.id]??p.price} onChange={(e)=>setPriceDraft({...priceDraft,[p.id]:e.target.value})} className="w-32 rounded-lg border border-slate-200 px-2 py-2"/></td><td className="px-3 py-3">{p.stock}</td><td className="px-3 py-2"><input type="number" value={stockDraft[p.id]??p.stock} onChange={(e)=>setStockDraft({...stockDraft,[p.id]:e.target.value})} className="w-24 rounded-lg border border-slate-200 px-2 py-2"/></td></tr>)}</tbody></table></div></SupplierCard>}
-    {active==='usage'&&<SupplierCard title="Products used in projects"><div className="overflow-x-auto"><table className="w-full min-w-[750px] text-left text-sm"><thead className="bg-slate-50 text-xs uppercase text-slate-400"><tr>{['Product','Project','Designer','Qty','Total','Status','Updated'].map((h)=><th key={h} className="px-3 py-3">{h}</th>)}</tr></thead><tbody className="divide-y divide-slate-100">{workspace.selections.filter((item)=>products.some((product)=>product.sku===item.productSku)).map((row,index)=>{const p=products.find((item)=>item.sku===row.productSku);const project=workspace.projects.find((item)=>item.id===row.projectId);return <tr key={`${row.projectId}-${row.productSku}-${index}`}><td className="px-3 py-3 font-semibold">{p?.name}</td><td className="px-3 py-3">{project?.name}</td><td className="px-3 py-3">{project?.designer}</td><td className="px-3 py-3">{row.quantity}</td><td className="px-3 py-3">VND {((p?.price??0)*row.quantity).toLocaleString()}</td><td className="px-3 py-3"><SupplierBadge tone={row.status==='Ordered'||row.status==='Delivered'?'green':row.status==='Selected'?'amber':'blue'}>{row.status}</SupplierBadge></td><td className="px-3 py-3 text-slate-500">Shared project</td></tr>})}</tbody></table></div></SupplierCard>}
-    {active==='imports'&&<SupplierCard title="Import history"><div className="mb-4 flex justify-end"><SupplierButton onClick={()=>navigate('/supplier-catalog/import')}><Upload size={15}/> New import</SupplierButton></div><div className="overflow-x-auto"><table className="w-full min-w-[700px] text-left text-sm"><thead className="bg-slate-50 text-xs uppercase text-slate-400"><tr>{['File','Date','Rows','Added','Updated','Errors'].map((h)=><th key={h} className="px-3 py-3">{h}</th>)}</tr></thead><tbody className="divide-y divide-slate-100">{imports.map((row)=><tr key={row[0]}>{row.map((cell,index)=><td key={`${cell}-${index}`} className="px-3 py-3.5 text-slate-600">{cell}</td>)}</tr>)}</tbody></table></div><button className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-blue-600" onClick={()=>window.alert('Download is a demo action.')}><Download size={15}/> Download error report</button></SupplierCard>}
+  const navigate = useNavigate();
+  const [products, setProducts] = useState<CatalogProduct[]>([]);
+  const [categories, setCategories] = useState<CatalogCategory[]>([]);
+  const [query, setQuery] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [categoryForm, setCategoryForm] = useState(false);
+  const [categoryCode, setCategoryCode] = useState('');
+  const [categoryName, setCategoryName] = useState('');
+  const [savingCategory, setSavingCategory] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<CatalogCategory | null>(null);
+  const [categoryParentId, setCategoryParentId] = useState('');
+
+  const load = useCallback(async () => {
+    setLoading(true); setError('');
+    try {
+      const [productPage, ownCategories] = await Promise.all([
+        catalogService.listProducts({ q: query || undefined, limit: 20 }),
+        catalogService.listOwnCategories(),
+      ]);
+      setProducts(productPage.items);
+      setCategories(ownCategories);
+    } catch (cause) {
+      setError(cause instanceof ApiError ? `${cause.message} (HTTP ${cause.status || 'network'}).` : 'Could not load your catalog.');
+    } finally { setLoading(false); }
+  }, [query]);
+
+  useEffect(() => { void load(); }, [load]);
+
+  const toggleCategory = async (category: CatalogCategory) => {
+    setError('');
+    try { await catalogService.updateCategory(category.id, { isActive: !category.isActive }); await load(); }
+    catch (cause) { setError(cause instanceof ApiError ? `${cause.message} (HTTP ${cause.status}).` : 'Could not update the category.'); }
+  };
+
+  const addCategory = async (event: React.FormEvent) => {
+    event.preventDefault(); setSavingCategory(true); setError('');
+    try {
+      await catalogService.createCategory({ code: categoryCode.trim().toUpperCase(), name: categoryName.trim(), parentId: categoryParentId || undefined });
+      setCategoryCode(''); setCategoryName(''); setCategoryParentId(''); setCategoryForm(false); await load();
+    } catch (cause) { setError(cause instanceof ApiError ? `${cause.message} (HTTP ${cause.status}).` : 'Could not create the category.'); }
+    finally { setSavingCategory(false); }
+  };
+
+  const openCategoryEditor = async (category: CatalogCategory) => {
+    setError('');
+    try { const detail = await catalogService.getOwnCategory(category.id); setEditingCategory(detail); setCategoryName(detail.name); setCategoryParentId(detail.parentId ?? ''); }
+    catch (cause) { setError(cause instanceof ApiError ? `${cause.message} (HTTP ${cause.status}).` : 'Could not load category details.'); }
+  };
+  const saveCategory = async (event: React.FormEvent) => {
+    event.preventDefault(); if (!editingCategory) return; setSavingCategory(true); setError('');
+    try { await catalogService.updateCategory(editingCategory.id, { name: categoryName.trim(), parentId: categoryParentId || null }); setEditingCategory(null); await load(); }
+    catch (cause) { setError(cause instanceof ApiError ? `${cause.message} (HTTP ${cause.status}).` : 'Could not update the category.'); }
+    finally { setSavingCategory(false); }
+  };
+
+  const filteredProducts = products.filter((product) => `${product.name} ${product.sku}`.toLowerCase().includes(query.toLowerCase()));
+  return <SupplierPageFrame title="Product catalog" description="Products and categories are loaded from your supplier catalog." action={<SupplierButton onClick={() => navigate('/supplier-products/new')}><Plus size={16}/> Add product</SupplierButton>}>
+    {error && <div role="alert" className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}<SupplierButton secondary onClick={() => void load()}><RefreshCw size={15}/> Retry</SupplierButton></div>}
+    <div className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)]">
+      <SupplierCard title={`Products · ${products.length}`}>
+        <label className="relative mb-4 block"><Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"/><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search by name or SKU" className="w-full rounded-xl border border-slate-200 py-2.5 pl-9 pr-3 text-sm"/></label>
+        {loading ? <p className="py-12 text-center text-sm text-slate-500">Loading catalog…</p> : filteredProducts.length === 0 ? <p className="py-12 text-center text-sm text-slate-500">No products returned by the catalog API.</p> : <div className="overflow-x-auto"><table className="w-full min-w-[720px] text-left text-sm"><thead className="bg-slate-50 text-xs uppercase text-slate-400"><tr>{['Product','SKU','Category','Price','Availability','Status',''].map((heading)=><th key={heading} className="px-3 py-3">{heading}</th>)}</tr></thead><tbody className="divide-y divide-slate-100">{filteredProducts.map((product)=><tr key={product.id} className="hover:bg-slate-50"><td className="px-3 py-3 font-semibold text-slate-800">{product.name}</td><td className="px-3 py-3 text-slate-500">{product.sku}</td><td className="px-3 py-3 text-slate-600">{product.category?.name ?? '—'}</td><td className="px-3 py-3">VND {formatCatalogPrice(product.price)}</td><td className="px-3 py-3">{productStockLabel(product.stockStatus)}</td><td className="px-3 py-3"><SupplierBadge tone={product.status === 'ACTIVE' ? 'green' : 'gray'}>{product.status}</SupplierBadge></td><td className="px-3 py-3"><button aria-label={`Edit ${product.name}`} onClick={() => navigate(`/supplier-products/${product.id}/edit`)} className="text-blue-700"><Pencil size={16}/></button></td></tr>)}</tbody></table></div>}
+      </SupplierCard>
+      <SupplierCard title={`Your categories · ${categories.length}`}>
+        <SupplierButton secondary className="mb-4" onClick={() => setCategoryForm(!categoryForm)}><Plus size={15}/> Add category</SupplierButton>
+        {categoryForm && <form onSubmit={addCategory} className="mb-4 space-y-2 rounded-xl bg-slate-50 p-3"><label className="block text-xs font-semibold">Code<input required maxLength={50} value={categoryCode} onChange={(event) => setCategoryCode(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 p-2 text-sm"/></label><label className="block text-xs font-semibold">Name<input required maxLength={150} value={categoryName} onChange={(event) => setCategoryName(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 p-2 text-sm"/></label><label className="block text-xs font-semibold">Parent category<select value={categoryParentId} onChange={(event)=>setCategoryParentId(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 bg-white p-2 text-sm"><option value="">Root category</option>{categories.filter((item)=>item.isActive).map((item)=><option key={item.id} value={item.id}>{item.name}</option>)}</select></label><SupplierButton type="submit" disabled={savingCategory}>{savingCategory ? 'Saving…' : 'Save category'}</SupplierButton></form>}
+        <div className="divide-y divide-slate-100">{categories.map((category) => <div key={category.id} className="py-3"><div className="flex items-center justify-between gap-2"><div><b className="block text-sm text-slate-800">{category.name}</b><span className="text-xs text-slate-500">{category.code} · {category.isActive ? 'Active' : 'Hidden'}</span></div><div className="flex items-center gap-3"><button onClick={() => void openCategoryEditor(category)} className="inline-flex items-center gap-1 text-xs font-semibold text-blue-700"><Pencil size={13}/> Edit</button><button onClick={() => void toggleCategory(category)} className="inline-flex items-center gap-1 text-xs font-semibold text-blue-700">{category.isActive ? <><EyeOff size={14}/> Hide</> : <><Eye size={14}/> Activate</>}</button></div></div>
+          {editingCategory?.id === category.id && <form onSubmit={saveCategory} className="mt-3 space-y-2 rounded-xl border border-blue-100 bg-blue-50/50 p-3"><b className="text-sm">Edit {editingCategory.code}</b><label className="block text-xs font-semibold">Name<input required maxLength={150} value={categoryName} onChange={(event)=>setCategoryName(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 p-2 text-sm"/></label><label className="block text-xs font-semibold">Parent category<select value={categoryParentId} onChange={(event)=>setCategoryParentId(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 bg-white p-2 text-sm"><option value="">Root category</option>{categories.filter((item)=>item.id!==editingCategory.id).map((item)=><option key={item.id} value={item.id}>{item.name}</option>)}</select></label><div className="flex gap-2"><SupplierButton type="submit" disabled={savingCategory}>{savingCategory?'Saving…':'Save category'}</SupplierButton><SupplierButton type="button" secondary onClick={()=>setEditingCategory(null)}>Cancel</SupplierButton></div></form>}
+        </div>)}</div>
+      </SupplierCard>
+    </div>
   </SupplierPageFrame>;
 };
 export default SupplierCatalog;
