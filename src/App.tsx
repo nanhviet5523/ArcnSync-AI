@@ -20,9 +20,11 @@ import { StaffProjectDetail } from '@/features/staff/StaffProjectDetail';
 import { Messages } from '@/features/shared/Messages';
 import { CallMeeting } from '@/features/shared/CallMeeting';
 import { ProfileSettings } from '@/features/shared/ProfileSettings';
+import { CustomerDirectory } from '@/features/shared/CustomerDirectory';
 import { AdminUsersRoles } from '@/features/admin/AdminUsersRoles';
 import { AdminDashboard } from '@/features/admin/AdminDashboard';
 import { AdminMasterData } from '@/features/admin/AdminMasterData';
+import { AdminProducts } from '@/features/admin/AdminProducts';
 import { RolePreviewPage } from '@/features/shared/RolePreviewPage';
 import { AdminAISettings } from '@/features/admin/AdminAISettings';
 import { AdminPromptDetail } from '@/features/admin/AdminPromptDetail';
@@ -32,6 +34,7 @@ import { SupplierCatalog } from '@/features/supplier/SupplierCatalog';
 import { SupplierProductDetail } from '@/features/supplier/SupplierProductDetail';
 import { SupplierProductForm } from '@/features/supplier/SupplierProductForm';
 import { SupplierCatalogImport } from '@/features/supplier/SupplierCatalogImport';
+import { DesignerCatalog } from '@/features/designer/DesignerCatalog';
 import { SupplierInquiries } from '@/features/supplier/SupplierInquiries';
 import { SupplierApplicationStatus } from '@/features/supplier/SupplierApplicationStatus';
 import { DesignerProjects } from '@/features/designer/DesignerProjects';
@@ -118,6 +121,7 @@ function App() {
             <Route path="/admin-dashboard" element={<AdminDashboard />} />
             <Route path="/admin-users" element={<AdminUsersRoles />} />
             <Route path="/admin-master-data" element={<AdminMasterData />} />
+            <Route path="/admin-products" element={<AdminProducts />} />
             <Route path="/admin-ai-settings" element={<AdminAISettings />} />
             <Route path="/admin-prompts/:promptId" element={<AdminPromptDetail />} />
             <Route path="/admin-reports" element={<AdminReports />} />
@@ -143,13 +147,16 @@ function App() {
             <Route path="/designer-projects" element={<DesignerProjects />} />
             <Route path="/designer-projects/:projectId" element={<DesignerProjectDetail />} />
             <Route path="/designer-ai-studio" element={<DesignerAIStudio />} />
-            <Route path="/designer-catalog" element={<DesignerProjectDetail initialTab="Products" />} />
+            <Route path="/designer-catalog" element={<DesignerCatalog />} />
             <Route path="/designer-portfolio" element={<DesignerPortfolio />} />
           </Route>
           <Route element={<ProtectedRoute allowedRoles={ALL_ROLES} />}>
             <Route path="/messages" element={<Messages />} />
             <Route path="/call-meeting" element={<CallMeeting />} />
             <Route path="/settings" element={<ProfileSettings />} />
+          </Route>
+          <Route element={<ProtectedRoute allowedRoles={['staff', 'admin']} />}>
+            <Route path="/customers" element={<CustomerDirectory />} />
           </Route>
           {PREVIEW_ROLES.flatMap((role) =>
             ROLE_CONFIG[role].navItems

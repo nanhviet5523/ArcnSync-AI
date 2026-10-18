@@ -24,7 +24,7 @@ const FEATURES = [
   },
 ];
 
-// Danh sách 3 hình ảnh render mẫu tông Japandi/Gỗ ấm
+// Three sample render images with a warm Japandi wood palette.
 const RENDER_IMAGES = [
   'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?q=80&w=400&auto=format&fit=crop',
   'https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?q=80&w=400&auto=format&fit=crop',
@@ -37,7 +37,7 @@ export const FeaturesSection: React.FC = () => {
     <section className="w-full bg-[#0b132b] text-white px-6 lg:px-12 py-20">
       <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center">
         
-        {/* Cột bên trái: Nội dung giới thiệu */}
+        {/* Left column: Introductory content */}
         <div className="lg:col-span-5">
           <span className="text-xs font-bold text-sky-400 tracking-widest uppercase">
             AI FEATURES
@@ -69,7 +69,7 @@ export const FeaturesSection: React.FC = () => {
           </div>
         </div>
 
-        {/* Cột bên phải: Card Mockup AI Studio */}
+        {/* Right column: AI Studio mockup card */}
         <div className="lg:col-span-7 bg-white rounded-3xl p-6 sm:p-8 text-slate-900 shadow-2xl w-full">
           {/* Header Card */}
           <h3 className="text-lg font-extrabold text-slate-900 mb-4">
@@ -81,7 +81,7 @@ export const FeaturesSection: React.FC = () => {
             “Warm Japandi townhouse, 5 × 16 m, 3 floors, light oak, budget VND 600–900M.”
           </div>
 
-          {/* 3 Khối ảnh render thực tế */}
+          {/* Three realistic render image blocks */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 mb-6">
             {RENDER_IMAGES.map((imgUrl, index) => (
               <div key={index} className="h-32 sm:h-36 rounded-xl overflow-hidden bg-slate-100">

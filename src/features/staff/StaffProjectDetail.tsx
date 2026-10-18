@@ -17,7 +17,7 @@ export const StaffProjectDetail: React.FC = () => {
     { role: 'Supplier partner', person: 'Noi That Viet', type: 'Partner', typeBg: 'bg-purple-50 text-purple-600', access: 'Catalog · Quotes', hasAction: true, actionText: 'Remove' },
   ];
   const [extraMembers, setExtraMembers] = useState<Array<{role:string;person:string;type:string;typeBg:string;access:string;hasAction:boolean;actionText:string}>>([]);
-  // Data danh sách nhà cung cấp
+  // Supplier list data.
   const [suppliers, setSuppliers] = useState([
     {
       name: 'Noi That Viet',
@@ -36,7 +36,7 @@ export const StaffProjectDetail: React.FC = () => {
     },
   ]);
 
-  // States quản lý form Add role
+  // Add role form state.
   const [selectedRole, setSelectedRole] = useState('Designer');
   const [selectedPerson, setSelectedPerson] = useState('');
   const [selectedAccess, setSelectedAccess] = useState('Edit design');
@@ -98,7 +98,7 @@ export const StaffProjectDetail: React.FC = () => {
 
         {/* 2 Columns Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* CỘT TRÁI (2 Cols): Roles List & Add Role Form */}
+          {/* LEFT COLUMN (2 cols): Role list and add role form */}
           <div className="lg:col-span-2 space-y-6">
             {/* Box 1: Roles on this project */}
             <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
@@ -236,7 +236,7 @@ export const StaffProjectDetail: React.FC = () => {
             </div>
           </div>
 
-          {/* CỘT PHẢI (1 Col): Project snapshot & Supplier partners */}
+          {/* RIGHT COLUMN (1 col): Project snapshot and supplier partners */}
           <div className="space-y-6">
             {/* Box 1: Project snapshot */}
             <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 space-y-3.5">

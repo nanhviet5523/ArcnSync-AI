@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ArrowLeft, CheckCircle, ChevronDown } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Header, Footer } from '@/components/layout';
+import { designStyleService, type DesignStyle } from '@/services/designStyleService';
 
 interface PromptVersionItem {
   version: string;
@@ -79,12 +80,30 @@ export const AdminPromptDetail: React.FC = () => {
   const [versionsList, setVersionsList] = useState<PromptVersionItem[]>(currentConfig.versions);
 
   // Test prompt state (Image 2 & Image 3)
-  const [testStyle, setTestStyle] = useState<string>('Japandi');
+  const [testStyles, setTestStyles] = useState<DesignStyle[]>([]);
+  const [testStylesLoading, setTestStylesLoading] = useState(true);
+  const [testStylesError, setTestStylesError] = useState('');
+  const [testStyle, setTestStyle] = useState<string>('');
   const [hasRunTest, setHasRunTest] = useState<boolean>(false);
   const [isRunningTest, setIsRunningTest] = useState<boolean>(false);
 
   // Toast notification
   const [notification, setNotification] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    designStyleService.getAll(true).then((styles) => {
+      if (active) {
+        setTestStyles(styles);
+        setTestStyle(styles[0]?.name ?? '');
+      }
+    }).catch(() => {
+      if (active) setTestStylesError('Could not load active design styles.');
+    }).finally(() => {
+      if (active) setTestStylesLoading(false);
+    });
+    return () => { active = false; };
+  }, []);
 
   const variablesList = [
     '{n}',
@@ -266,13 +285,10 @@ export const AdminPromptDetail: React.FC = () => {
                     <select
                       value={testStyle}
                       onChange={(e) => setTestStyle(e.target.value)}
+                      disabled={testStylesLoading || testStyles.length === 0}
                       className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-900 bg-white appearance-none cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-500"
                     >
-                      <option value="Japandi">Japandi</option>
-                      <option value="Minimalist">Minimalist</option>
-                      <option value="Indochine">Indochine</option>
-                      <option value="Scandinavian">Scandinavian</option>
-                      <option value="Tropical Modern">Tropical Modern</option>
+                      {testStyles.map((style) => <option key={style.id} value={style.name}>{style.name}</option>)}
                     </select>
                     <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                   </div>
@@ -280,12 +296,15 @@ export const AdminPromptDetail: React.FC = () => {
                   <button
                     type="button"
                     onClick={handleRunTest}
-                    disabled={isRunningTest}
+                    disabled={isRunningTest || testStylesLoading || Boolean(testStylesError) || testStyles.length === 0}
                     className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:bg-blue-400 text-white font-semibold text-xs rounded-xl shadow-xs transition cursor-pointer shrink-0"
                   >
                     {isRunningTest ? 'Running...' : 'Run test'}
                   </button>
                 </div>
+                {testStylesLoading && <p className="mt-2 text-xs text-slate-500">Loading active design styles…</p>}
+                {testStylesError && <p role="alert" className="mt-2 text-xs text-rose-600">{testStylesError}</p>}
+                {!testStylesLoading && !testStylesError && testStyles.length === 0 && <p className="mt-2 text-xs text-slate-500">No active design styles are available.</p>}
               </div>
 
               {/* Output Container: Before test vs After test (Image 3) */}

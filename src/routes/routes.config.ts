@@ -6,7 +6,7 @@ export interface RouteConfig {
 }
 
 export const ROUTES = {
-  // Public Routes (Dùng Header & Footer hiện tại)
+  // Public routes that use the current header and footer.
   HOME: '/',
   LOGIN: '/login',
   SIGNUP: '/signup',
@@ -19,7 +19,7 @@ export const ROUTES = {
   ADMIN_OVERVIEW: '/admin-dashboard',
 } as const;
 
-// Đường dẫn mặc định được chuyển hướng tới sau khi đăng nhập thành công theo từng Role
+// Default destination after a successful login for each role.
 export const DEFAULT_ROLE_REDIRECT: Record<UserRole, string> = {
   homeowner: ROUTES.HOMEOWNER_DASHBOARD,
   staff: ROUTES.STAFF_WORKSPACE,
