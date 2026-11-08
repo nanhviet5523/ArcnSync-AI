@@ -558,7 +558,7 @@ export const AdminMasterData: React.FC = () => {
                   <thead>
                     <tr className="border-b border-slate-100 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
                       <th className="py-2.5 px-3">Category</th>
-                      <th className="py-2.5 px-3">Supplier</th>
+                      <th className="py-2.5 px-3">Nhóm dự toán</th>
                       <th className="py-2.5 px-3 text-right">Status</th>
                     </tr>
                   </thead>
@@ -566,7 +566,7 @@ export const AdminMasterData: React.FC = () => {
                     {apiCategories.map((cat) => (
                       <tr key={cat.id} className="hover:bg-slate-50/60 transition-colors">
                         <td className="py-3 px-3 text-xs"><button type="button" onClick={() => void showAdminCategory(cat.id)} className="font-semibold text-blue-700">{cat.name}</button><span className="ml-2 text-slate-400">{cat.code}</span></td>
-                        <td className="py-3 px-3 text-xs text-slate-600">{cat.supplier?.companyName ?? '—'}</td>
+                        <td className="py-3 px-3 text-xs text-slate-600">{cat.costCategory ?? '—'}</td>
                         <td className="py-3 px-3 text-xs text-right">{cat.isActive ? 'Active' : 'Hidden'}</td>
                       </tr>
                     ))}
@@ -575,7 +575,7 @@ export const AdminMasterData: React.FC = () => {
                 </table>
               </div>
 
-              {adminCategoryDetail && <div className="mt-4 rounded-xl bg-slate-50 p-3 text-xs text-slate-600"><div className="flex items-center justify-between"><b className="text-sm text-slate-900">Category details</b><button type="button" onClick={() => setAdminCategoryDetail(null)} className="text-slate-500">Close</button></div><p className="mt-2">{adminCategoryDetail.name} ({adminCategoryDetail.code})</p><p>Supplier: {adminCategoryDetail.supplier?.companyName ?? '—'}</p><p>Status: {adminCategoryDetail.isActive ? 'Active' : 'Hidden'}</p></div>}
+              {adminCategoryDetail && <div className="mt-4 rounded-xl bg-slate-50 p-3 text-xs text-slate-600"><div className="flex items-center justify-between"><b className="text-sm text-slate-900">Category details</b><button type="button" onClick={() => setAdminCategoryDetail(null)} className="text-slate-500">Close</button></div><p className="mt-2">{adminCategoryDetail.name} ({adminCategoryDetail.code})</p><p>Model minh hoạ: {adminCategoryDetail.defaultModelUrl ?? '—'}</p><p>Status: {adminCategoryDetail.isActive ? 'Active' : 'Hidden'}</p></div>}
 
               <p className="text-xs text-slate-400 mt-4">
                 Categories shown here are loaded from the admin product-categories API.

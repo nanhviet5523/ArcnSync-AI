@@ -1,5 +1,6 @@
-import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
+import { Navigate, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { HomePage } from '@/features/home/HomePage';
 import { LoginPage } from '@/features/auth/LoginPage';
@@ -8,46 +9,49 @@ import { VerifyOtpPage } from '@/features/auth/VerifyOtpPage';
 import { ForgotPasswordPage } from '@/features/auth/ForgotPasswordPage';
 import { ResetPasswordPage } from '@/features/auth/ResetPasswordPage';
 import { AcceptInvitation } from '@/features/auth/AcceptInvitation';
-import { StaffDashboard } from '@/features/staff/StaffDashboard';
-import { CreateContract } from '@/features/staff/CreateContract';
-import { StaffRequests } from '@/features/staff/StaffRequests';
-import { StaffRequestDetail } from '@/features/staff/StaffRequestDetail';
-import { StaffContracts } from '@/features/staff/StaffContracts';
-import { StaffContractDetail } from '@/features/staff/StaffContractDetail';
-import { StaffAddendum } from '@/features/staff/StaffAddendum';
-import { StaffProjects } from '@/features/staff/StaffProjects';
-import { StaffProjectDetail } from '@/features/staff/StaffProjectDetail';
-import { Messages } from '@/features/shared/Messages';
-import { CallMeeting } from '@/features/shared/CallMeeting';
 import { ProfileSettings } from '@/features/shared/ProfileSettings';
 import { CustomerDirectory } from '@/features/shared/CustomerDirectory';
 import { AdminUsersRoles } from '@/features/admin/AdminUsersRoles';
 import { AdminUsersPage } from '@/features/admin/users/AdminUsersPage';
-import { AdminDashboard } from '@/features/admin/AdminDashboard';
 import { AdminMasterData } from '@/features/admin/AdminMasterData';
 import { AdminProducts } from '@/features/admin/AdminProducts';
-import { RolePreviewPage } from '@/features/shared/RolePreviewPage';
-import { AdminAISettings } from '@/features/admin/AdminAISettings';
-import { AdminPromptDetail } from '@/features/admin/AdminPromptDetail';
-import { AdminReports } from '@/features/admin/AdminReports';
 import { SupplierDashboard } from '@/features/supplier/SupplierDashboard';
 import { SupplierCatalog } from '@/features/supplier/SupplierCatalog';
 import { SupplierProductDetail } from '@/features/supplier/SupplierProductDetail';
 import { SupplierProductForm } from '@/features/supplier/SupplierProductForm';
-import { SupplierCatalogImport } from '@/features/supplier/SupplierCatalogImport';
 import { DesignerCatalog } from '@/features/designer/DesignerCatalog';
-import { SupplierInquiries } from '@/features/supplier/SupplierInquiries';
 import { SupplierApplicationStatus } from '@/features/supplier/SupplierApplicationStatus';
-import { DesignerProjects } from '@/features/designer/DesignerProjects';
-import { DesignerProjectDetail } from '@/features/designer/DesignerProjectDetail';
-import { DesignerAIStudio } from '@/features/designer/DesignerAIStudio';
+import { WorkspacePage } from '@/features/design-workspace/WorkspacePage';
+import { ProjectList } from '@/features/projects/ProjectList';
+import { ProjectDetail } from '@/features/projects/ProjectDetail';
+import { StaffProjectNew } from '@/features/projects/StaffProjectNew';
+import { AdminCategories } from '@/features/admin/AdminCategories';
+// Pages still running on sample data (demoWorkspaceService), kept until their API exists
+import { CreateContract } from '@/features/staff/CreateContract';
+import { StaffContracts } from '@/features/staff/StaffContracts';
+import { StaffContractDetail } from '@/features/staff/StaffContractDetail';
+import { AdminDashboard } from '@/features/admin/AdminDashboard';
+import { AdminReports } from '@/features/admin/AdminReports';
+import { AdminAISettings } from '@/features/admin/AdminAISettings';
+import { AdminPromptDetail } from '@/features/admin/AdminPromptDetail';
+import { SupplierInquiries } from '@/features/supplier/SupplierInquiries';
 import { DesignerPortfolio } from '@/features/designer/DesignerPortfolio';
+import { DesignerAIStudio } from '@/features/designer/DesignerAIStudio';
 import { ProtectedRoute } from '@/routes/ProtectedRoute';
-import { ROLE_CONFIG } from '@/types/role';
 import type { UserRole } from '@/types/role';
+import { t } from '@/i18n';
 
 const ALL_ROLES: UserRole[] = ['homeowner', 'designer', 'staff', 'supplier', 'admin'];
-const PREVIEW_ROLES: UserRole[] = ['homeowner'];
+
+/** Small strip on top of pages that still run on sample data. */
+function SampleData({ children }: { children: ReactNode }) {
+  return (
+    <>
+      <div role="note" className="bg-amber-100 px-4 py-1.5 text-center text-xs font-semibold text-amber-900">{t('common.sampleData')}</div>
+      {children}
+    </>
+  );
+}
 
 function App() {
   const location = useLocation();
@@ -107,32 +111,33 @@ function App() {
             }
           />
 
+          <Route element={<ProtectedRoute allowedRoles={['staff', 'admin']} />}>
+            <Route path="/staff/projects" element={<ProjectList />} />
+            <Route path="/staff/projects/new" element={<StaffProjectNew />} />
+            <Route path="/staff/projects/:id" element={<ProjectDetail />} />
+            <Route path="/customers" element={<CustomerDirectory />} />
+          </Route>
           <Route element={<ProtectedRoute allowedRoles={['staff']} />}>
-            <Route path="/staff-dashboard" element={<StaffDashboard />} />
-            <Route path="/staff-requests" element={<StaffRequests />} />
-            <Route path="/staff-request-detail" element={<StaffRequestDetail />} />
-            <Route path="/create-contract" element={<CreateContract />} />
-            <Route path="/staff-contracts" element={<StaffContracts />} />
-            <Route path="/staff-contract-detail" element={<StaffContractDetail />} />
-            <Route path="/staff-addendum" element={<StaffAddendum />} />
-            <Route path="/staff-projects" element={<StaffProjects />} />
-            <Route path="/staff-project-detail" element={<StaffProjectDetail />} />
+            <Route path="/staff-contracts" element={<SampleData><StaffContracts /></SampleData>} />
+            <Route path="/staff-contract-detail" element={<SampleData><StaffContractDetail /></SampleData>} />
+            <Route path="/create-contract" element={<SampleData><CreateContract /></SampleData>} />
           </Route>
           <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
-            <Route path="/admin-dashboard" element={<AdminDashboard />} />
             <Route path="/admin-users" element={<AdminUsersPage />} />
+            <Route path="/admin/categories" element={<AdminCategories />} />
             <Route path="/admin-master-data" element={<AdminMasterData />} />
             <Route path="/admin-products" element={<AdminProducts />} />
-            <Route path="/admin-ai-settings" element={<AdminAISettings />} />
-            <Route path="/admin-prompts/:promptId" element={<AdminPromptDetail />} />
-            <Route path="/admin-reports" element={<AdminReports />} />
             <Route path="/admin" element={<AdminUsersRoles />} />
             <Route path="/admin/users" element={<AdminUsersPage />} />
             <Route path="/admin/roles" element={<AdminUsersRoles />} />
-            <Route path="/admin/overview" element={<AdminDashboard />} />
-            <Route path="/admin/dashboard" element={<AdminDashboard />} />
             <Route path="/admin/master-data" element={<AdminMasterData />} />
-            <Route path="/admin/ai-settings" element={<AdminAISettings />} />
+            <Route path="/admin-dashboard" element={<SampleData><AdminDashboard /></SampleData>} />
+            <Route path="/admin/overview" element={<SampleData><AdminDashboard /></SampleData>} />
+            <Route path="/admin/dashboard" element={<SampleData><AdminDashboard /></SampleData>} />
+            <Route path="/admin-reports" element={<SampleData><AdminReports /></SampleData>} />
+            <Route path="/admin-ai-settings" element={<SampleData><AdminAISettings /></SampleData>} />
+            <Route path="/admin/ai-settings" element={<SampleData><AdminAISettings /></SampleData>} />
+            <Route path="/admin-prompts/:promptId" element={<SampleData><AdminPromptDetail /></SampleData>} />
           </Route>
           <Route element={<ProtectedRoute allowedRoles={['supplier']} />}>
             <Route path="/supplier-dashboard" element={<SupplierDashboard />} />
@@ -140,36 +145,33 @@ function App() {
             <Route path="/supplier-products/:productId" element={<SupplierProductDetail />} />
             <Route path="/supplier-products/new" element={<SupplierProductForm />} />
             <Route path="/supplier-products/:productId/edit" element={<SupplierProductForm />} />
-            <Route path="/supplier-catalog/import" element={<SupplierCatalogImport />} />
-            <Route path="/supplier-inquiries" element={<SupplierInquiries />} />
             <Route path="/supplier-application" element={<SupplierApplicationStatus />} />
+            <Route path="/supplier-inquiries" element={<SampleData><SupplierInquiries /></SampleData>} />
           </Route>
           <Route element={<ProtectedRoute allowedRoles={['designer']} />}>
-            <Route path="/designer-projects" element={<DesignerProjects />} />
-            <Route path="/designer-projects/:projectId" element={<DesignerProjectDetail />} />
-            <Route path="/designer-ai-studio" element={<DesignerAIStudio />} />
+            <Route path="/designer/projects" element={<ProjectList />} />
             <Route path="/designer-catalog" element={<DesignerCatalog />} />
-            <Route path="/designer-portfolio" element={<DesignerPortfolio />} />
+            <Route path="/designer-ai-studio" element={<SampleData><DesignerAIStudio /></SampleData>} />
+            <Route path="/designer-portfolio" element={<SampleData><DesignerPortfolio /></SampleData>} />
+          </Route>
+          <Route element={<ProtectedRoute allowedRoles={['homeowner']} />}>
+            <Route path="/homeowner/projects" element={<ProjectList />} />
+            <Route path="/homeowner/projects/:id" element={<ProjectDetail />} />
+          </Route>
+          <Route element={<ProtectedRoute allowedRoles={['homeowner', 'designer', 'staff', 'admin']} />}>
+            <Route path="/projects/:projectId/workspace" element={<WorkspacePage />} />
           </Route>
           <Route element={<ProtectedRoute allowedRoles={ALL_ROLES} />}>
-            <Route path="/messages" element={<Messages />} />
-            <Route path="/call-meeting" element={<CallMeeting />} />
             <Route path="/settings" element={<ProfileSettings />} />
           </Route>
-          <Route element={<ProtectedRoute allowedRoles={['staff', 'admin']} />}>
-            <Route path="/customers" element={<CustomerDirectory />} />
-          </Route>
-          {PREVIEW_ROLES.flatMap((role) =>
-            ROLE_CONFIG[role].navItems
-              .filter((item) => item.path !== '/messages')
-              .map((item) => (
-                <Route key={`${role}-${item.path}`} element={<ProtectedRoute allowedRoles={[role]} />}>
-                  <Route path={item.path} element={<RolePreviewPage role={role} />} />
-                </Route>
-              )),
-          )}
-   
-          
+          {/* Old paths of pages that now have a real replacement */}
+          {[
+            ['/staff-dashboard', '/staff/projects'], ['/staff-projects', '/staff/projects'], ['/staff-project-detail', '/staff/projects'],
+            ['/staff-requests', '/staff/projects'], ['/staff-request-detail', '/staff/projects'],
+            ['/designer-projects', '/designer/projects'], ['/designer-projects/:projectId', '/designer/projects'],
+            ['/homeowner-dashboard', '/homeowner/projects'], ['/homeowner-projects', '/homeowner/projects'],
+          ].map(([from, to]) => <Route key={from} path={from} element={<Navigate to={to} replace />} />)}
+
           {/* Auth Routes */}
           <Route
             path="/login"

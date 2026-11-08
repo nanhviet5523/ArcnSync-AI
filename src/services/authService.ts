@@ -21,18 +21,25 @@ export class ApiError extends Error {
   status: number;
   messages: string[];
   fieldErrors: Record<string, string>;
+  /** Mã lỗi backend, vd UNKNOWN_BLOCKS, COMMENTS_OPEN */
+  code: string;
+  details: Record<string, unknown>;
 
   constructor(
     message: string,
     status = 0,
     messages: string[] = [],
     fieldErrors: Record<string, string> = {},
+    code = '',
+    details: Record<string, unknown> = {},
   ) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
     this.messages = messages;
     this.fieldErrors = fieldErrors;
+    this.code = code;
+    this.details = details;
   }
 }
 
@@ -100,12 +107,13 @@ const BE_ROLE_MAP: Record<string, UserRole> = {
   ADMIN: 'admin',
 };
 
-function buildApiError(
+export function buildApiError(
   status: number,
   data: unknown,
   fallback: string,
 ): ApiError {
   const body = data as {
+    code?: unknown;
     message?: unknown;
     errors?: unknown;
     details?: unknown;
@@ -125,7 +133,10 @@ function buildApiError(
     messages.push(body.message);
   }
 
-  const errors = body?.errors ?? body?.details;
+  const validationFields = (body?.details as { fields?: unknown } | undefined)?.fields;
+  const errors = Array.isArray(validationFields)
+    ? validationFields.map((f: { field?: unknown; errors?: unknown }) => ({ field: f?.field, message: Array.isArray(f?.errors) ? f.errors[0] : undefined }))
+    : body?.errors ?? body?.details;
 
   if (Array.isArray(errors)) {
     for (const item of errors) {
@@ -174,7 +185,9 @@ function buildApiError(
     messages[0] ||
     `${fallback} (${status}). Please try again.`;
 
-  return new ApiError(message, status, messages, fieldErrors);
+  const details = body?.details && typeof body.details === 'object' && !Array.isArray(body.details)
+    ? (body.details as Record<string, unknown>) : {};
+  return new ApiError(message, status, messages, fieldErrors, typeof body?.code === 'string' ? body.code : '', details);
 }
 
 async function postJson<T>(
@@ -466,6 +479,7 @@ export async function apiFetch(
 
     if (
       init.body !== undefined &&
+      !(init.body instanceof FormData) &&
       !headers.has('Content-Type')
     ) {
       headers.set('Content-Type', 'application/json');
@@ -583,4 +597,38 @@ export interface AcceptInviteResponse {
 
 export function acceptInvite(payload: AcceptInvitePayload): Promise<AcceptInviteResponse> {
   return postJson<AcceptInviteResponse>('/auth/accept-invite', payload, 'Account activation failed');
+}
+
+// ---------------------------------------------------------------------------
+// Files behind auth (images, .glb, DXF)
+// ---------------------------------------------------------------------------
+
+/** File cần Bearer token (ảnh, .glb, DXF): tải qua apiFetch rồi tạo blob URL. Lỗi giữ nguyên ApiError (có status, code). */
+const blobCache = new Map<string, Promise<string>>();
+export function fetchBlobUrl(path: string): Promise<string> {
+  let p = blobCache.get(path);
+  if (!p) {
+    p = apiFetch(path).then(async (res) => {
+      if (!res.ok) throw buildApiError(res.status, await res.json().catch(() => null), 'Không tải được file');
+      return URL.createObjectURL(await res.blob());
+    });
+    p.catch(() => blobCache.delete(path));
+    blobCache.set(path, p);
+  }
+  return p;
+}
+export function revokeBlobUrls() {
+  for (const p of blobCache.values()) p.then(URL.revokeObjectURL, () => undefined);
+  blobCache.clear();
+}
+
+export async function downloadFile(path: string, fallbackName: string) {
+  const res = await apiFetch(path);
+  if (!res.ok) throw buildApiError(res.status, await res.json().catch(() => null), 'Không tải được file');
+  const name = /filename="?([^";]+)"?/.exec(res.headers.get('Content-Disposition') ?? '')?.[1] ?? fallbackName;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(await res.blob());
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }

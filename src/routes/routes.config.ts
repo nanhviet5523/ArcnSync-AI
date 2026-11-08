@@ -11,19 +11,19 @@ export const ROUTES = {
   LOGIN: '/login',
   SIGNUP: '/signup',
 
-  // Role-based Protected Dashboards
-  HOMEOWNER_DASHBOARD: '/homeowner-dashboard',
-  STAFF_WORKSPACE: '/staff-dashboard',
-  DESIGNER_PROJECTS: '/designer-projects',
-  SUPPLIER_PORTAL: '/supplier-dashboard',
-  ADMIN_OVERVIEW: '/admin-dashboard',
+  // Role-based landing pages
+  HOMEOWNER_PROJECTS: '/homeowner/projects',
+  STAFF_PROJECTS: '/staff/projects',
+  DESIGNER_PROJECTS: '/designer/projects',
+  SUPPLIER_CATALOG: '/supplier-catalog',
+  ADMIN_USERS: '/admin-users',
 } as const;
 
 // Default destination after a successful login for each role.
 export const DEFAULT_ROLE_REDIRECT: Record<UserRole, string> = {
-  homeowner: ROUTES.HOMEOWNER_DASHBOARD,
-  staff: ROUTES.STAFF_WORKSPACE,
+  homeowner: ROUTES.HOMEOWNER_PROJECTS,
+  staff: ROUTES.STAFF_PROJECTS,
   designer: ROUTES.DESIGNER_PROJECTS,
-  supplier: ROUTES.SUPPLIER_PORTAL,
-  admin: ROUTES.ADMIN_OVERVIEW,
+  supplier: ROUTES.SUPPLIER_CATALOG,
+  admin: ROUTES.ADMIN_USERS,
 };

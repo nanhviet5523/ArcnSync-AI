@@ -1,5 +1,43 @@
 @import "tailwindcss";
 
+/*
+ * Tailwind v4 turns each into utilities: bg-canvas, border-line, bg-brand, rounded-card, shadow-card, bg-navy…
+ */
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  /* surfaces */
+  --color-canvas: #f5f7fa;        /* app background */
+  --color-surface: #ffffff;       /* cards, panels */
+  --color-line: #e6e9ef;          /* card and panel borders */
+  --color-line-strong: #d5dae3;
+  --color-stage: #ecebe7;         /* warm grey behind the 2D/3D drawing */
+
+  /* brand: primary action and current selection only */
+  --color-brand: #2563eb;
+  --color-brand-hover: #1d4ed8;
+  --color-brand-soft: #eff4ff;
+
+  /* avatar */
+  --color-navy: #1e2a4a;
+
+  --radius-card: 16px;
+  --shadow-card: 0 1px 2px rgb(16 24 40 / 0.04), 0 1px 3px rgb(16 24 40 / 0.03);
+  --shadow-float: 0 4px 16px rgb(16 24 40 / 0.10), 0 1px 3px rgb(16 24 40 / 0.06);
+}
+
+body {
+  background: var(--color-canvas);
+  font-family: var(--font-sans);
+}
+
+/* Workspace comment mode: the pointer becomes a pin over the drawing (2D and 3D). */
+.comment-mode .ws-drawing canvas,
+.comment-mode .ws-drawing svg,
+.comment-mode .ws-drawing svg * {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath d='M12 22s7-6.3 7-12a7 7 0 1 0-14 0c0 5.7 7 12 7 12z' fill='%232563eb' stroke='white' stroke-width='1.5'/%3E%3Ccircle cx='12' cy='10' r='2.6' fill='white'/%3E%3C/svg%3E") 12 22, crosshair;
+}
+
 @media (min-width: 768px) {
   .profile-settings-layout {
     grid-template-columns: minmax(0, 1fr) minmax(0, 3fr);
