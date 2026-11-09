@@ -37,6 +37,12 @@ export const formatDateTime = (iso: string) =>
 export const formatDate = (iso: string) =>
   new Intl.DateTimeFormat('en-US', { timeZone: zone, dateStyle: 'medium' }).format(new Date(iso));
 
+/** The request never reached the server (no error code, no HTTP status). */
+export function isNetworkError(e: unknown): boolean {
+  const err = (e ?? {}) as { name?: string; code?: string; status?: number };
+  return err.name === 'ApiError' && !err.code && !err.status;
+}
+
 /** Any thrown error → English sentence. Backend messages (Vietnamese) are never shown; codes are mapped instead. */
 export function errorText(e: unknown): string {
   const err = (e ?? {}) as { name?: string; code?: string; status?: number; message?: string; details?: Record<string, unknown> };

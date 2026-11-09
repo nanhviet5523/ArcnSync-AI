@@ -9,6 +9,10 @@ export interface RoomInfo {
   label: Pt;
   /** Room outline in DXF metres, or null when no outline was found (then the camera only centres on the label). */
   boundary: Pt[] | null;
+  /** Row in the rooms table. Null on older versions and in unnamed areas: nobody can be assigned there. */
+  room_id: string | null;
+  /** False = no text in the drawing named this area. */
+  has_name: boolean;
 }
 
 export interface Box2 { minX: number; minY: number; maxX: number; maxY: number }
@@ -25,10 +29,10 @@ export const pointInLoop = ([x, y]: Pt, loop: Pt[]) => {
 };
 
 /**
- * Room outline. The backend does not send one yet, so this uses the smallest wall hole that contains
- * the room's label point. When the backend returns room outlines, replace only this function.
+ * Room outline from the backend. Older versions have none: then the smallest wall hole that contains the room's label point.
  */
 export function getRoomBoundary(scene: Pick<SceneJson, 'walls'>, room: SceneJson['rooms'][number]): Pt[] | null {
+  if (room.boundary && room.boundary.length >= 3) return room.boundary;
   let best: Pt[] | null = null, bestArea = Infinity;
   for (const w of scene.walls) {
     for (const h of w.holes) {
@@ -43,7 +47,7 @@ export function getRoomBoundary(scene: Pick<SceneJson, 'walls'>, room: SceneJson
 export const roomKey = (r: SceneJson['rooms'][number]) => `${r.name}@${r.label[0].toFixed(3)},${r.label[1].toFixed(3)}`;
 
 export const floorRooms = (scene: Pick<SceneJson, 'walls' | 'rooms'>): RoomInfo[] =>
-  scene.rooms.map((r) => ({ key: roomKey(r), name: r.name, area: r.area, label: r.label, boundary: getRoomBoundary(scene, r) }));
+  scene.rooms.map((r) => ({ key: roomKey(r), name: r.name, area: r.area, label: r.label, boundary: getRoomBoundary(scene, r), room_id: r.room_id ?? null, has_name: r.has_name ?? true }));
 
 export const boxOf = (pts: Pt[]): Box2 => ({
   minX: Math.min(...pts.map((p) => p[0])), minY: Math.min(...pts.map((p) => p[1])),
@@ -68,7 +72,9 @@ export function roomAt(rooms: RoomInfo[], p: { x: number; y: number }): string |
   return best?.key ?? null;
 }
 
-export const elementRoom = (rooms: RoomInfo[], e: Pick<DesignElement, 'position'>) => roomAt(rooms, e.position);
+/** Room key by the backend's room_id, or by position for older versions and unnamed areas. Display only: permissions use room_id alone. */
+export const elementRoom = (rooms: RoomInfo[], e: Pick<DesignElement, 'position' | 'room_id'>) =>
+  (e.room_id ? rooms.find((r) => r.room_id === e.room_id)?.key : undefined) ?? roomAt(rooms, e.position);
 
 /** Money strings from the backend ("12500000" or "12500000.50") summed exactly in cents, never as floats. */
 export function sumMoney(values: (string | null | undefined)[]): string {

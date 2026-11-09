@@ -8,7 +8,7 @@ import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
 import { ApiError, fetchBlobUrl } from '@/services/authService';
 import { t } from '@/i18n';
 import { designApi } from './designApi';
-import { STAGE_BG } from './view';
+import { ceilingHeight, MAX_ZOOM, MIN_ZOOM, STAGE_BG, wheelFactor } from './view';
 import type { ClickPoint } from './Plan2D';
 import type { DesignElement, Opening, Pt, VersionFloor } from './types';
 
@@ -17,6 +17,10 @@ export type NavMode = 'orbit' | 'pan';
 /** Commands for the floating canvas toolbar and the "⋯" menu. */
 export interface Scene3DHandle {
   resetView(): void;
+  /** Zoom buttons and shortcuts. k < 1 moves closer. */
+  zoomBy(k: number): void;
+  /** Moves the camera close to a point of the plan (DXF metres). */
+  focusAt(x: number, y: number): void;
   /** Download .glb / save .png: only the project's designer (can('exportFiles')); the caller decides. */
   exportGlb(): void;
   savePng(): void;
@@ -31,8 +35,14 @@ interface Props {
   onPick: (e: DesignElement | null, at: ClickPoint) => void;
   fileName: string;
   navMode: NavMode;
+  /** Evening view: dim daylight, every light fixture glows. */
+  lights: boolean;
+  /** Draw the ceiling and stand inside the home at eye level. */
+  ceiling: boolean;
   /** Selected room: camera moves to it and its floor is tinted. key changes → move again. */
   room?: { key: string; center: Pt; boundary: Pt[] | null } | null;
+  /** Outlines of rooms the viewer cannot edit: their floors are greyed out. */
+  dimmed?: Pt[][];
   onExportError?: () => void;
   ref?: Ref<Scene3DHandle>;
 }
@@ -43,6 +53,10 @@ interface Ctx {
   camera: THREE.PerspectiveCamera;
   controls: OrbitControls;
   content: THREE.Group;
+  /** Outside `content`: never picked, framed or exported. */
+  ceiling: THREE.Group;
+  hemi: THREE.HemisphereLight;
+  sun: THREE.DirectionalLight;
   helper: THREE.BoxHelper | null;
   roomMark: THREE.Mesh | null;
   models: Map<string, Promise<GLTF>>;
@@ -150,9 +164,73 @@ function cutSegment([a, b]: [Pt, Pt], openings: Opening[]) {
 }
 type SceneWalls = VersionFloor['scene_json']['walls'];
 
+const EYE_HEIGHT = 1.6;
+const NIGHT_BG = '#15171c';
+/** Day keeps the few soft lights it always had. */
+const DAY_LAMPS = 8;
+/** Every fixture on a floor up to this; more would risk the shader limits of weaker GPUs. */
+const NIGHT_LAMPS = 16;
+/** A point light's shadow renders the scene six times. */
+const SHADOW_LAMPS = 3;
+
+/** DXF extent of a floor's walls, for rooms drawn as separate wall strips too. */
+function wallBounds(f: VersionFloor) {
+  const pts = [...f.scene_json.walls.flatMap((w) => w.outer), ...f.scene_json.wall_segments.flat()];
+  if (!pts.length) return null;
+  const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
+  const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
+  return { w: maxX - minX, d: maxY - minY, cx: (minX + maxX) / 2, cy: (minY + maxY) / 2 };
+}
+
+const castsShadow = (o: THREE.Object3D) => {
+  if (!(o instanceof THREE.Mesh)) return;
+  o.castShadow = !(o.material as THREE.Material).transparent;
+  o.receiveShadow = true;
+};
+
+function applyLamps(c: Ctx, night: boolean) {
+  const lamps: THREE.PointLight[] = [];
+  c.content.traverse((o) => { if (o.userData.lamp) lamps.push(o as THREE.PointLight); });
+  lamps.forEach((l, i) => {
+    l.visible = i < (night ? NIGHT_LAMPS : DAY_LAMPS);
+    l.color.set(night ? '#ffb46b' : '#fff1d6'); // about 2700K at night
+    l.intensity = night ? 3 : 0.6;
+    l.distance = night ? 9 : 4;
+    l.castShadow = night && i < SHADOW_LAMPS;
+  });
+  c.hemi.intensity = night ? 0.12 : 1.6;
+  c.sun.intensity = night ? 0.05 : 1.3;
+  (c.scene.background as THREE.Color).set(night ? NIGHT_BG : STAGE_BG);
+}
+
+/** Longest clear line at eye level, and the room behind it: the first view should look across the room, not at a wall. */
+function clearestView(c: Ctx, eye: THREE.Vector3) {
+  c.content.updateMatrixWorld(true);
+  const ray = new THREE.Raycaster();
+  // no hit = the line leaves the building, which is not a view into the room
+  const free = (dir: THREE.Vector3) => { ray.set(eye, dir); return ray.intersectObject(c.content, true)[0]?.distance ?? 0; };
+  let dir = new THREE.Vector3(1, 0, 0), far = 0;
+  for (let i = 0; i < 16; i++) {
+    const a = (i / 16) * Math.PI * 2;
+    const d = new THREE.Vector3(Math.cos(a), 0, Math.sin(a));
+    const dist = free(d);
+    if (dist > far) { far = dist; dir = d; }
+  }
+  return { dir, back: free(dir.clone().negate()) };
+}
+
+/** Move along the view line, inside the limits OrbitControls enforces on its next update. */
+function dolly(c: Ctx, k: number) {
+  const offset = c.camera.position.clone().sub(c.controls.target);
+  const len = Math.min(c.controls.maxDistance, Math.max(c.controls.minDistance, offset.length() * k));
+  c.camera.position.copy(c.controls.target).add(offset.setLength(len));
+  c.controls.update();
+}
+
+const mountOverride = (e: DesignElement) => e.overrides?.mountHeight ?? (e.product?.specifications?.mountHeight as number | undefined);
 const mountY = (e: DesignElement, wallH: number, h: number) => {
   if (e.element_type === 'FURNITURE') return 0;
-  const m = e.overrides?.mountHeight ?? (e.product?.specifications?.mountHeight as number | undefined);
+  const m = mountOverride(e);
   if (m != null) return m;
   return e.element_type === 'LIGHTING' ? wallH - h : 1.2;
 };
@@ -220,7 +298,6 @@ function buildFloor(f: VersionFloor, els: DesignElement[], models: Ctx['models']
   slab.position.set(c.x, -0.025, c.z);
   g.add(slab);
 
-  let lights = 0;
   for (const e of els) {
     const w = e.width_mm / 1000, d = Math.max(e.depth_mm / 1000, 0.03);
     const h = (e.product?.height_mm ?? e.height_mm) / 1000;
@@ -233,10 +310,18 @@ function buildFloor(f: VersionFloor, els: DesignElement[], models: Ctx['models']
     const ph = box(w, h, d, color, e.element_type === 'LIGHTING' && !off ? { emissive: '#ffe9a8', emissiveIntensity: 0.8 } : {});
     ph.position.y = h / 2;
     item.add(ph);
-    if (e.element_type === 'LIGHTING' && !off && lights++ < 8) {
-      const light = new THREE.PointLight('#fff1d6', 0.6, 4);
-      light.position.y = -0.1;
-      item.add(light);
+    if (e.element_type === 'LIGHTING') {
+      // applyLamps sets colour, strength and how many are on, for day or night
+      if (!off) {
+        const lamp = new THREE.PointLight('#fff1d6', 0.6, 4);
+        lamp.position.y = -0.1;
+        lamp.userData.lamp = true;
+        lamp.shadow.mapSize.set(512, 512);
+        lamp.shadow.bias = -0.002;
+        lamp.shadow.camera.near = 0.05;
+        item.add(lamp);
+      }
+      if (mountOverride(e) == null) item.userData.ceilingDrop = h;
     }
     const pending = loadModel(models, e, report);
     if (pending) {
@@ -249,6 +334,7 @@ function buildFloor(f: VersionFloor, els: DesignElement[], models: Ctx['models']
         const fit = new THREE.Box3().setFromObject(model);
         const fc = fit.getCenter(new THREE.Vector3());
         model.position.set(-fc.x, -fit.min.y, -fc.z);
+        model.traverse(castsShadow);
         item.remove(ph);
         disposeOwn(ph);
         item.add(model);
@@ -256,10 +342,11 @@ function buildFloor(f: VersionFloor, els: DesignElement[], models: Ctx['models']
     }
     g.add(item);
   }
+  g.traverse(castsShadow);
   return g;
 }
 
-export function Scene3D({ floors, elements, floorId, selectedId, onPick, fileName, navMode, room, onExportError, ref }: Props) {
+export function Scene3D({ floors, elements, floorId, selectedId, onPick, fileName, navMode, lights, ceiling, room, dimmed, onExportError, ref }: Props) {
   const mountRef = useRef<HTMLDivElement>(null);
   const ctx = useRef<Ctx | null>(null);
   const pickRef = useRef(onPick);
@@ -268,7 +355,28 @@ export function Scene3D({ floors, elements, floorId, selectedId, onPick, fileNam
   const blocked = elements.filter((e) => issues[e.id] === 'blocked').length;
   const missing = elements.filter((e) => issues[e.id] === 'missing').length;
   const elsRef = useRef(elements);
-  useEffect(() => { pickRef.current = onPick; elsRef.current = elements; });
+  const cur = floors.find((f) => f.id === floorId) ?? [...floors].sort((a, b) => a.level - b.level)[0];
+  const curRef = useRef(cur);
+  const ceilingRef = useRef(ceiling);
+  const roomRef = useRef(room);
+  useEffect(() => { pickRef.current = onPick; elsRef.current = elements; curRef.current = cur; ceilingRef.current = ceiling; roomRef.current = room; });
+
+  /** Standing in the selected room (or the largest one), back near a wall, looking across it. */
+  const viewInside = () => {
+    const c = ctx.current, f = curRef.current;
+    const bounds = f && wallBounds(f);
+    if (!c || !f || !bounds) return;
+    const largest = [...f.scene_json.rooms].sort((a, b) => b.area - a.area)[0];
+    const [x, y] = roomRef.current?.center ?? largest?.label ?? [bounds.cx, bounds.cy];
+    const eye = new THREE.Vector3(x, EYE_HEIGHT, -y);
+    const { dir, back } = clearestView(c, eye);
+    eye.addScaledVector(dir, -Math.max(0, back - 0.4));
+    c.controls.minDistance = 0.3;
+    c.controls.maxDistance = Math.max(bounds.w, bounds.d);
+    c.camera.position.copy(eye);
+    c.controls.target.copy(eye).addScaledVector(dir, 1.5);
+    c.controls.update();
+  };
 
   const fitView = () => {
     const c = ctx.current;
@@ -277,29 +385,58 @@ export function Scene3D({ floors, elements, floorId, selectedId, onPick, fileNam
     if (bb.isEmpty()) return;
     const size = bb.getSize(new THREE.Vector3()), center = bb.getCenter(new THREE.Vector3());
     const dist = Math.max(size.x, size.z) * 1.1;
+    // same limits as 2D: "fit" distance, closer by MAX_ZOOM, further by 1 / MIN_ZOOM
+    const fitDistance = dist * Math.hypot(0.35, 1.2, 0.85);
+    c.controls.minDistance = fitDistance / MAX_ZOOM;
+    c.controls.maxDistance = fitDistance / MIN_ZOOM;
     c.camera.position.set(center.x + dist * 0.35, center.y + dist * 1.2, center.z + dist * 0.85);
     c.controls.target.copy(center);
     c.controls.update();
   };
+  const homeView = () => (ceilingRef.current ? viewInside() : fitView());
 
   useEffect(() => {
     const el = mountRef.current!;
     const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.setSize(el.clientWidth, el.clientHeight);
+    // costs nothing until a lamp casts a shadow, which only happens with Lights on
+    renderer.shadowMap.enabled = true;
     el.appendChild(renderer.domElement);
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(STAGE_BG);
-    scene.add(new THREE.HemisphereLight(0xffffff, 0x777777, 1.6));
+    const hemi = new THREE.HemisphereLight(0xffffff, 0x777777, 1.6);
+    scene.add(hemi);
     const sun = new THREE.DirectionalLight(0xffffff, 1.3);
     sun.position.set(6, 14, 8);
     scene.add(sun);
     const content = new THREE.Group();
     scene.add(content);
+    const ceilingGroup = new THREE.Group();
+    scene.add(ceilingGroup);
     const camera = new THREE.PerspectiveCamera(50, el.clientWidth / Math.max(el.clientHeight, 1), 0.1, 500);
     const controls = new OrbitControls(camera, renderer.domElement);
-    ctx.current = { renderer, scene, camera, controls, content, helper: null, roomMark: null, models: new Map() };
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.12;
+    controls.zoomSpeed = 0.6;
+    ctx.current = { renderer, scene, camera, controls, content, ceiling: ceilingGroup, hemi, sun, helper: null, roomMark: null, models: new Map() };
     fitKey.current = '';
+
+    // Capture on the wrapper, ahead of OrbitControls on the canvas: same sensitivity as 2D, one step per frame.
+    let wheelFrame = 0, wheelK = 1;
+    const flushWheel = () => {
+      wheelFrame = 0;
+      const k = wheelK;
+      wheelK = 1;
+      if (ctx.current) dolly(ctx.current, k);
+    };
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      wheelK *= wheelFactor(e);
+      if (!wheelFrame) wheelFrame = requestAnimationFrame(flushWheel);
+    };
+    el.addEventListener('wheel', onWheel, { passive: false, capture: true });
 
     let down = { x: 0, y: 0 };
     const onDown = (e: PointerEvent) => { down = { x: e.clientX, y: e.clientY }; };
@@ -324,6 +461,8 @@ export function Scene3D({ floors, elements, floorId, selectedId, onPick, fileNam
     renderer.setAnimationLoop(() => { controls.update(); ctx.current?.helper?.update(); renderer.render(scene, camera); });
 
     return () => {
+      el.removeEventListener('wheel', onWheel, { capture: true });
+      cancelAnimationFrame(wheelFrame);
       renderer.setAnimationLoop(null);
       ro.disconnect();
       controls.dispose();
@@ -355,14 +494,62 @@ export function Scene3D({ floors, elements, floorId, selectedId, onPick, fileNam
     disposeOwn(c.content);
     c.content.clear();
     c.roomMark = null;
-    const cur = floors.find((f) => f.id === floorId) ?? [...floors].sort((a, b) => a.level - b.level)[0];
     if (cur) {
       const g = buildFloor(cur, elements.filter((e) => e.floor_id === cur.id), c.models, () => alive, (id, issue) => alive && setIssues((m) => (m[id] === issue ? m : { ...m, [id]: issue })));
       c.content.add(g);
-      if (fitKey.current !== cur.id) { fitView(); fitKey.current = cur.id; }
+      if (fitKey.current !== cur.id) { homeView(); fitKey.current = cur.id; }
     }
     return () => { alive = false; };
-  }, [floors, elements, floorId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cur, elements]);
+
+  useEffect(() => { applyLamps(ctx.current!, lights); }, [lights, cur, elements]);
+
+  // Ceiling slab; fixtures with no height of their own hang from it.
+  useEffect(() => {
+    const c = ctx.current!;
+    disposeOwn(c.ceiling);
+    c.ceiling.clear();
+    const bounds = cur && wallBounds(cur);
+    if (!cur) return;
+    const top = ceilingHeight(cur.scene_json.wall_height, cur.floor_height_mm);
+    const y = ceiling ? top : cur.scene_json.wall_height;
+    c.content.traverse((o) => { if (o.userData.ceilingDrop != null) o.position.y = y - o.userData.ceilingDrop; });
+    if (!ceiling || !bounds) return;
+    // The underside gets almost no daylight from the scene's lights, so it carries its own glow; at night the lamps light it.
+    const slab = box(bounds.w, 0.06, bounds.d, '#f6f3ec', { emissive: '#f6f3ec', emissiveIntensity: lights ? 0.04 : 0.55 });
+    slab.position.set(bounds.cx, top + 0.03, -bounds.cy);
+    c.ceiling.add(slab);
+  }, [ceiling, lights, cur, elements]);
+
+  // Only when the switch itself changes: a data reload must not move the camera.
+  const lastCeiling = useRef(ceiling);
+  useEffect(() => {
+    if (lastCeiling.current === ceiling) return;
+    lastCeiling.current = ceiling;
+    homeView();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ceiling]);
+
+  // Rooms the viewer cannot edit. In the scene, not in `content`: never picked, framed or exported.
+  const dimKey = JSON.stringify(dimmed ?? []);
+  useEffect(() => {
+    const c = ctx.current!;
+    const group = new THREE.Group();
+    for (const b of JSON.parse(dimKey) as Pt[][]) {
+      const geo = new THREE.ShapeGeometry(new THREE.Shape(b.map(([x, y]) => new THREE.Vector2(x, y))));
+      geo.rotateX(-Math.PI / 2);
+      const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: '#64748b', transparent: true, opacity: 0.45, depthWrite: false, side: THREE.DoubleSide }));
+      mesh.position.y = 0.014;
+      mesh.renderOrder = 1;
+      group.add(mesh);
+    }
+    c.scene.add(group);
+    return () => {
+      c.scene.remove(group);
+      group.traverse((o) => { if (o instanceof THREE.Mesh) { o.geometry.dispose(); (o.material as THREE.Material).dispose(); } });
+    };
+  }, [dimKey]);
 
   // Selected room: tint its floor and move the camera over it (only when the room changes).
   const roomKey = room?.key ?? null;
@@ -383,6 +570,7 @@ export function Scene3D({ floors, elements, floorId, selectedId, onPick, fileNam
     }
     if (lastRoom.current === room.key) return;
     lastRoom.current = room.key;
+    if (ceilingRef.current) { viewInside(); return; }
     const pts = room.boundary ?? [room.center];
     const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
     const span = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys), 3);
@@ -415,7 +603,15 @@ export function Scene3D({ floors, elements, floorId, selectedId, onPick, fileNam
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   };
   useImperativeHandle(ref, () => ({
-    resetView: fitView,
+    resetView: homeView,
+    zoomBy(k) { if (ctx.current) dolly(ctx.current, k); },
+    focusAt(x, y) {
+      const c = ctx.current;
+      if (!c) return;
+      c.controls.target.set(x, 0.8, -y);
+      c.camera.position.set(x + 1.2, 3.4, -y + 2.4);
+      c.controls.update();
+    },
     exportGlb() {
       const c = ctx.current!;
       const mark = c.roomMark;
@@ -433,7 +629,7 @@ export function Scene3D({ floors, elements, floorId, selectedId, onPick, fileNam
 
   return (
     <div className="relative h-full w-full">
-      <div ref={mountRef} className="h-full w-full" />
+      <div ref={mountRef} className="h-full w-full touch-none overscroll-contain" />
       {(blocked > 0 || missing > 0) && (
         <div className="pointer-events-none absolute left-3 top-3 max-w-xs space-y-1 text-xs">
           {blocked > 0 && <p className="rounded-lg bg-rose-50 px-2.5 py-1.5 text-rose-700 shadow-card">{t('scene.blocked', { n: blocked })}</p>}

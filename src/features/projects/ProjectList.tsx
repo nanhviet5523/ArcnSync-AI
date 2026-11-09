@@ -8,7 +8,7 @@ import { getCurrentUser } from '@/services/authService';
 import { canOpenWorkspace, isPreparing, projectApi } from './projectApi';
 import type { Project, ProjectStatus } from './projectApi';
 import { GreetingLine, ProjectCards } from './ProjectCards';
-import { awaitingCount, isClosed, needsAction, useFloorCounts, useLatestVersions, versionUnknown } from './projectView';
+import { awaitingCount, draftNote, isClosed, knownVersion, needsAction, useFloorCounts, useLatestVersions, versionUnknown } from './projectView';
 
 type ListRole = 'staff' | 'admin' | 'designer' | 'homeowner';
 const STATUSES: ProjectStatus[] = ['DRAFT', 'CONTRACT_PENDING', 'REQUIREMENT_ANALYSIS', 'IN_DESIGN', 'PRODUCT_SELECTION', 'QUOTING', 'COMPLETED', 'CANCELLED'];
@@ -165,11 +165,11 @@ export function ProjectList() {
         {/* on a failed load, show only the error: no greeting count and no stat tiles reading 0 */}
         <PageHeader title={t(`projects.title.${role}`)} secondary={!error && filters}
           description={error ? t(`projects.description.${role}`) : <GreetingLine name={getCurrentUser()?.name} count={needs(all)} replies={all.reduce((n, p) => n + awaitingCount(p, latest(p.id)), 0)}
-            unknown={all.filter((p) => !isClosed(p.status) && versionUnknown(latest(p.id))).length} onRetryAll={() => retryAll(all.filter((p) => !isClosed(p.status)).map((p) => p.id))} loading={loading || !ready} />} />
-        {!error && cardStats.length > 0 && <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-3">{cardStats}</div>}
+            draftNote={draftNote(all.flatMap((p) => knownVersion(latest(p.id))?.draftRooms ?? []))} unknown={all.filter((p) => !isClosed(p.status) && versionUnknown(latest(p.id))).length} onRetryAll={() => retryAll(all.filter((p) => !isClosed(p.status)).map((p) => p.id))} loading={loading || !ready} />} />
+        {!error && !loading && all.length > 3 && cardStats.length > 0 && <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-3">{cardStats}</div>}
         <ProjectCards role={role} projects={items && filtered} latest={latest} floors={cardFloors} error={error} onRetry={load}
           filteredOut={filteredOut} onClearFilters={() => { setSearch(''); setStatus(''); }}
-          onWorkspace={(p) => navigate(`/projects/${p.id}/workspace`)} onDetails={(p) => navigate(`/homeowner/projects/${p.id}`)} onRetryVersion={retry} filtering={!!search.trim() || !!status}
+          onWorkspace={(p) => navigate(`/projects/${p.id}/workspace`)} onDetails={(p) => navigate(`/${role === 'designer' ? 'designer' : 'homeowner'}/projects/${p.id}`)} onRetryVersion={retry} filtering={!!search.trim() || !!status}
           large={role === 'homeowner' && items?.length === 1} />
       </AppShell>
     );

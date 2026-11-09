@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Search, X } from 'lucide-react';
-import { Button, EmptyState, ErrorState, Input, Select, Skeleton } from '@/components/ui';
+import { Button, EmptyState, ErrorState, Input, Select, Skeleton, Z, useFocusTrap } from '@/components/ui';
 import { errorText, t } from '@/i18n';
 import { catalogService } from '@/services/catalogService';
 import type { CatalogProduct } from '@/services/catalogService';
@@ -44,6 +44,7 @@ export function CatalogDrawer({ element, editable, onPick, onClose }: Props) {
     return () => document.removeEventListener('keydown', onKey);
   }, [onClose]);
 
+  const box = useFocusTrap<HTMLElement>();
   const filterKey = `${query}|${min}|${max}|${supplierId}`;
   const [shownKey, setShownKey] = useState(filterKey);
   if (shownKey !== filterKey) { setShownKey(filterKey); setPage(1); setItems(null); }
@@ -68,16 +69,16 @@ export function CatalogDrawer({ element, editable, onPick, onClose }: Props) {
   }, [element.category.id, query, min, max, supplierId, page, retry]);
 
   return (
-    <div className="fixed inset-0 z-[90] flex justify-end">
+    <div className={`fixed inset-0 ${Z.sheet} flex justify-end`}>
       <div className="absolute inset-0 bg-slate-900/30" onClick={onClose} />
-      <aside role="dialog" aria-modal="true" aria-label={t('ws.catalogTitle', { category: element.category.name })}
+      <aside ref={box} role="dialog" aria-modal="true" aria-label={t('ws.catalogTitle', { category: element.category.name })}
         className="relative flex h-full w-full max-w-[760px] flex-col bg-surface shadow-float">
         <header className="flex shrink-0 items-center justify-between gap-3 border-b border-line px-5 py-3.5">
           <div className="min-w-0">
             <h2 className="truncate text-[15px] font-semibold text-slate-900">{t('ws.catalogTitle', { category: element.category.name })}</h2>
             <p className="text-xs text-slate-500">{t('ws.catalogHint')}</p>
           </div>
-          <button type="button" onClick={onClose} aria-label={t('common.close')} className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-900">
+          <button type="button" onClick={onClose} aria-label={t('common.close')} className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-brand">
             <X className="h-5 w-5" />
           </button>
         </header>

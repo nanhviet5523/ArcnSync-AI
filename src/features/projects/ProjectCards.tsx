@@ -125,9 +125,13 @@ function ProjectCard({ p, role, latest, floors, large, lead, onWorkspace, onDeta
                 : p.title}
             </h3>
             <StatusChip kind="project" value={p.status} size="sm" />
+            {role === 'designer' && p.myProjectRole && <StatusChip kind="projectRole" value={p.myProjectRole} size="sm" />}
             {replies > 0 && <RepliesChip n={replies} />}
           </div>
           <p className="mt-0.5 line-clamp-2 text-[13px] text-slate-500">{meta.filter(Boolean).join(' · ')}</p>
+          {p.myProjectRole === 'MEMBER' && !!p.myRooms?.length && (
+            <p className="mt-0.5 truncate text-xs text-slate-600">{t('cards.yourRooms', { rooms: p.myRooms.map((r) => r.name).join(', ') })}</p>
+          )}
           {role === 'homeowner' && (
             <p className="mt-0.5 text-xs tabular-nums text-slate-600">{t('cards.budget', { range: budgetShort(p.budgetMin, p.budgetMax) })}</p>
           )}
@@ -151,9 +155,12 @@ function ProjectCard({ p, role, latest, floors, large, lead, onWorkspace, onDeta
 
         <div className="relative z-10 col-span-2 flex items-center justify-end gap-3 lg:col-span-1">
           {role === 'designer' ? (
-            workspace
+            <>
+            <Button size="sm" variant="ghost" onClick={() => onDetails(p)} aria-label={t('cards.actionFor', { action: t('cards.viewProject'), project: p.title })}>{t('cards.viewProject')}</Button>
+            {workspace
               ? <Button size="sm" variant={variant} onClick={() => onWorkspace(p)} aria-label={t('cards.actionFor', { action: t('projects.openWorkspace'), project: p.title })}>{t('projects.openWorkspace')}</Button>
-              : <span className="max-w-[160px] text-right text-xs text-slate-500">{t('cards.notOpenYet')}</span>
+              : <span className="max-w-[160px] text-right text-xs text-slate-500">{t('cards.notOpenYet')}</span>}
+            </>
           ) : workspace ? (
             // the title already links to the overview; this one goes straight into the design
             <Button size="sm" variant={variant} onClick={() => onWorkspace(p)} aria-label={t('cards.actionFor', { action: t('homeownerDetail.openDesign'), project: p.title })}>{t('homeownerDetail.openDesign')}</Button>
@@ -186,8 +193,8 @@ function CardSkeleton() {
  * Greeting line for the page header: who you are and how many projects wait on you.
  * Never says "nothing needs you" while some projects could not be checked.
  */
-export function GreetingLine({ name, count, replies = 0, unknown = 0, onRetryAll, loading }: {
-  name?: string; count: number; replies?: number; unknown?: number; onRetryAll?: () => void; loading: boolean;
+export function GreetingLine({ name, count, replies = 0, unknown = 0, draftNote = '', onRetryAll, loading }: {
+  name?: string; count: number; replies?: number; unknown?: number; /** Member: drafts not marked ready. */ draftNote?: string; onRetryAll?: () => void; loading: boolean;
 }) {
   return (
     <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -203,6 +210,7 @@ export function GreetingLine({ name, count, replies = 0, unknown = 0, onRetryAll
           ) : unknown === 0 && <span>{t('cards.greetNone')}</span>}
           {/* same number as the comment chips on the cards; the separator travels with the fragment it introduces */}
           {count > 0 && replies > 0 && <span className="whitespace-nowrap text-slate-600"><span aria-hidden>· </span>{t('cards.greetReplies', { n: replies })}</span>}
+          {draftNote && <span className="text-slate-700"><span aria-hidden>· </span>{draftNote}</span>}
           {unknown > 0 && (
             <span className="inline-flex flex-wrap items-center gap-x-1.5 text-amber-800">
               {t('cards.greetUnknown', { n: unknown })}

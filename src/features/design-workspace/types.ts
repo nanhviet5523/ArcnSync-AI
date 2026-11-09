@@ -1,6 +1,6 @@
-import type { Project } from '@/features/projects/projectApi';
+import type { Project, ProjectRole } from '@/features/projects/projectApi';
 
-export type { Project };
+export type { Project, ProjectRole };
 export type Role = 'homeowner' | 'designer' | 'staff' | 'admin';
 export type VersionType = 'CONCEPT' | 'LAYOUT_2D' | 'RENDER_3D';
 export type RevisionType = 'MINOR' | 'MAJOR';
@@ -37,7 +37,8 @@ export interface SceneJson {
   walls: { outer: Pt[]; holes: Pt[][] }[];
   wall_segments: [Pt, Pt][];
   openings: Opening[];
-  rooms: { name: string; area: number; label: Pt }[];
+  /** room_id, has_name, boundary: absent on versions made before rooms were linked to the rooms table. */
+  rooms: { name: string; area: number; label: Pt; room_id?: string | null; has_name?: boolean; boundary?: Pt[] | null }[];
   warnings: string[];
 }
 
@@ -67,6 +68,8 @@ export interface Product {
   depth_mm: number | null;
   height_mm: number | null;
   specifications: Record<string, unknown> | null;
+  /** Set on a product read from a room draft: empty image tile and "No longer available". */
+  unavailable?: boolean;
 }
 
 export interface ProductOption extends Product {
@@ -83,6 +86,8 @@ export interface Overrides {
 export interface DesignElement {
   id: string;
   floor_id: string;
+  /** Null on older versions and in unnamed areas. */
+  room_id: string | null;
   dxf_handle: string | null;
   block_name: string;
   name: string;
@@ -155,12 +160,16 @@ export interface Comment extends CommentReply {
   kind: 'ELEMENT' | 'POINT' | 'GENERAL';
   status: CommentStatus;
   floor_id: string | null;
+  room_id: string | null;
   pin_position: { x: number; y: number } | null;
   element: ElementRef | null;
   current_element: ElementRef | null;
   addressed_in_version_id: string | null;
   replies: CommentReply[];
 }
+
+/** What a new comment attaches to. */
+export type CommentTarget = { kind: 'element'; element: DesignElement } | { kind: 'point'; x: number; y: number; floor_id: string } | { kind: 'general' };
 
 export interface ComparedElement {
   id: string;
@@ -186,6 +195,56 @@ export interface ElementEdit {
   element_id: string;
   product_id?: string;
   overrides?: Overrides;
+}
+
+export type RoomDraftStatus = 'DRAFT' | 'READY';
+
+/** Product named in a draft. Null when the backend did not send it: shown as "Product" with no price. */
+export interface DraftProduct {
+  id: string;
+  name: string;
+  price: string | null;
+  thumbnail_url: string | null;
+  /** False: no longer sold. Still shown, but the backend refuses to merge it. */
+  available: boolean;
+}
+
+export interface DraftSelection {
+  element_id: string;
+  product_id: string;
+  product: DraftProduct | null;
+}
+
+export interface DraftOverride {
+  element_id: string;
+  overrides: Overrides;
+}
+
+/** A change lost when the draft moved to a new version. element_id is the id on the old version. */
+export interface DroppedChange {
+  element_id: string;
+  floor_id: string;
+  dxf_handle: string | null;
+  product: DraftProduct | null;
+}
+
+export interface RoomDraft {
+  id: string;
+  room_id: string;
+  room_name: string;
+  designer_id: string;
+  designer_name: string;
+  status: RoomDraftStatus;
+  selections: DraftSelection[];
+  overrides: DraftOverride[];
+  addressed_comment_ids: string[];
+  dropped_changes: DroppedChange[];
+}
+
+export interface RoomDraftInput {
+  selections: { element_id: string; product_id: string }[];
+  overrides: { element_id: string; overrides: Overrides }[];
+  addressed_comment_ids: string[];
 }
 
 export interface UploadFloor {

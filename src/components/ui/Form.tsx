@@ -4,7 +4,7 @@ import { t } from '@/i18n';
 
 /** width defaults to full; pass a width class (e.g. w-48) through className to override */
 const control = (invalid?: boolean, className = '') =>
-  `block ${/(^|\s)(sm:|md:)?w-/.test(className) ? '' : 'w-full'} rounded-lg border bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 disabled:bg-slate-50 disabled:text-slate-500 ${invalid ? 'border-rose-400' : 'border-slate-300'}`;
+  `block ${/(^|\s)(sm:|md:)?w-/.test(className) ? '' : 'w-full'} rounded-lg border bg-white px-3 text-sm text-slate-900 placeholder:text-slate-500 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 disabled:bg-slate-50 disabled:text-slate-500 ${invalid ? 'border-rose-400' : 'border-slate-300'}`;
 
 /** Label + control + hint/error. The child receives id and aria-describedby. */
 export function Field({ label, hint, error, optional, children, className = '' }: {
@@ -16,7 +16,7 @@ export function Field({ label, hint, error, optional, children, className = '' }
   return (
     <div className={className}>
       <label htmlFor={id} className="mb-1.5 flex items-baseline gap-1.5 text-[13px] font-medium text-slate-700">
-        {label}{optional && <span className="font-normal text-slate-400">({t('newProject.optional')})</span>}
+        {label}{optional && <span className="font-normal text-slate-500">({t('newProject.optional')})</span>}
       </label>
       {children({ id, 'aria-describedby': describedBy, 'aria-invalid': error ? true : undefined })}
       {error ? <p id={`${id}-error`} className="mt-1 text-xs text-rose-600">{error}</p>

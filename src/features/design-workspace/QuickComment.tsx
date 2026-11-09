@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
-import { Button } from '@/components/ui';
+import { Button, Z } from '@/components/ui';
 import { t } from '@/i18n';
 
 const WIDTH = 300;
@@ -9,6 +9,7 @@ const GAP = 12;
 
 interface Props {
   title: string;
+  placeholder: string;
   /** Click position relative to the canvas container. */
   x: number;
   y: number;
@@ -17,6 +18,10 @@ interface Props {
   /** Resolves true when the comment was created; the popover then closes. */
   onSend: (text: string) => Promise<boolean>;
   onCancel: () => void;
+  /** Tells the page whether there is unsent text. */
+  onTextChange?: (hasText: boolean) => void;
+  /** Bump to put the cursor back in the box (a click elsewhere was ignored to protect the text). */
+  nudge?: number;
 }
 
 /**
@@ -29,7 +34,7 @@ export function CommentHint({ x, y, bounds, onSwitch2D }: { x: number; y: number
   const top = Math.max(GAP, Math.min(y + GAP + height > bounds.height ? y - GAP - height : y + GAP, bounds.height - height - GAP));
   return (
     <div role="status" aria-live="polite" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}
-      className="absolute z-30 rounded-card border border-line bg-surface px-3 py-2.5 shadow-float" style={{ left, top, width }}>
+      className={`absolute ${Z.canvasOverlay} rounded-card border border-line bg-surface px-3 py-2.5 shadow-float`} style={{ left, top, width }}>
       <p className="text-[13px] leading-5 text-slate-700">{t('ws.hint3dSpot')}</p>
       <Button size="sm" className="mt-2" onClick={onSwitch2D}>{t('ws.switchTo2d')}</Button>
     </div>
@@ -37,11 +42,11 @@ export function CommentHint({ x, y, bounds, onSwitch2D }: { x: number; y: number
 }
 
 /** Comment box opened right where the user clicked in comment mode. Enter sends, Shift+Enter adds a line, Esc cancels. */
-export function QuickComment({ title, x, y, bounds, onSend, onCancel }: Props) {
+export function QuickComment({ title, placeholder, x, y, bounds, onSend, onCancel, onTextChange, nudge = 0 }: Props) {
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
   const area = useRef<HTMLTextAreaElement>(null);
-  useEffect(() => { area.current?.focus(); }, []);
+  useEffect(() => { area.current?.focus(); }, [nudge]);
 
   // open to the lower right of the click, flipping when it would leave the canvas
   const left = Math.max(GAP, Math.min(x + GAP + WIDTH > bounds.width ? x - GAP - WIDTH : x + GAP, bounds.width - WIDTH - GAP));
@@ -61,10 +66,10 @@ export function QuickComment({ title, x, y, bounds, onSend, onCancel }: Props) {
 
   return (
     <div role="dialog" aria-label={title} onKeyDown={onKey} onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}
-      className="absolute z-30 rounded-card border border-line bg-surface p-3 shadow-float" style={{ left, top, width: WIDTH }}>
+      className={`absolute ${Z.canvasOverlay} rounded-card border border-line bg-surface p-3 shadow-float`} style={{ left, top, width: WIDTH }}>
       <p className="mb-2 truncate text-[13px] font-semibold text-slate-900">{title}</p>
-      <textarea ref={area} rows={3} value={text} disabled={busy} onChange={(e) => setText(e.target.value)}
-        aria-label={title} placeholder={t('comments.placeholder')}
+      <textarea ref={area} rows={3} value={text} disabled={busy} onChange={(e) => { setText(e.target.value); onTextChange?.(!!e.target.value.trim()); }}
+        aria-label={title} placeholder={placeholder}
         className="block w-full resize-none rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition placeholder:text-slate-500 focus:border-brand focus:ring-2 focus:ring-brand/20 disabled:bg-slate-50" />
       <div className="mt-2 flex items-center justify-between gap-2">
         <span className="text-xs text-slate-500">{t('ws.quickHint')}</span>

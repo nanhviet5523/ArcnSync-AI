@@ -150,6 +150,7 @@ function App() {
           </Route>
           <Route element={<ProtectedRoute allowedRoles={['designer']} />}>
             <Route path="/designer/projects" element={<ProjectList />} />
+            <Route path="/designer/projects/:id" element={<ProjectDetail />} />
             <Route path="/designer-catalog" element={<DesignerCatalog />} />
             <Route path="/designer-ai-studio" element={<SampleData><DesignerAIStudio /></SampleData>} />
             <Route path="/designer-portfolio" element={<SampleData><DesignerPortfolio /></SampleData>} />

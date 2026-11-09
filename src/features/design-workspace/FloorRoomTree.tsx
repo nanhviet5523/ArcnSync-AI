@@ -18,14 +18,16 @@ interface Props {
   showFurniture: boolean;
   onShowFurniture: (v: boolean) => void;
   onCollapse?: () => void;
-  /** Extra line under a room name, e.g. the designer in charge of it (multi-designer, later). */
+  /** Extra line under a room name. */
   roomMeta?: (room: RoomInfo) => ReactNode;
+  /** Control beside the room row: the designer in charge. */
+  roomAction?: (room: RoomInfo) => ReactNode;
 }
 
 const Badge = ({ n }: { n?: number }) => (n ? <span className="min-w-[18px] rounded-full bg-rose-500 px-1 text-center text-[11px] font-semibold leading-[18px] text-white">{n}</span> : null);
 
 /** Floors → Rooms. Clicking a room zooms the 2D/3D view to it; clicking it again clears the selection. */
-export function FloorRoomTree({ floors, floorId, onFloor, rooms, roomKey, onRoom, floorCounts, roomCounts, showFurniture, onShowFurniture, onCollapse, roomMeta }: Props) {
+export function FloorRoomTree({ floors, floorId, onFloor, rooms, roomKey, onRoom, floorCounts, roomCounts, showFurniture, onShowFurniture, onCollapse, roomMeta, roomAction }: Props) {
   const sorted = [...floors].sort((a, b) => a.level - b.level);
   const multi = sorted.length > 1;
 
@@ -35,16 +37,17 @@ export function FloorRoomTree({ floors, floorId, onFloor, rooms, roomKey, onRoom
       {rooms.map((r) => {
         const on = r.key === roomKey;
         return (
-          <li key={r.key}>
+          <li key={r.key} className="flex items-center gap-1">
             <button type="button" aria-pressed={on} onClick={() => onRoom(on ? null : r.key)}
-              className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[13px] transition-colors focus-visible:outline-2 focus-visible:outline-brand ${on ? 'bg-brand-soft font-semibold text-brand' : 'text-slate-700 hover:bg-slate-50'}`}>
+              className={`flex min-w-0 flex-1 items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[13px] transition-colors focus-visible:outline-2 focus-visible:outline-brand ${on ? 'bg-brand-soft font-semibold text-brand' : 'text-slate-700 hover:bg-slate-50'}`}>
               <span className="min-w-0 flex-1">
-                <span className="block truncate">{r.name}</span>
+                <span className="block truncate" title={r.name}>{r.name}</span>
                 {roomMeta?.(r)}
               </span>
-              <span className={`shrink-0 text-[11px] tabular-nums ${on ? 'text-brand' : 'text-slate-400'}`}>{t('ws.area', { n: r.area })}</span>
+              <span className={`shrink-0 text-[11px] tabular-nums ${on ? 'text-brand' : 'text-slate-500'}`}>{t('ws.area', { n: r.area })}</span>
               <Badge n={roomCounts[r.key]} />
             </button>
+            {roomAction?.(r)}
           </li>
         );
       })}
@@ -57,7 +60,7 @@ export function FloorRoomTree({ floors, floorId, onFloor, rooms, roomKey, onRoom
         <h2 className="text-[13px] font-semibold text-slate-900">{multi ? t('ws.floorsRooms') : t('ws.rooms')}</h2>
         {onCollapse && (
           <button type="button" onClick={onCollapse} aria-label={t('ws.collapse')} title={t('ws.collapse')}
-            className="hidden rounded-md p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-900 lg:block">
+            className="hidden rounded-md p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-brand lg:block">
             <PanelLeftClose className="h-4 w-4" />
           </button>
         )}
@@ -85,7 +88,7 @@ export function FloorRoomTree({ floors, floorId, onFloor, rooms, roomKey, onRoom
       </nav>
 
       <div className="shrink-0 border-t border-line p-3">
-        <label className="flex cursor-pointer items-center justify-between gap-3 text-[13px] text-slate-700">
+        <label className="flex min-h-6 cursor-pointer items-center justify-between gap-3 text-[13px] text-slate-700">
           {t('ws.showFurniture')}
           <input type="checkbox" role="switch" checked={showFurniture} onChange={(e) => onShowFurniture(e.target.checked)}
             className="peer sr-only" />

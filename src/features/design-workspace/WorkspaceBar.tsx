@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronDown, ChevronLeft, Columns2, Download, MessageSquare, PanelLeft } from 'lucide-react';
+import { ChevronDown, ChevronLeft, Download, MessageSquare, PanelLeft } from 'lucide-react';
 import { UserMenus } from '@/components/layout';
-import { StatusChip, Stepper } from '@/components/ui';
+import { StatusChip, Stepper, Z } from '@/components/ui';
 import { t, tList } from '@/i18n';
 import type { UserRole } from '@/types/role';
 import { formatTime, versionLabel } from './logic';
@@ -11,24 +11,32 @@ import { conceptStep } from '@/features/projects/projectView';
 import type { VersionSummary, VersionType } from './types';
 
 /** Small dropdown: closes on outside click, Escape, or after an item runs. */
-export function Dropdown({ label, button, align = 'left', className = '', children }: {
-  label: string; button: ReactNode; align?: 'left' | 'right'; className?: string; children: (close: () => void) => ReactNode;
+export function Dropdown({ label, button, align = 'left', up = false, className = '', title, menuWidth = 'min-w-[220px]', children }: {
+  label: string; button: ReactNode; align?: 'left' | 'right'; /** Open above the button (for bars at the bottom of the screen). */ up?: boolean; className?: string; title?: string; menuWidth?: string; children: (close: () => void) => ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const menu = useRef<HTMLDivElement>(null);
+  const menuItems = () => [...(menu.current?.querySelectorAll<HTMLElement>('[role^="menuitem"]') ?? [])];
   useEffect(() => {
     if (!open) return;
+    menu.current?.querySelector<HTMLElement>('[role^="menuitem"]')?.focus();
     const onDown = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) setOpen(false); };
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { setOpen(false); trigger.current?.focus(); } };
     document.addEventListener('mousedown', onDown);
     document.addEventListener('keydown', onKey);
     return () => { document.removeEventListener('mousedown', onDown); document.removeEventListener('keydown', onKey); };
   }, [open]);
   return (
     <div ref={ref} className="relative">
-      <button type="button" aria-label={label} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(!open)} className={className}>{button}</button>
+      <button ref={trigger} type="button" aria-label={label} title={title} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(!open)} className={className}>{button}</button>
       {open && (
-        <div role="menu" className={`absolute top-full z-[80] mt-1.5 min-w-[220px] rounded-card border border-line bg-surface py-1.5 shadow-float ${align === 'right' ? 'right-0' : 'left-0'}`}>
+        <div ref={menu} role="menu" onKeyDown={(e) => {
+          const list = menuItems(), i = list.indexOf(document.activeElement as HTMLElement);
+          const to = e.key === 'ArrowDown' ? (i + 1) % list.length : e.key === 'ArrowUp' ? (i - 1 + list.length) % list.length : e.key === 'Home' ? 0 : e.key === 'End' ? list.length - 1 : -1;
+          if (to >= 0 && list.length) { e.preventDefault(); list[to].focus(); }
+        }} className={`absolute ${up ? 'bottom-full mb-1.5' : 'top-full mt-1.5'} ${Z.menu} ${menuWidth} rounded-card border border-line bg-surface py-1.5 shadow-float ${align === 'right' ? 'right-0' : 'left-0'}`}>
           {children(() => setOpen(false))}
         </div>
       )}
@@ -87,18 +95,19 @@ export function WorkspaceBar({ role, backTo, title, stage, versions, current, on
                   return (
                     <li key={v.id} className={`flex items-center gap-1 pr-2 ${on ? 'bg-brand-soft' : ''}`}>
                       <button type="button" role="menuitem" aria-current={on || undefined} onClick={() => { onVersion(v.id); close(); }}
-                        className="min-w-0 flex-1 px-3 py-2 text-left hover:bg-slate-50/60">
+                        className="min-w-0 flex-1 px-3 py-2 text-left hover:bg-slate-50/60 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand">
                         <span className="flex items-center gap-2">
-                          <span className={`text-[13px] font-semibold ${v.status === 'SUPERSEDED' ? 'text-slate-400 line-through' : 'text-slate-900'}`}>{versionLabel(v.label, role)}</span>
+                          <span className={`text-[13px] font-semibold ${v.status === 'SUPERSEDED' ? 'text-slate-500 line-through' : 'text-slate-900'}`}>{versionLabel(v.label, role)}</span>
                           <StatusChip kind="version" value={v.status} size="sm" />
                         </span>
                         <span className="mt-0.5 block truncate text-xs text-slate-600">{v.title}</span>
-                        <span className="block text-[11px] tabular-nums text-slate-400">{t(`status.stage.${v.version_type}`)} · {formatTime(v.created_at)}</span>
+                        <span className="block text-[11px] tabular-nums text-slate-500">{t(`status.stage.${v.version_type}`)} · {formatTime(v.created_at)}</span>
                       </button>
                       {canCompare(v) && (
                         <button type="button" role="menuitem" onClick={() => { onCompare(v.id); close(); }} title={t('ws.compareWith', { label: versionLabel(v.label, role) })}
-                          className="shrink-0 rounded-md p-1.5 text-slate-500 hover:bg-white hover:text-brand">
-                          <Columns2 className="h-4 w-4" /><span className="sr-only">{t('ws.compareWith', { label: versionLabel(v.label, role) })}</span>
+                          aria-label={t('ws.compareWith', { label: versionLabel(v.label, role) })}
+                          className="shrink-0 rounded-md border border-line bg-surface px-2 py-1 text-[11px] font-medium text-slate-600 hover:text-brand focus-visible:outline-2 focus-visible:outline-brand">
+                          {t('compare.title')}
                         </button>
                       )}
                     </li>

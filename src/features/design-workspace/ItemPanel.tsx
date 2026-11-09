@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
 import { ImageOff } from 'lucide-react';
 import { Button, EmptyState, ErrorState, Input, Skeleton, StatusChip } from '@/components/ui';
 import { errorText, t } from '@/i18n';
 import { fetchBlobUrl } from '@/services/authService';
 import { designApi } from './designApi';
-import { elementName, formatVnd, isNotChosenItem, isUnknownItem, productSize } from './logic';
-import type { DesignElement, ProductOption } from './types';
+import { elementCategory, elementName, formatVnd, isNotChosenItem, isUnknownItem, productSize } from './logic';
+import type { DesignElement, ProductOption, Role } from './types';
 
 interface Props {
+  role: Role;
   element: DesignElement | null;
   elements: DesignElement[];
   editable: boolean;
@@ -16,8 +18,17 @@ interface Props {
   onChooseAllRemaining: (count: number) => void;
   /** Opens the catalog drawer for the item's category. */
   onBrowse?: () => void;
-  /** Start a comment on this item (when the viewer may comment). */
-  onComment?: () => void;
+  /** The viewer may comment: shows how to do it from the drawing. */
+  canComment: boolean;
+  /** "Next not chosen" and "Keep current for all": they work on the whole version, so Lead only. */
+  leadTools: boolean;
+  /** Who is in charge of this item's room. */
+  note?: string;
+  noteAvatar?: ReactNode;
+  /** Lead on a room assigned to someone else. */
+  onTakeOver?: () => void;
+  /** Old → new product of this item, shown during Compare before merge. */
+  change?: ReactNode;
 }
 
 /** Product image behind auth: fetched as a blob URL. */
@@ -35,7 +46,8 @@ export function Thumb({ path, className = 'h-10 w-10' }: { path: string | null; 
 
 const ALT_SHOWN = 6;
 
-export function ItemPanel({ element: e, elements, editable, onSelect, onChange, onChooseAllRemaining, onBrowse, onComment }: Props) {
+export function ItemPanel({ role, element: e, elements, editable, onSelect, onChange, onChooseAllRemaining, onBrowse, canComment, leadTools, note, noteAvatar, onTakeOver, change }: Props) {
+  const designer = role === 'designer';
   const [options, setOptions] = useState<ProductOption[] | null>(null);
   const [error, setError] = useState('');
   const [reload, setReload] = useState(0);
@@ -53,8 +65,8 @@ export function ItemPanel({ element: e, elements, editable, onSelect, onChange, 
   if (!e) {
     return (
       <div className="flex h-full flex-col gap-3 p-4">
-        <EmptyState compact title={t('items.empty')} />
-        {editable && !!notChosen.length && (
+        <EmptyState compact title={t(designer ? 'items.empty' : 'items.emptyView')} />
+        {leadTools && !!notChosen.length && (
           <Button size="sm" onClick={() => onSelect(notChosen[0])}>{t('ws.firstNotChosen', { n: notChosen.length })}</Button>
         )}
       </div>
@@ -70,31 +82,40 @@ export function ItemPanel({ element: e, elements, editable, onSelect, onChange, 
     <div className="h-full min-h-0 space-y-4 overflow-y-auto p-4">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <h3 className="text-[15px] font-semibold text-slate-900">{e.category?.name ?? e.block_name}</h3>
+          <h3 className="text-[15px] font-semibold text-slate-900">{elementCategory(e, role)}</h3>
           <p className="mt-0.5 text-xs text-slate-500">{t('items.size', { w: e.width_mm, d: e.depth_mm })} · {t('ws.footprintNote')}</p>
         </div>
         <StatusChip kind="choice" value={choice} size="sm" />
       </div>
+
+      {change && <div className="rounded-lg border border-brand/30 bg-brand-soft/40 p-2.5">{change}</div>}
+
+      {(note || onTakeOver) && (
+        <div className="flex items-center justify-between gap-2">
+          <p className="flex min-w-0 items-center gap-1.5 text-[13px] font-medium text-slate-700">{noteAvatar}<span className="min-w-0">{note}</span></p>
+          {onTakeOver && <Button size="sm" className="shrink-0" onClick={onTakeOver}>{t('team.takeOver')}</Button>}
+        </div>
+      )}
 
       {e.product ? (
         <div className="flex gap-3 rounded-card border border-line p-3">
           <Thumb path={e.product.thumbnail_url} className="h-20 w-20" />
           <div className="min-w-0 flex-1 text-[13px]">
             <p className="font-semibold leading-snug text-slate-900">{e.product.name}</p>
+            {e.product.unavailable && <p className="mt-0.5 text-xs font-medium text-rose-700">{t('drafts.noLongerAvailable')}</p>}
             <p className="mt-0.5 truncate text-slate-500">{e.product.supplier_name}</p>
             {size && <p className="mt-0.5 tabular-nums text-slate-500">{size}</p>}
-            <p className="mt-1 font-semibold tabular-nums text-slate-900">{formatVnd(e.product.unit_price)}</p>
+            <p className="mt-1 font-semibold tabular-nums text-slate-900">{e.product.unit_price ? formatVnd(e.product.unit_price) : '—'}</p>
           </div>
         </div>
       ) : !isUnknownItem(e) && (
-        <p className="rounded-lg bg-amber-50 px-3 py-2.5 text-[13px] text-amber-900">{t('ws.noProductYet', { name: elementName(e) })}</p>
+        <p className="rounded-lg bg-amber-50 px-3 py-2.5 text-[13px] text-amber-900">{t('ws.noProductYet', { name: elementName(e, role) })}</p>
       )}
 
-      {/* right under the product: the most common next move after looking at an item */}
-      {onComment && <Button size="sm" block onClick={onComment}>{t('ws.commentItem')}</Button>}
+      {canComment && <p className="text-xs text-slate-500">{t('ws.pressCToComment')}</p>}
 
       {isUnknownItem(e) && (
-        <p className="rounded-lg bg-slate-100 px-3 py-2.5 text-[13px] text-slate-700">{t('items.unknownHelp', { block: e.block_name })}</p>
+        <p className="rounded-lg bg-slate-100 px-3 py-2.5 text-[13px] text-slate-700">{designer ? t('items.unknownHelp', { block: e.block_name }) : `${t('reasons.unknownCustomer')}.`}</p>
       )}
 
       {editable && (e.element_type === 'DECOR' || e.element_type === 'LIGHTING') && (
@@ -116,7 +137,7 @@ export function ItemPanel({ element: e, elements, editable, onSelect, onChange, 
         <section>
           <div className="mb-2 flex items-baseline justify-between gap-2">
             <h4 className="text-[13px] font-semibold text-slate-800">{t('ws.alternatives')}</h4>
-            {onBrowse && <button type="button" onClick={onBrowse} className="text-xs font-medium text-brand hover:underline">{t('ws.browseCatalog')}</button>}
+            {onBrowse && <button type="button" onClick={onBrowse} className="rounded text-xs font-medium text-brand hover:underline focus-visible:outline-2 focus-visible:outline-brand">{t('ws.browseCatalog')}</button>}
           </div>
           {error ? <ErrorState message={error} onRetry={() => setReload((n) => n + 1)} /> : !options ? (
             <div className="grid grid-cols-2 gap-2">{[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-40 w-full" />)}</div>
@@ -139,7 +160,7 @@ export function ItemPanel({ element: e, elements, editable, onSelect, onChange, 
       )}
 
 
-      {editable && !!notChosen.length && (
+      {leadTools && !!notChosen.length && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
           <p className="text-[13px] font-medium text-amber-900">{t('items.notChosen', { n: notChosen.length })}</p>
           <div className="mt-2 flex flex-wrap gap-2">
@@ -149,12 +170,12 @@ export function ItemPanel({ element: e, elements, editable, onSelect, onChange, 
         </div>
       )}
 
-      {!!unknown.length && (
+      {!!unknown.length && designer && (
         <div className="rounded-lg border border-line bg-slate-50 p-3">
           <p className="text-[13px] font-medium text-slate-800">{t('items.unknownTitle', { n: unknown.length })}</p>
           <ul className="mt-1 space-y-0.5">
             {unknown.map((u) => (
-              <li key={u.id}><button type="button" className="font-mono text-[13px] text-brand hover:underline" onClick={() => onSelect(u)}>{u.block_name}</button></li>
+              <li key={u.id}><button type="button" className="rounded font-mono text-[13px] text-brand hover:underline focus-visible:outline-2 focus-visible:outline-brand" onClick={() => onSelect(u)}>{u.block_name}</button></li>
             ))}
           </ul>
           <p className="mt-1.5 text-xs text-slate-500">{t('items.renameHint')}</p>

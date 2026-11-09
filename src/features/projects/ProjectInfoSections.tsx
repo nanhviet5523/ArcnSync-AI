@@ -1,11 +1,9 @@
-import { Card, DetailList } from '@/components/ui';
+import { Card, DetailList, initials } from '@/components/ui';
 import { formatMoney, formatNumber, t } from '@/i18n';
 import type { Person, Project } from './projectApi';
 import { unitLabel } from './projectView';
 
 /** Home, People and Budget blocks of a project, shared by the homeowner overview and the workspace "Project info" drawer. */
-
-const initials = (name: string) => name.trim().split(/\s+/).map((w) => w[0]?.toUpperCase()).slice(0, 2).join('');
 
 export function HomeCard({ project, className = '' }: { project: Project; className?: string }) {
   const a = project.apartment;

@@ -37,7 +37,7 @@ export function StatCard({ label, value, hint, loading, icon, iconTone = 'blue',
     <div className="min-w-0">
       <p className="text-[13px] text-slate-500">{label}</p>
       {loading ? <div className="mt-1.5 h-7 w-12 animate-pulse rounded bg-slate-100" /> : <p className={`mt-1 text-2xl font-bold tabular-nums ${valueClassName}`}>{value}</p>}
-      {hint && <p className="mt-0.5 text-xs text-slate-400">{hint}</p>}
+      {hint && <p className="mt-0.5 text-xs text-slate-500">{hint}</p>}
     </div>
   );
   return (

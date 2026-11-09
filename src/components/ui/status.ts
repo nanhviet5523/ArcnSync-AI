@@ -1,4 +1,4 @@
-import { t } from '@/i18n';
+import { t } from '../../i18n/index.ts';
 
 /**
  * Chip colours. One fixed colour per step, shared by every page:
@@ -18,7 +18,7 @@ export const TONE_CLASS: Record<Tone, string> = {
   amber: 'bg-amber-100 text-amber-800',
   green: 'bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-100',
   red: 'bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-100',
-  struck: 'bg-slate-50 text-slate-400 line-through',
+  struck: 'bg-slate-50 text-slate-500 line-through',
 };
 
 /** The one map from backend enums to label + tone. */
@@ -32,13 +32,41 @@ const STATUS: Record<string, Record<string, Tone>> = {
   choice: { CHOSEN: 'green', NOT_CHOSEN: 'amber', UNIDENTIFIED: 'gray' },
   stage: { CONCEPT: 'sky', LAYOUT_2D: 'blue', RENDER_3D: 'violet' },
   flag: { NEEDS_ME: 'amber' },
+  projectRole: { LEAD: 'blue', MEMBER: 'gray' },
+  roomDraft: { DRAFT: 'gray', READY: 'green' },
 };
-export type StatusKind = 'project' | 'version' | 'comment' | 'choice' | 'stage' | 'flag';
+export type StatusKind = 'project' | 'version' | 'comment' | 'choice' | 'stage' | 'flag' | 'projectRole' | 'roomDraft';
 
 export const statusInfo = (kind: StatusKind, value: string) => ({
   label: t(`status.${kind}.${value}`),
   tone: STATUS[kind]?.[value] ?? 'gray',
 });
+
+/** Avatar colours of the designer in charge of a room, picked by designer id. Dark enough for white letters; no violet, which is the Products chip. */
+export const AVATAR_TONES = [
+  'bg-navy text-white', 'bg-blue-700 text-white', 'bg-emerald-700 text-white',
+  'bg-amber-700 text-white', 'bg-rose-700 text-white', 'bg-cyan-700 text-white',
+] as const;
+
+export function avatarTone(id: string) {
+  let h = 0;
+  for (const c of id) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  return AVATAR_TONES[h % AVATAR_TONES.length];
+}
+
+export const initials = (name: string) => name.trim().split(/\s+/).map((w) => w[0]?.toUpperCase()).slice(0, 2).join('');
+
+/** Letters per person id. People with the same initials are numbered in list order: DD, DD2. */
+export function avatarLabels(people: readonly { id: string; name: string }[]): Record<string, string> {
+  const out: Record<string, string> = {}, seen: Record<string, number> = {};
+  for (const p of people) {
+    if (out[p.id]) continue;
+    const base = initials(p.name);
+    seen[base] = (seen[base] ?? 0) + 1;
+    out[p.id] = seen[base] > 1 ? `${base}${seen[base]}` : base;
+  }
+  return out;
+}
 
 const ROLE_ALIAS: Record<string, string> = { CUSTOMER: 'homeowner', HOMEOWNER: 'homeowner', STAFF: 'staff', DESIGNER: 'designer', SUPPLIER: 'supplier', ADMIN: 'admin' };
 /** CUSTOMER (backend) and homeowner (frontend) both read "Homeowner". */

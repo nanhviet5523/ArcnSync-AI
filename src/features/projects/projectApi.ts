@@ -23,6 +23,14 @@ export interface Apartment {
   floors: ApartmentFloor[];
 }
 
+/** Role inside one project's design team, not an account role. */
+export type ProjectRole = 'LEAD' | 'MEMBER';
+
+export interface ProjectMember { designerId: string; fullName: string; email: string; title: string | null; addedAt: string }
+export interface ProjectRoomRef { id: string; name: string; floorId: string }
+export interface RoomAssignment { roomId: string; roomName: string; floorId: string; designerId: string; designerName: string }
+export interface InvitableDesigner { id: string; fullName: string; email: string; avatarUrl: string | null }
+
 export interface Project {
   id: string;
   code: string;
@@ -37,6 +45,12 @@ export interface Project {
   apartment: Pick<Apartment, 'id' | 'buildingName' | 'address' | 'tower' | 'unitNo'> & Partial<Apartment>;
   createdAt: string;
   updatedAt: string;
+  /** Project detail only. The lead is `designer`. */
+  members?: ProjectMember[];
+  /** Null = the viewer is not on the design team. Undefined = the backend did not say (see resolveProjectRole). */
+  myProjectRole?: ProjectRole | null;
+  /** Project list only: rooms assigned to the viewer. */
+  myRooms?: ProjectRoomRef[];
 }
 
 interface Page<T> { items: T[]; page: number; limit: number; total: number }
@@ -56,6 +70,14 @@ export const projectApi = {
     apiRequest<Project>('/projects', json('POST', body)),
   assignDesigner: (id: string, designerId: string) => apiRequest<Project>(`/projects/${id}/designer`, json('PUT', { designerId })),
   kickoff: (id: string) => apiRequest<Project>(`/projects/${id}/design-kickoff`, json('POST')),
+
+  listInvitableDesigners: async (id: string, q: string) => (await apiRequest<{ items: InvitableDesigner[] }>(`/projects/${id}/invitable-designers${qs({ q: q.trim() })}`)).items,
+  addMember: (id: string, designerId: string) => apiRequest<ProjectMember>(`/projects/${id}/members`, json('POST', { designerId })),
+  removeMember: (id: string, designerId: string) => apiRequest<void>(`/projects/${id}/members/${designerId}`, json('DELETE')),
+  listRoomAssignments: async (id: string) => (await apiRequest<{ items: RoomAssignment[] }>(`/projects/${id}/room-assignments`)).items,
+  /** Rooms not listed keep their designer. Changing a room's designer deletes that room's draft. */
+  updateRoomAssignments: (id: string, assignments: { roomId: string; designerId: string | null }[]) =>
+    apiRequest<{ items: RoomAssignment[] }>(`/projects/${id}/room-assignments`, json('PUT', { assignments })),
 
   findCustomer: (email: string) => apiRequest<{ id: string; email: string; fullName: string; phone: string }>(`/users/customers${qs({ email })}`),
   listDesigners: () => apiRequest<Page<{ id: string; fullName: string; email: string; isAvailable: boolean }>>('/users/designers?available=true&limit=100'),

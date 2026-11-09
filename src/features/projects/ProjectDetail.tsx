@@ -1,19 +1,23 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { AppShell, Banner, Button, Card, DetailList, ErrorState, Field, PageHeader, Select, Skeleton, StatusChip, Stepper } from '@/components/ui';
 import { errorText, formatDate, formatMoney, formatNumber, t, tList } from '@/i18n';
 import { getCurrentUser } from '@/services/authService';
-import { canOpenWorkspace, isPreparing, nextStep, projectApi, stepIndex } from './projectApi';
+import { canOpenWorkspace, isPreparing, projectApi, stepIndex } from './projectApi';
 import type { Project } from './projectApi';
+import { TeamCard } from '@/features/design-workspace/TeamCard';
+import { can, resolveProjectRole } from '@/features/design-workspace/logic';
 import { HomeownerProjectView } from './HomeownerProjectView';
-import { conceptStep } from './projectView';
+import { conceptStep, nextFor, useLatestVersions } from './projectView';
 
-/** Project overview for Staff (/staff/projects/:id) and Homeowner (/homeowner/projects/:id). */
+/** Project overview for Staff (/staff/projects/:id), Designer (/designer/projects/:id) and Homeowner (/homeowner/projects/:id). */
 export function ProjectDetail() {
   const { id = '' } = useParams();
   const navigate = useNavigate();
   const role = getCurrentUser()?.role ?? 'homeowner';
+  const userId = getCurrentUser()?.id ?? '';
   const staff = role === 'staff' || role === 'admin';
+  const designer = role === 'designer';
   const [project, setProject] = useState<Project | null>(null);
   const [designers, setDesigners] = useState<{ id: string; fullName: string; email: string }[]>([]);
   const [designerId, setDesignerId] = useState('');
@@ -24,18 +28,22 @@ export function ProjectDetail() {
   const load = useCallback(async () => {
     setError('');
     try {
-      const [p, d] = await Promise.all([projectApi.get(id), staff ? projectApi.listDesigners() : Promise.resolve(null)]);
-      setProject(p);
+      const [p, d, rooms] = await Promise.all([projectApi.get(id), staff ? projectApi.listDesigners() : Promise.resolve(null), designer ? projectApi.listRoomAssignments(id) : Promise.resolve([])]);
+      // same fields as a row of the project list, so the next step reads the same on both
+      setProject({ ...p, myRooms: rooms.filter((a) => a.designerId === userId).map((a) => ({ id: a.roomId, name: a.roomName, floorId: a.floorId })) });
       if (d) setDesigners(d.items);
     } catch (e) { setError(errorText(e)); }
-  }, [id, staff]);
+  }, [id, staff, designer, userId]);
   useEffect(() => { Promise.resolve().then(load); }, [load]);
+
+  const forVersions = useMemo(() => (designer && project ? [project] : null), [designer, project]);
+  const { latest, ready } = useLatestVersions(forVersions, 'designer');
 
   const act = async (kind: 'assign' | 'kickoff', fn: () => Promise<Project>) => {
     setBusy(kind); setActionError('');
     try { await fn(); await load(); } catch (e) { setActionError(errorText(e)); } finally { setBusy(''); }
   };
-  const back = { to: staff ? '/staff/projects' : '/homeowner/projects', label: t('projectDetail.back') };
+  const back = { to: staff ? '/staff/projects' : designer ? '/designer/projects' : '/homeowner/projects', label: t('projectDetail.back') };
 
   if (error) return <AppShell><PageHeader back={back} title={t('projectDetail.back')} /><ErrorState message={error} onRetry={load} /></AppShell>;
   if (!project) {
@@ -47,13 +55,17 @@ export function ProjectDetail() {
     );
   }
 
-  if (!staff) return <HomeownerProjectView project={project} />;
+  if (!staff && !designer) return <HomeownerProjectView project={project} />;
 
   const a = project.apartment;
   const floors = [...(a.floors ?? [])].sort((x, y) => x.level - y.level);
   const preparing = isPreparing(project.status);
   const workspace = canOpenWorkspace(project.status);
   const open = () => navigate(`/projects/${project.id}/workspace`);
+  const projectRole = resolveProjectRole(project, userId);
+  const canManageTeam = designer && can('manageTeam', { role: 'designer', version: null, project, projectRole }).ok;
+  // one sentence for this page and the project's card; a designer waits for the version check
+  const next = designer && !ready ? '' : nextFor(role, project, designer ? latest(project.id) : undefined);
 
   // exactly one primary action, following the next step
   const primary = workspace
@@ -80,12 +92,14 @@ export function ProjectDetail() {
         </Card>
       )}
 
-      <div className="mb-5">
-        <Banner tone="blue">
-          <p className="text-[13px] font-medium text-blue-700">{t('nextStep.title')}</p>
-          <p className="mt-0.5 text-[15px] font-semibold text-slate-900">{nextStep(role, project)}</p>
-        </Banner>
-      </div>
+      {next && (
+        <div className="mb-5">
+          <Banner tone="blue">
+            <p className="text-[13px] font-medium text-blue-700">{t('nextStep.title')}</p>
+            <p className="mt-0.5 text-[15px] font-semibold text-slate-900">{next}</p>
+          </Banner>
+        </div>
+      )}
 
       {actionError && <div className="mb-5"><ErrorState message={actionError} /></div>}
 
@@ -120,11 +134,17 @@ export function ProjectDetail() {
 
         <Card title={t('projectDetail.people')}>
           <DetailList items={[
-            { label: t('projectDetail.homeowner'), value: <>{project.customer.fullName}{project.customer.email && <span className="block text-xs text-slate-500">{project.customer.email}</span>}</> },
+            { label: t('projectDetail.homeowner'), value: <>{project.customer.fullName}{staff && project.customer.email && <span className="block text-xs text-slate-500">{project.customer.email}</span>}</> },
             { label: t('projectDetail.staff'), value: project.staff.fullName },
-            { label: t('projectDetail.designer'), value: project.designer ? project.designer.fullName : <span className="text-slate-400">{t('projectDetail.notAssigned')}</span> },
-            { label: t('projectDetail.budget'), value: <span className="tabular-nums">{t('projectDetail.budgetValue', { min: formatMoney(project.budgetMin), max: formatMoney(project.budgetMax) })}</span> },
+            { label: t('projectDetail.designer'), value: project.designer ? project.designer.fullName : <span className="text-slate-500">{t('projectDetail.notAssigned')}</span> },
+            ...(staff ? [{ label: t('projectDetail.budget'), value: <span className="tabular-nums">{t('projectDetail.budgetValue', { min: formatMoney(project.budgetMin), max: formatMoney(project.budgetMax) })}</span> }] : []),
           ]} />
+
+          {project.designer && (
+            <div className="mt-5 border-t border-slate-100 pt-4">
+              <TeamCard bare project={project} canManage={canManageTeam} onChanged={load} />
+            </div>
+          )}
 
           {staff && preparing && (
             <div className="mt-5 border-t border-slate-100 pt-4">
@@ -142,7 +162,7 @@ export function ProjectDetail() {
                   {t('projectDetail.assign')}
                 </Button>
               </div>
-              <p className="mt-3 text-xs text-slate-400">{t('projectDetail.kickoffNote')}</p>
+              <p className="mt-3 text-xs text-slate-500">{t('projectDetail.kickoffNote')}</p>
             </div>
           )}
         </Card>

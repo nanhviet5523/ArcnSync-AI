@@ -3,7 +3,8 @@ import { formatNumber, t, tList } from '@/i18n';
 import type { UserRole } from '@/types/role';
 import { designApi } from '@/features/design-workspace/designApi';
 import type { Role, VersionStatus, VersionType } from '@/features/design-workspace/types';
-import { countWaitingForMe, versionLabel } from '@/features/design-workspace/logic';
+import { awaitingInScope, versionLabel } from '@/features/design-workspace/logic';
+import { unreadyDraftRooms } from '@/features/design-workspace/roomDrafts';
 import { isPreparing, nextStep, projectApi, stepIndex } from './projectApi';
 import type { Project } from './projectApi';
 
@@ -35,7 +36,7 @@ export function queued<T>(job: () => Promise<T>, priority: Priority = 'normal'):
 }
 
 /** awaiting = open comment threads on this version whose latest message is from the other side (waitingForMe). */
-export interface LatestVersion { id: string; label: string; status: VersionStatus; type: VersionType; awaiting: number }
+export interface LatestVersion { id: string; label: string; status: VersionStatus; type: VersionType; awaiting: number; /** Member: rooms with a draft not marked ready yet. */ draftRooms: string[] }
 /** null = the project has no version yet; 'error' = the request failed (never treated as "no version"); 'checking' = retrying. */
 export type LatestState = LatestVersion | null | 'error' | 'checking';
 /** The latest version could not be determined (failed or being retried). */
@@ -50,12 +51,14 @@ export const awaitingCount = (p: Pick<Project, 'status'>, latest: LatestState | 
 /**
  * Who has to act:
  * - Designer: layout or products are open and the latest version is not waiting on the homeowner.
+ * - Member of the design team: only comments in their own rooms; the stage itself is the Lead's to move.
  * - Homeowner: the latest version was sent to them (SUBMITTED).
  */
-export function needsAction(role: UserRole, p: Pick<Project, 'status'>, latest: LatestState | undefined) {
+export function needsAction(role: UserRole, p: Pick<Project, 'status' | 'myProjectRole'>, latest: LatestState | undefined) {
   if (versionUnknown(latest)) return false;
   // a comment waiting for my reply puts the project in "Needs your action" for both sides
   if ((role === 'designer' || role === 'homeowner') && awaitingCount(p, latest) > 0) return true;
+  if (p.myProjectRole === 'MEMBER') return !!knownVersion(latest)?.draftRooms.length;
   if (role === 'designer') return (p.status === 'IN_DESIGN' || p.status === 'PRODUCT_SELECTION') && latest?.status !== 'SUBMITTED';
   if (role === 'homeowner') return latest?.status === 'SUBMITTED' && p.status !== 'CANCELLED' && p.status !== 'COMPLETED';
   return false;
@@ -65,7 +68,7 @@ export function needsAction(role: UserRole, p: Pick<Project, 'status'>, latest: 
  * "Next" line that agrees with the latest version, so a card never says "act" while sitting under "Waiting on others".
  * Falls back to the per-status sentence (nextStep) when no version is known.
  */
-export function nextFor(role: UserRole, p: Pick<Project, 'status' | 'designer'>, latest: LatestState | undefined): string {
+export function nextFor(role: UserRole, p: Pick<Project, 'status' | 'designer' | 'myProjectRole'>, latest: LatestState | undefined): string {
   // a closed project has nothing left to decide, whatever its version check returned
   if (isClosed(p.status)) return nextStep(role, p as Project);
   if (versionUnknown(latest)) return '';
@@ -77,7 +80,12 @@ export function nextFor(role: UserRole, p: Pick<Project, 'status' | 'designer'>,
   return main ? `${main} ${tail}` : tail;
 }
 
-function stageSentence(role: UserRole, p: Pick<Project, 'status' | 'designer'>, latest: LatestState | undefined): string {
+/** "Draft for Kitchen, Bedroom 1 not ready"; empty when there is none. */
+export const draftNote = (rooms: readonly string[]) => (rooms.length ? t('next.memberDraft', { room: [...new Set(rooms)].join(', ') }) : '');
+
+function stageSentence(role: UserRole, p: Pick<Project, 'status' | 'designer' | 'myProjectRole'>, latest: LatestState | undefined): string {
+  // "Upload the layout" and the like are the Lead's next steps; a Member's own is their draft
+  if (p.myProjectRole === 'MEMBER') return draftNote(knownVersion(latest)?.draftRooms ?? []);
   const designing = p.status === 'IN_DESIGN' || p.status === 'PRODUCT_SELECTION';
   if (!designing || latest === undefined || (role !== 'designer' && role !== 'homeowner')) return nextStep(role, p as Project);
   const stage = p.status === 'IN_DESIGN' ? 'layout' : 'products';
@@ -138,7 +146,7 @@ export function budgetShort(min: string, max: string) {
   return t('cards.budgetMixed', { min: t(`cards.budgetOne.${lo.unit}`, { v: lo.text }), max: t(`cards.budgetOne.${hi.unit}`, { v: hi.text }) });
 }
 
-export const shortAddress = (address: string | null | undefined) => address?.split(',')[0]?.trim() ?? '';
+export const shortAddress =(address: string | null | undefined) => address?.split(',')[0]?.trim() ?? '';
 export const unitLabel = (a: Project['apartment']) => [a.buildingName, a.tower, a.unitNo].filter(Boolean).join(', ');
 export const byUpdated = (a: Project, b: Project) => (b.updatedAt ?? b.createdAt).localeCompare(a.updatedAt ?? a.createdAt);
 
@@ -174,6 +182,8 @@ export function useFloorCounts(projects: Project[] | null) {
 export function useLatestVersions(projects: Project[] | null, me: Role) {
   const [latest, setLatest] = useState<Record<string, LatestState>>({});
   const requested = useRef(new Set<string>());
+  /** Latest list row per project: what a Member's comment count is limited to. */
+  const rows = useRef(new Map<string, Project>());
   const fetchOne = useCallback((id: string, priority: Priority = 'high') => {
     const list = (type: VersionType) => queued(() => designApi.listVersions(id, type), priority).then((r) => r.items);
     Promise.all([list('LAYOUT_2D'), list('RENDER_3D')]).then(async ([layout, render]) => {
@@ -181,11 +191,14 @@ export function useLatestVersions(projects: Project[] | null, me: Role) {
       if (!top) return null;
       // comments on the latest version, same priority as the versions; a failure is an error, never "0 waiting"
       const comments = await queued(() => designApi.listComments(top.id), priority);
-      return { id: top.id, label: top.label, status: top.status, type: top.version_type, awaiting: countWaitingForMe(comments, me) };
+      const row = rows.current.get(id);
+      const drafts = row?.myProjectRole === 'MEMBER' && row.status === 'PRODUCT_SELECTION' && top.version_type === 'RENDER_3D' ? await queued(() => designApi.listRoomDrafts(top.id), priority) : [];
+      return { id: top.id, label: top.label, status: top.status, type: top.version_type, awaiting: awaitingInScope(comments, me, row ?? {}), draftRooms: unreadyDraftRooms(drafts) };
     }).then((v) => setLatest((x) => ({ ...x, [id]: v })), () => setLatest((x) => ({ ...x, [id]: 'error' })));
   }, [me]);
   useEffect(() => {
     for (const p of projects ?? []) {
+      rows.current.set(p.id, p);
       if (requested.current.has(p.id)) continue;
       requested.current.add(p.id);
       // nothing to check before design starts, or once the project is closed

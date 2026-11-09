@@ -1,8 +1,9 @@
 import { apiRequest, getCurrentUser } from '@/services/authService';
 import { projectApi } from '@/features/projects/projectApi';
+import { uploadFloorRefs } from './logic';
 import type {
-  Comment, CommentReply, ComparedElement, DesignElement, DesignVersion, ElementEdit, ElementRef, Opening, Product, ProductOption,
-  Project, RevisionLimit, RevisionType, Role, SceneJson, UploadInput, VersionComparison, VersionFloor, VersionSummary, VersionType, Viewer,
+  Comment, CommentReply, ComparedElement, DesignElement, DesignVersion, DraftProduct, ElementEdit, ElementRef, Opening, Product, ProductOption,
+  Project, RevisionLimit, RevisionType, Role, RoomDraft, RoomDraftInput, SceneJson, UploadInput, VersionComparison, VersionFloor, VersionSummary, VersionType, Viewer,
 } from './types';
 
 export interface DesignApi {
@@ -21,7 +22,14 @@ export interface DesignApi {
   approve(versionId: string): Promise<VersionSummary>;
   listProductOptions(elementId: string): Promise<ProductOption[]>;
   /** choose_all_remaining: món chưa chọn giữ model hiện tại (sản phẩm có block_code trùng tên block). */
-  saveEdits(versionId: string, input: { title: string; revision_type: RevisionType; edits: ElementEdit[]; choose_all_remaining?: boolean }): Promise<DesignVersion>;
+  saveEdits(versionId: string, input: { title: string; revision_type: RevisionType; edits: ElementEdit[]; choose_all_remaining?: boolean; addressed_comment_ids?: string[]; room_draft_ids?: string[] }): Promise<DesignVersion & { skipped_room_ids: string[] }>;
+  /** Lead: every draft of the version. Member: their own. */
+  listRoomDrafts(versionId: string): Promise<RoomDraft[]>;
+  /** Replaces the whole draft of the room and puts it back to DRAFT. */
+  saveRoomDraft(versionId: string, roomId: string, input: RoomDraftInput): Promise<void>;
+  markRoomDraftReady(versionId: string, roomId: string): Promise<void>;
+  /** Designer: comment needed no drawing change (e.g. a question). */
+  addressComment(commentId: string, addressedInVersionId: string): Promise<void>;
   compare(versionId: string, withId: string, floorId?: string): Promise<VersionComparison>;
   /** Đường dẫn model 3D của món theo sản phẩm (route theo dự án, mọi vai). */
   elementModelPath(elementId: string, productId: string): string;
@@ -36,7 +44,11 @@ const floorRef = (f: Raw) => ({ id: f.id, level: f.level, name: f.name, floor_he
 
 const scene = (s: Raw): SceneJson => ({
   unit_scale: s.unitScale, wall_height: s.wallHeight, wall_thickness: s.wallThickness,
-  walls: s.walls ?? [], wall_segments: s.wallSegments ?? [], rooms: s.rooms ?? [], warnings: s.warnings ?? [],
+  walls: s.walls ?? [], wall_segments: s.wallSegments ?? [], warnings: s.warnings ?? [],
+  rooms: (s.rooms ?? []).map((r: Raw) => ({
+    name: r.name, area: r.area, label: r.label, room_id: r.roomId ?? null, has_name: r.hasName ?? true,
+    boundary: r.boundary?.length >= 3 ? r.boundary : null,
+  })),
   openings: (s.openings ?? []).map((o: Raw): Opening => ({
     handle: o.handle, code: o.blockName, type: o.type === 'DOOR' ? 'door' : 'window', x: o.x, y: o.y,
     rotation: o.rotation, width: o.width, wall_kind: o.wallKind, wall_index: o.wallIndex,
@@ -50,7 +62,7 @@ const product = (p: Raw, id: string): Product => ({
 });
 
 const element = (e: Raw): DesignElement => ({
-  id: e.id, floor_id: e.floorId, dxf_handle: e.dxfHandle, block_name: e.blockName, name: e.name, element_type: e.elementType,
+  id: e.id, floor_id: e.floorId, room_id: e.roomId ?? null, dxf_handle: e.dxfHandle, block_name: e.blockName, name: e.name, element_type: e.elementType,
   category: e.category, default_model_url: e.defaultModelUrl, position: e.position,
   width_mm: e.widthMm ?? 500, depth_mm: e.depthMm ?? 500, height_mm: e.heightMm ?? 800,
   overrides: e.overrides, choice: e.choice,
@@ -76,12 +88,21 @@ const detail = (v: Raw): DesignVersion => ({
 const ref = (r: Raw): ElementRef | null => r && { id: r.id, floor_id: r.floorId, dxf_handle: r.dxfHandle, block_name: r.blockName, name: r.name };
 const reply = (r: Raw): CommentReply => ({ id: r.id, design_version_id: r.designVersionId, content: r.content, author: author(r.author), created_at: r.createdAt });
 const comment = (c: Raw): Comment => ({
-  ...reply(c), version_label: c.versionLabel, kind: c.kind, status: c.status, floor_id: c.floorId, pin_position: c.pinPosition,
+  ...reply(c), version_label: c.versionLabel, kind: c.kind, status: c.status, floor_id: c.floorId, room_id: c.roomId ?? null, pin_position: c.pinPosition,
   element: ref(c.element), current_element: ref(c.currentElement), addressed_in_version_id: c.addressedInVersionId,
   replies: (c.replies ?? []).map(reply),
 });
 const compared = (e: Raw): ComparedElement => ({ id: e.id, floor_id: e.floorId, dxf_handle: e.dxfHandle, name: e.name });
 const change = (c: Raw) => ({ from: compared(c.from), to: compared(c.to) });
+
+const draftProduct = (p: Raw): DraftProduct | null => (p ? { id: p.id, name: p.name, price: p.price ?? null, thumbnail_url: p.thumbnailUrl ?? null, available: p.available ?? true } : null);
+const roomDraft = (d: Raw): RoomDraft => ({
+  id: d.id, room_id: d.roomId, room_name: d.roomName, designer_id: d.designerId, designer_name: d.designerName, status: d.status,
+  selections: (d.selections ?? []).map((s: Raw) => ({ element_id: s.elementId, product_id: s.productId, product: draftProduct(s.product) })),
+  overrides: (d.overrides ?? []).map((o: Raw) => ({ element_id: o.elementId, overrides: o.overrides })),
+  addressed_comment_ids: d.addressedCommentIds ?? [],
+  dropped_changes: (d.droppedChanges ?? []).map((x: Raw) => ({ element_id: x.elementId, floor_id: x.floorId, dxf_handle: x.dxfHandle, product: draftProduct(x.product) })),
+});
 
 const post = (body: unknown, method = 'POST'): RequestInit => ({ method, body: JSON.stringify(body) });
 const qs = (q: Record<string, string | undefined>) => {
@@ -105,9 +126,7 @@ export const designApi: DesignApi = {
     form.append('title', input.title);
     if (input.revision_type) form.append('revisionType', input.revision_type);
     form.append('wallHeight', String(input.wall_height_m));
-    form.append('floors', JSON.stringify(input.files.map((f) => (f.floor_id
-      ? { floorId: f.floor_id }
-      : { level: f.level, name: f.name, floorHeightMm: f.floor_height_mm }))));
+    form.append('floors', JSON.stringify(uploadFloorRefs(input.files.map((f) => ({ ...f, key: f.name })))));
     if (input.addressed_comment_ids.length) form.append('addressedCommentIds', JSON.stringify(input.addressed_comment_ids));
     for (const f of input.files) form.append('files', f.file, f.file.name);
     return detail(await apiRequest<Raw>(`/projects/${projectId}/design-versions`, { method: 'POST', body: form }));
@@ -132,11 +151,22 @@ export const designApi: DesignApi = {
     const r = await apiRequest<Raw>(`/design-elements/${elementId}/product-options?limit=100`);
     return r.items.map((o: Raw): ProductOption => ({ ...product(o, o.id), fit: o.fit, current: o.current }));
   },
-  async saveEdits(id, { title, revision_type, edits, choose_all_remaining }) {
+  async addressComment(id, addressedInVersionId) { await apiRequest(`/comments/${id}/status`, post({ action: 'ADDRESS', addressedInVersionId }, 'PATCH')); },
+  async saveEdits(id, { title, revision_type, edits, choose_all_remaining, addressed_comment_ids, room_draft_ids }) {
     const selections = edits.filter((e) => e.product_id).map((e) => ({ elementId: e.element_id, productId: e.product_id }));
     const overrides = edits.filter((e) => e.overrides).map((e) => ({ elementId: e.element_id, overrides: e.overrides }));
-    return detail(await apiRequest<Raw>(`/design-versions/${id}/edits`, post({ title, revisionType: revision_type, selections, overrides, ...(choose_all_remaining ? { chooseAllRemaining: true } : {}) })));
+    const saved = await apiRequest<Raw>(`/design-versions/${id}/edits`, post({ title, revisionType: revision_type, selections, overrides, ...(choose_all_remaining ? { chooseAllRemaining: true } : {}), ...(addressed_comment_ids?.length ? { addressedCommentIds: addressed_comment_ids } : {}), ...(room_draft_ids?.length ? { roomDraftIds: room_draft_ids } : {}) }));
+    return { ...detail(saved), skipped_room_ids: saved.skippedRoomIds ?? [] };
   },
+  listRoomDrafts: async (id) => (await apiRequest<Raw>(`/design-versions/${id}/room-drafts`)).items.map(roomDraft),
+  async saveRoomDraft(id, roomId, input) {
+    await apiRequest(`/design-versions/${id}/room-drafts/${roomId}`, post({
+      selections: input.selections.map((s) => ({ elementId: s.element_id, productId: s.product_id })),
+      overrides: input.overrides.map((o) => ({ elementId: o.element_id, overrides: o.overrides })),
+      addressedCommentIds: input.addressed_comment_ids,
+    }, 'PUT'));
+  },
+  async markRoomDraftReady(id, roomId) { await apiRequest(`/design-versions/${id}/room-drafts/${roomId}`, post({ status: 'READY' }, 'PATCH')); },
   async compare(id, withId, floorId) {
     const r = await apiRequest<Raw>(`/design-versions/${id}/comparison${qs({ with: withId, floorId })}`);
     return {
