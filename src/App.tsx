@@ -38,6 +38,8 @@ import { SupplierInquiries } from '@/features/supplier/SupplierInquiries';
 import { DesignerPortfolio } from '@/features/designer/DesignerPortfolio';
 import { DesignerAIStudio } from '@/features/designer/DesignerAIStudio';
 import { ProtectedRoute } from '@/routes/ProtectedRoute';
+import { DEFAULT_ROLE_REDIRECT } from '@/routes/routes.config';
+import { getCurrentUser } from '@/services/authService';
 import type { UserRole } from '@/types/role';
 import { t } from '@/i18n';
 
@@ -104,10 +106,14 @@ function App() {
           <Route
             path="/"
             element={
-              <HomePage
-                onNavigateToLogin={() => navigate('/login')}
-                onNavigateToSignUp={() => navigate('/signup')}
-              />
+              getCurrentUser()?.role === 'admin' ? (
+                <Navigate to={DEFAULT_ROLE_REDIRECT.admin} replace />
+              ) : (
+                <HomePage
+                  onNavigateToLogin={() => navigate('/login')}
+                  onNavigateToSignUp={() => navigate('/signup')}
+                />
+              )
             }
           />
 

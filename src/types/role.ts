@@ -12,10 +12,11 @@ export interface User {
   badgeTitle?: string; // For example: "Staff", "Supplier Partner", "Studio Designer", "Admin"
 }
 
-// Default routes and navbar navigation for each role (skill ui-nghiep-vu §2, only pages that exist).
+// Landing path after login / on logo click: the shared homepage for everyone, except admin who lands on the dashboard.
+// navItems drive the role-based Header menu (skill ui-nghiep-vu §2, only pages that exist).
 export const ROLE_CONFIG: Record<UserRole, { defaultPath: string; badge: string; navItems: { label: string; path: string }[] }> = {
   homeowner: {
-    defaultPath: '/homeowner/projects',
+    defaultPath: '/',
     badge: t('role.homeowner'),
     navItems: [
       { label: t('nav.myProjects'), path: '/homeowner/projects' },
@@ -23,7 +24,7 @@ export const ROLE_CONFIG: Record<UserRole, { defaultPath: string; badge: string;
     ],
   },
   staff: {
-    defaultPath: '/staff/projects',
+    defaultPath: '/',
     badge: 'Staff',
     navItems: [
       { label: t('nav.projects'), path: '/staff/projects' },
@@ -33,7 +34,7 @@ export const ROLE_CONFIG: Record<UserRole, { defaultPath: string; badge: string;
     ],
   },
   designer: {
-    defaultPath: '/designer/projects',
+    defaultPath: '/',
     badge: t('role.designer'),
     navItems: [
       { label: t('nav.assignedProjects'), path: '/designer/projects' },
@@ -43,7 +44,7 @@ export const ROLE_CONFIG: Record<UserRole, { defaultPath: string; badge: string;
     ],
   },
   supplier: {
-    defaultPath: '/supplier-catalog',
+    defaultPath: '/',
     badge: t('role.supplier'),
     navItems: [
       { label: t('nav.dashboard'), path: '/supplier-dashboard' },
@@ -53,7 +54,7 @@ export const ROLE_CONFIG: Record<UserRole, { defaultPath: string; badge: string;
     ],
   },
   admin: {
-    defaultPath: '/admin-users',
+    defaultPath: '/admin-dashboard',
     badge: 'Admin',
     navItems: [
       { label: 'Dashboard', path: '/admin-dashboard' },

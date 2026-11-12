@@ -164,14 +164,12 @@ export const Header: React.FC<HeaderProps> = ({ role, activeTab, onLoginClick, o
   const location = useLocation();
   const detectedRole = useDetectedRole(role);
 
-  // Landing page without an authenticated role
-  if (!detectedRole || (location.pathname === '/' && !role)) {
+  // Guest (no session): public header. Signed-in users get their role menu, also on the homepage.
+  if (!detectedRole) {
     return (
       <header className="sticky top-0 z-50 border-b border-line bg-surface">
         <div className="mx-auto flex h-16 w-full max-w-[1440px] items-center justify-between gap-6 px-6 lg:px-12">
-          <button type="button" onClick={() => navigate('/')} className="cursor-pointer transition-opacity hover:opacity-90" aria-label="ArchSync AI home">
-            <Logo size={32} />
-          </button>
+          <Logo size={32} to="/" />
           <nav className="hidden gap-8 text-sm font-medium text-slate-700 lg:flex" aria-label="Main">
             {publicLinks.map(([label, href]) => (
               <a
@@ -233,9 +231,7 @@ export const Header: React.FC<HeaderProps> = ({ role, activeTab, onLoginClick, o
     <header className="sticky top-0 z-50 border-b border-line bg-surface">
       <div className="mx-auto flex h-16 w-full max-w-[1440px] items-center justify-between px-6 lg:px-12">
         <div className="flex h-full items-center gap-10">
-          <button type="button" className="shrink-0 cursor-pointer transition-opacity hover:opacity-90" onClick={() => navigate(config.defaultPath)} aria-label="ArchSync AI home">
-            <Logo size={32} />
-          </button>
+          <Logo size={32} to={config.defaultPath} />
 
           <nav className="flex h-full items-stretch gap-8 overflow-x-auto text-sm" aria-label={`${config.badge} navigation`}>
             {config.navItems.map((item) => {

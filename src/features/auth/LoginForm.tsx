@@ -88,7 +88,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSignUpClick }) => {
     <div className="w-full max-w-[480px] mx-auto flex flex-col justify-center min-h-full py-6">
       {/* Logo */}
       <div className="mb-6">
-        <Logo size={38} />
+        <Logo size={38} to="/" />
       </div>
 
       {/* Header Title */}

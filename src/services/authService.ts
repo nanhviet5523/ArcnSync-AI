@@ -1,7 +1,7 @@
 import type { User, UserRole } from '@/types/role';
 
 const API_BASE_URL =
-  import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
+  import.meta.env.VITE_API_URL ?? 'http://localhost:3001';
 
 const SESSION_KEY = 'archsync-auth-session';
 const LEGACY_DEMO_SESSION_KEY = 'archsync-demo-session';
