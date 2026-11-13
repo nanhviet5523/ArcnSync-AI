@@ -21,18 +21,22 @@ export class ApiError extends Error {
   status: number;
   messages: string[];
   fieldErrors: Record<string, string>;
+  /** Backend error code, e.g. BAD_REQUEST, MILESTONE_TOTAL_MISMATCH. '' when unknown. */
+  code: string;
 
   constructor(
     message: string,
     status = 0,
     messages: string[] = [],
     fieldErrors: Record<string, string> = {},
+    code = '',
   ) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
     this.messages = messages;
     this.fieldErrors = fieldErrors;
+    this.code = code;
   }
 }
 
@@ -108,7 +112,11 @@ function buildApiError(
   const body = data as {
     message?: unknown;
     errors?: unknown;
+    details?: unknown;
+    code?: unknown;
   } | null;
+
+  const code = typeof body?.code === 'string' ? body.code : '';
 
   const messages: string[] = [];
   const fieldErrors: Record<string, string> = {};
@@ -158,7 +166,7 @@ function buildApiError(
     messages[0] ||
     `${fallback} (${status}). Please try again.`;
 
-  return new ApiError(message, status, messages, fieldErrors);
+  return new ApiError(message, status, messages, fieldErrors, code);
 }
 
 async function postJson<T>(

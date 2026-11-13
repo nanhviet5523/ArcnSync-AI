@@ -1,423 +1,340 @@
-import React, { useState } from 'react';
-import { Check, User, Send, Download, Lock } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { Plus, Trash2, Send, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Header } from '@/components/layout';
 import { Footer } from '@/components/layout';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useDemoWorkspace } from '@/hooks/useDemoWorkspace';
-import { workspaceApi } from '@/services/workspaceApi';
+import { ApiError } from '@/services/authService';
+import {
+  createProjectContract,
+  isUuid,
+  type CreateContractPayload,
+  type DueTrigger,
+  type PaymentMilestoneInput,
+  type StageType,
+} from '@/features/projects/services/contractsApi';
+
+const STAGE_TYPES: { value: StageType; label: string }[] = [
+  { value: 'DEPOSIT', label: 'Đặt cọc (DEPOSIT)' },
+  { value: 'LAYOUT_2D', label: 'Mặt bằng 2D (LAYOUT_2D)' },
+  { value: 'RENDER_3D', label: 'Phối cảnh 3D (RENDER_3D)' },
+  { value: 'FINAL_PACKAGE', label: 'Hồ sơ hoàn thiện (FINAL_PACKAGE)' },
+];
+
+const DUE_TRIGGERS: { value: DueTrigger; label: string }[] = [
+  { value: 'ON_CONTRACT_ACTIVE', label: 'Khi hợp đồng kích hoạt (ON_CONTRACT_ACTIVE)' },
+  { value: 'ON_STAGE_APPROVED', label: 'Khi duyệt giai đoạn (ON_STAGE_APPROVED)' },
+];
+
+/** The trigger the backend expects for a given stage (DEPOSIT is paid on activation). */
+function defaultTrigger(stageType: StageType): DueTrigger {
+  return stageType === 'DEPOSIT' ? 'ON_CONTRACT_ACTIVE' : 'ON_STAGE_APPROVED';
+}
+
+interface MilestoneRow {
+  name: string;
+  stageType: StageType;
+  amount: string;
+  dueTrigger: DueTrigger;
+}
+
+const EMPTY_MILESTONE: MilestoneRow = {
+  name: '',
+  stageType: 'DEPOSIT',
+  amount: '',
+  dueTrigger: 'ON_CONTRACT_ACTIVE',
+};
+
+/** Parse a VND string into a number for display/comparison; NaN when invalid. */
+function toNumber(value: string): number {
+  const trimmed = value.trim();
+  return /^\d+(\.\d+)?$/.test(trimmed) ? Number(trimmed) : NaN;
+}
+
+const vnd = new Intl.NumberFormat('vi-VN');
 
 export const CreateContract: React.FC = () => {
   const navigate = useNavigate();
   const [params] = useSearchParams();
-  const workspace = useDemoWorkspace();
-  const project = workspace.projects.find((item) => item.id === params.get('projectId')) ?? workspace.projects.find((item) => item.id === 'project-modern-thuduc') ?? workspace.projects[0];
-  const [saving, setSaving] = useState(false);
-  // States quản lý form
-  const [selectedPackage, setSelectedPackage] = useState<'essential' | 'standard' | 'premium'>('standard');
-  const [designRounds, setDesignRounds] = useState('3');
-  const [timeline, setTimeline] = useState('10 weeks');
-  
-  // States quản lý tính năng
-  const [features, setFeatures] = useState({
-    conceptDesign: true,
-    visuals3D: true,
-    furnitureBOM: true,
-    siteSupervision: false,
+
+  const [projectId, setProjectId] = useState(params.get('projectId') ?? '');
+  const [totalDesignFee, setTotalDesignFee] = useState('');
+  const [maxRevisionsPerStage, setMaxRevisionsPerStage] = useState('3');
+  const [reviewWindowDays, setReviewWindowDays] = useState('7');
+  const [note, setNote] = useState('');
+  const [milestones, setMilestones] = useState<MilestoneRow[]>([
+    { ...EMPTY_MILESTONE, name: 'Đặt cọc thiết kế' },
+  ]);
+
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  const updateMilestone = (index: number, patch: Partial<MilestoneRow>) => {
+    setMilestones((rows) => rows.map((row, i) => {
+      if (i !== index) return row;
+      const next = { ...row, ...patch };
+      // Keep dueTrigger aligned with the stage unless the user picked it explicitly.
+      if (patch.stageType && patch.dueTrigger === undefined) {
+        next.dueTrigger = defaultTrigger(patch.stageType);
+      }
+      return next;
+    }));
+  };
+
+  const addMilestone = () => setMilestones((rows) => {
+    const stageType: StageType = rows.length === 0 ? 'DEPOSIT' : 'LAYOUT_2D';
+    return [...rows, { ...EMPTY_MILESTONE, stageType, dueTrigger: defaultTrigger(stageType) }];
   });
 
-  const packageTotalFee = {
-    essential: 'VND 45,000,000',
-    standard: 'VND 68,000,000',
-    premium: 'VND 95,000,000',
+  const removeMilestone = (index: number) =>
+    setMilestones((rows) => rows.filter((_, i) => i !== index));
+
+  const milestonesTotal = useMemo(
+    () => milestones.reduce((sum, row) => {
+      const amount = toNumber(row.amount);
+      return Number.isNaN(amount) ? sum : sum + amount;
+    }, 0),
+    [milestones],
+  );
+
+  const feeNumber = toNumber(totalDesignFee);
+  const feeValid = !Number.isNaN(feeNumber) && feeNumber > 0;
+  const totalsMatch = feeValid && milestonesTotal === feeNumber;
+  const projectIdValid = isUuid(projectId);
+
+  const buildPayload = (): CreateContractPayload => ({
+    totalDesignFee: totalDesignFee.trim(),
+    maxRevisionsPerStage: Number(maxRevisionsPerStage),
+    reviewWindowDays: Number(reviewWindowDays),
+    ...(note.trim() ? { note: note.trim() } : {}),
+    milestones: milestones.map((row, index): PaymentMilestoneInput => ({
+      seqNo: index + 1,
+      name: row.name.trim(),
+      stageType: row.stageType,
+      amount: row.amount.trim(),
+      dueTrigger: row.dueTrigger,
+    })),
+  });
+
+  const handleSubmit = async () => {
+    setError(null);
+    setSuccess(null);
+    setSubmitting(true);
+    try {
+      const contract = await createProjectContract(projectId.trim(), buildPayload());
+      setSuccess(`Đã tạo hợp đồng ${contract.contractNo}. Dự án chuyển sang trạng thái CONTRACT_PENDING.`);
+      // Return to the project detail view after a brief confirmation.
+      window.setTimeout(() => navigate(`/staff-project-detail?projectId=${encodeURIComponent(projectId.trim())}`), 1200);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Có lỗi xảy ra. Vui lòng thử lại.');
+    } finally {
+      setSubmitting(false);
+    }
   };
-  const saveContract = async (status: 'Draft' | 'Awaiting signature') => {
-    if (!project) return;
-    setSaving(true);
-    await workspaceApi.saveContract(project.id, {
-      packageName: selectedPackage[0].toUpperCase() + selectedPackage.slice(1) as 'Essential' | 'Standard' | 'Premium',
-      fee: Number(packageTotalFee[selectedPackage].replace(/[^0-9]/g, '')),
-      rounds: Number(designRounds),
-      timeline,
-      status,
-    }, 'Tran Nam');
-    setSaving(false);
-    navigate('/staff-contracts');
-  };
+
+  const labelClass = 'block text-[11px] font-bold text-slate-500 mb-1.5';
+  const inputClass = 'w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600';
 
   return (
     <div className="min-h-screen bg-slate-50/60 font-sans flex flex-col justify-between">
       <Header role="staff" />
 
-      {/* Main Content */}
-      <main className="w-full max-w-[1440px] mx-auto px-6 lg:px-12 py-10 flex-1">
-        {/* Title & Top Action */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
-              Create contract
-            </h1>
-            <p className="text-sm text-slate-500 mt-1">
-              {workspace.contracts.find((contract) => contract.projectId === project?.id)?.id ?? 'New contract'} · {project?.name}
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <span className="px-3 py-1 rounded-md text-xs font-bold bg-amber-50 text-amber-700">
-              Draft
-            </span>
-            <button
-              type="button"
-              disabled={saving}
-              onClick={() => void saveContract('Draft')}
-              className="px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl transition"
-            >
-              {saving ? 'Saving…' : 'Save draft'}
-            </button>
-          </div>
+      <main className="w-full max-w-[1100px] mx-auto px-6 lg:px-12 py-10 flex-1">
+        <div className="mb-8">
+          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Tạo hợp đồng</h1>
+          <p className="text-sm text-slate-500 mt-1">
+            Nhập điều khoản và lịch thanh toán, tổng các đợt phải bằng đúng phí thiết kế.
+          </p>
         </div>
 
-        {/* 2 Columns Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* CỘT TRÁI (2 Cols): Form điền thông tin */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Box 1: Parties */}
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
-              <h2 className="text-sm font-bold text-slate-900 mb-4">Parties</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-500 mb-1.5">
-                    Homeowner
-                  </label>
-                  <div className="flex items-center gap-2 px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800">
-                    <User size={14} className="text-slate-400" />
-                    <span>{project?.homeowner} · {project?.homeownerEmail}</span>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-500 mb-1.5">
-                    Company representative
-                  </label>
-                  <div className="flex items-center gap-2 px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800">
-                    <User size={14} className="text-slate-400" />
-                    <span>Tran Nam (Staff)</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Box 2: Service package */}
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
-              <h2 className="text-sm font-bold text-slate-900 mb-4">Service package</h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {/* Gói Essential */}
-                <div
-                  onClick={() => setSelectedPackage('essential')}
-                  className={`p-4 rounded-xl border cursor-pointer transition relative ${
-                    selectedPackage === 'essential'
-                      ? 'border-blue-600 bg-blue-50/20 shadow-sm'
-                      : 'border-slate-200 hover:border-slate-300'
-                  }`}
-                >
-                  <h3 className="text-sm font-bold text-slate-900">Essential</h3>
-                  <span className="text-[11px] font-semibold text-blue-600 block mb-2">
-                    2 design rounds
-                  </span>
-                  <div className="text-base font-extrabold text-slate-900 mb-3">
-                    VND 45M
-                  </div>
-                  <ul className="text-[11px] text-slate-500 space-y-1.5">
-                    <li className="flex items-center gap-1.5">
-                      <Check size={12} className="text-slate-400" />
-                      <span>Concept design</span>
-                    </li>
-                    <li className="flex items-center gap-1.5">
-                      <Check size={12} className="text-slate-400" />
-                      <span>3D per floor</span>
-                    </li>
-                  </ul>
-                </div>
-
-                {/* Gói Standard */}
-                <div
-                  onClick={() => setSelectedPackage('standard')}
-                  className={`p-4 rounded-xl border cursor-pointer transition relative ${
-                    selectedPackage === 'standard'
-                      ? 'border-blue-600 bg-blue-50/30 shadow-sm'
-                      : 'border-slate-200 hover:border-slate-300'
-                  }`}
-                >
-                  {selectedPackage === 'standard' && (
-                    <div className="absolute top-3 right-3 text-blue-600">
-                      <Check size={16} />
-                    </div>
-                  )}
-                  <h3 className="text-sm font-bold text-slate-900">Standard</h3>
-                  <span className="text-[11px] font-semibold text-blue-600 block mb-2">
-                    3 design rounds
-                  </span>
-                  <div className="text-base font-extrabold text-slate-900 mb-3">
-                    VND 68M
-                  </div>
-                  <ul className="text-[11px] text-slate-500 space-y-1.5">
-                    <li className="flex items-center gap-1.5">
-                      <Check size={12} className="text-blue-600" />
-                      <span>Concept + AI studio</span>
-                    </li>
-                    <li className="flex items-center gap-1.5">
-                      <Check size={12} className="text-blue-600" />
-                      <span>3D per floor</span>
-                    </li>
-                    <li className="flex items-center gap-1.5">
-                      <Check size={12} className="text-blue-600" />
-                      <span>BOM & estimate</span>
-                    </li>
-                  </ul>
-                </div>
-
-                {/* Gói Premium */}
-                <div
-                  onClick={() => setSelectedPackage('premium')}
-                  className={`p-4 rounded-xl border cursor-pointer transition relative ${
-                    selectedPackage === 'premium'
-                      ? 'border-blue-600 bg-blue-50/20 shadow-sm'
-                      : 'border-slate-200 hover:border-slate-300'
-                  }`}
-                >
-                  <h3 className="text-sm font-bold text-slate-900">Premium</h3>
-                  <span className="text-[11px] font-semibold text-emerald-600 block mb-2">
-                    4 rounds + site visits
-                  </span>
-                  <div className="text-base font-extrabold text-slate-900 mb-3">
-                    VND 95M
-                  </div>
-                  <ul className="text-[11px] text-slate-500 space-y-1.5">
-                    <li className="flex items-center gap-1.5">
-                      <Check size={12} className="text-slate-400" />
-                      <span>Everything in Standard</span>
-                    </li>
-                    <li className="flex items-center gap-1.5">
-                      <Check size={12} className="text-slate-400" />
-                      <span>2 site visits</span>
-                    </li>
-                    <li className="flex items-center gap-1.5">
-                      <Check size={12} className="text-slate-400" />
-                      <span>Supplier sourcing</span>
-                    </li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-
-            {/* Box 3: Terms */}
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
-              <h2 className="text-sm font-bold text-slate-900 mb-4">Terms</h2>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-500 mb-1.5">
-                    Design rounds included
-                  </label>
-                  <select
-                    value={designRounds}
-                    onChange={(e) => setDesignRounds(e.target.value)}
-                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600"
-                  >
-                    <option value="2">2</option>
-                    <option value="3">3</option>
-                    <option value="4">4</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-500 mb-1.5">
-                    Extra round fee
-                  </label>
-                  <input
-                    type="text"
-                    defaultValue="VND 5M / round"
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-500 mb-1.5">
-                    Timeline
-                  </label>
-                  <select
-                    value={timeline}
-                    onChange={(e) => setTimeline(e.target.value)}
-                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600"
-                  >
-                    <option value="8 weeks">8 weeks</option>
-                    <option value="10 weeks">10 weeks</option>
-                    <option value="12 weeks">12 weeks</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Checkboxes List */}
-              <div className="space-y-2.5 pt-2">
-                <label className="flex items-center gap-2.5 cursor-pointer text-xs font-medium text-slate-700">
-                  <input
-                    type="checkbox"
-                    checked={features.conceptDesign}
-                    onChange={(e) => setFeatures({ ...features, conceptDesign: e.target.checked })}
-                    className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  <span>Concept design (AI-assisted)</span>
-                </label>
-
-                <label className="flex items-center gap-2.5 cursor-pointer text-xs font-medium text-slate-700">
-                  <input
-                    type="checkbox"
-                    checked={features.visuals3D}
-                    onChange={(e) => setFeatures({ ...features, visuals3D: e.target.checked })}
-                    className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  <span>3D visuals per floor</span>
-                </label>
-
-                <label className="flex items-center gap-2.5 cursor-pointer text-xs font-medium text-slate-700">
-                  <input
-                    type="checkbox"
-                    checked={features.furnitureBOM}
-                    onChange={(e) => setFeatures({ ...features, furnitureBOM: e.target.checked })}
-                    className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  <span>Furniture & material list (BOM)</span>
-                </label>
-
-                <label className="flex items-center gap-2.5 cursor-pointer text-xs font-medium text-slate-700">
-                  <input
-                    type="checkbox"
-                    checked={features.siteSupervision}
-                    onChange={(e) => setFeatures({ ...features, siteSupervision: e.target.checked })}
-                    className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  <span>On-site construction supervision</span>
-                </label>
-              </div>
-            </div>
-
-            {/* Box 4: Payment milestones */}
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
-              <h2 className="text-sm font-bold text-slate-900 mb-4">Payment milestones</h2>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="text-[10px] font-bold text-slate-400 uppercase tracking-wider bg-slate-50/80">
-                      <th className="py-2.5 px-4 rounded-l-lg">MILESTONE</th>
-                      <th className="py-2.5 px-4">SHARE</th>
-                      <th className="py-2.5 px-4 rounded-r-lg">AMOUNT</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-800">
-                    <tr>
-                      <td className="py-3.5 px-4">Contract signed</td>
-                      <td className="py-3.5 px-4 text-slate-500">30%</td>
-                      <td className="py-3.5 px-4 font-bold text-slate-900">VND 20.4M</td>
-                    </tr>
-                    <tr>
-                      <td className="py-3.5 px-4">Concept approved</td>
-                      <td className="py-3.5 px-4 text-slate-500">40%</td>
-                      <td className="py-3.5 px-4 font-bold text-slate-900">VND 27.2M</td>
-                    </tr>
-                    <tr>
-                      <td className="py-3.5 px-4">Final handover</td>
-                      <td className="py-3.5 px-4 text-slate-500">30%</td>
-                      <td className="py-3.5 px-4 font-bold text-slate-900">VND 20.4M</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
+        {/* Success / error banners */}
+        {success && (
+          <div className="mb-6 flex items-start gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 p-3.5 text-sm text-emerald-800">
+            <CheckCircle2 size={18} className="mt-0.5 flex-shrink-0 text-emerald-600" />
+            <span>{success}</span>
           </div>
+        )}
+        {error && (
+          <div role="alert" className="mb-6 flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 p-3.5 text-sm text-red-800">
+            <AlertCircle size={18} className="mt-0.5 flex-shrink-0 text-red-600" />
+            <span>{error}</span>
+          </div>
+        )}
 
-          {/* CỘT PHẢI (1 Col): Preview Hợp Đồng & Action */}
-          <div className="space-y-5">
-            {/* Box Preview Hợp đồng */}
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 space-y-4">
-              <div className="border-b border-slate-100 pb-3">
-                <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider block">
-                  DESIGN SERVICE CONTRACT
-                </span>
-                <h3 className="text-lg font-extrabold text-slate-900 mt-0.5">
-                  No. {workspace.contracts.find((contract) => contract.projectId === project?.id)?.id ?? 'New contract'}
-                </h3>
+        <div className="space-y-6">
+          {/* Terms */}
+          <section className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+            <h2 className="text-sm font-bold text-slate-900 mb-4">Thông tin hợp đồng</h2>
+
+            <div className="mb-4">
+              <label className={labelClass}>Mã dự án (UUID)</label>
+              <input
+                type="text"
+                value={projectId}
+                onChange={(e) => setProjectId(e.target.value)}
+                placeholder="vd: 123e4567-e89b-12d3-a456-426614174000"
+                className={`${inputClass} ${projectId && !projectIdValid ? 'border-red-300 focus:ring-red-500' : ''}`}
+              />
+              {projectId && !projectIdValid && (
+                <p className="mt-1 text-[11px] font-semibold text-red-600">Mã dự án phải là chuỗi UUID chuẩn.</p>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className={labelClass}>Tổng phí thiết kế (VND)</label>
+                <input
+                  type="number" min="1" inputMode="numeric"
+                  value={totalDesignFee}
+                  onChange={(e) => setTotalDesignFee(e.target.value)}
+                  placeholder="50000000"
+                  className={inputClass}
+                />
               </div>
-
-              {/* Các đường vạch phác thảo thiết kế */}
-              <div className="space-y-1.5 py-1">
-                <div className="w-full h-2 bg-slate-100 rounded-full"></div>
-                <div className="w-3/4 h-2 bg-slate-100 rounded-full"></div>
+              <div>
+                <label className={labelClass}>Số lần sửa tối đa / giai đoạn (0–20)</label>
+                <input
+                  type="number" min="0" max="20"
+                  value={maxRevisionsPerStage}
+                  onChange={(e) => setMaxRevisionsPerStage(e.target.value)}
+                  className={inputClass}
+                />
               </div>
-
-              <div className="space-y-2.5 text-xs pt-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-500">Package</span>
-                  <span className="font-bold text-slate-900 capitalize">{selectedPackage}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-500">Design rounds</span>
-                  <span className="font-bold text-slate-900">{designRounds}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-500">Timeline</span>
-                  <span className="font-bold text-slate-900">{timeline}</span>
-                </div>
-                <div className="flex justify-between items-center pt-2 border-t border-slate-100">
-                  <span className="text-slate-500 font-medium">Total fee</span>
-                  <span className="font-extrabold text-slate-900 text-sm">
-                    {packageTotalFee[selectedPackage]}
-                  </span>
-                </div>
-              </div>
-
-              {/* Các đường vạch mờ trang trí */}
-              <div className="space-y-1.5 py-2">
-                <div className="w-full h-1.5 bg-slate-100 rounded-full"></div>
-                <div className="w-5/6 h-1.5 bg-slate-100 rounded-full"></div>
-                <div className="w-2/3 h-1.5 bg-slate-100 rounded-full"></div>
-              </div>
-
-              {/* Ô Chữ ký giả lập */}
-              <div className="grid grid-cols-2 gap-3 pt-2">
-                <div className="h-12 border border-slate-200 rounded-xl bg-slate-50/50 flex items-end p-2 text-[10px] text-slate-400">
-                  Homeowner
-                </div>
-                <div className="h-12 border border-slate-200 rounded-xl bg-slate-50/50 flex items-end p-2 text-[10px] text-slate-400">
-                  ArchSync AI
-                </div>
+              <div>
+                <label className={labelClass}>Số ngày xem xét (1–60)</label>
+                <input
+                  type="number" min="1" max="60"
+                  value={reviewWindowDays}
+                  onChange={(e) => setReviewWindowDays(e.target.value)}
+                  className={inputClass}
+                />
               </div>
             </div>
 
-            {/* Action Buttons */}
+            <div className="mt-4">
+              <label className={labelClass}>Ghi chú (tuỳ chọn)</label>
+              <textarea
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                rows={2}
+                maxLength={5000}
+                placeholder="Điều khoản bổ sung, phạm vi công việc…"
+                className={`${inputClass} resize-y`}
+              />
+            </div>
+          </section>
+
+          {/* Milestones */}
+          <section className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-bold text-slate-900">Đợt thanh toán</h2>
+              <button
+                type="button"
+                onClick={addMilestone}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+              >
+                <Plus size={14} /> Thêm đợt thanh toán
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              {milestones.map((row, index) => (
+                <div key={index} className="grid grid-cols-1 gap-3 rounded-xl border border-slate-100 bg-slate-50/40 p-3 md:grid-cols-[2.4rem_1fr_1fr_1fr_1fr_2rem] md:items-end">
+                  <div className="text-xs font-bold text-slate-400 md:pb-2.5">#{index + 1}</div>
+                  <div>
+                    <label className={labelClass}>Tên đợt</label>
+                    <input
+                      type="text"
+                      value={row.name}
+                      onChange={(e) => updateMilestone(index, { name: e.target.value })}
+                      placeholder="Đặt cọc thiết kế"
+                      className={inputClass}
+                    />
+                  </div>
+                  <div>
+                    <label className={labelClass}>Giai đoạn</label>
+                    <select
+                      value={row.stageType}
+                      onChange={(e) => updateMilestone(index, { stageType: e.target.value as StageType })}
+                      className={inputClass}
+                    >
+                      {STAGE_TYPES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className={labelClass}>Số tiền (VND)</label>
+                    <input
+                      type="number" min="1" inputMode="numeric"
+                      value={row.amount}
+                      onChange={(e) => updateMilestone(index, { amount: e.target.value })}
+                      placeholder="15000000"
+                      className={inputClass}
+                    />
+                  </div>
+                  <div>
+                    <label className={labelClass}>Điều kiện đến hạn</label>
+                    <select
+                      value={row.dueTrigger}
+                      onChange={(e) => updateMilestone(index, { dueTrigger: e.target.value as DueTrigger })}
+                      className={inputClass}
+                    >
+                      {DUE_TRIGGERS.map((d) => <option key={d.value} value={d.value}>{d.label}</option>)}
+                    </select>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeMilestone(index)}
+                    disabled={milestones.length === 1}
+                    aria-label="Xoá đợt"
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {/* Live total vs fee */}
+            <div className="mt-4 rounded-xl border border-slate-100 bg-white p-4">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-slate-500">Tổng các đợt thanh toán</span>
+                <span className="font-bold text-slate-900">VND {vnd.format(milestonesTotal)}</span>
+              </div>
+              <div className="mt-1.5 flex items-center justify-between text-xs">
+                <span className="text-slate-500">Tổng phí thiết kế</span>
+                <span className="font-bold text-slate-900">{feeValid ? `VND ${vnd.format(feeNumber)}` : '—'}</span>
+              </div>
+              {feeValid && !totalsMatch && (
+                <p className="mt-2.5 flex items-center gap-1.5 text-[11px] font-semibold text-red-600">
+                  <AlertCircle size={13} />
+                  Tổng các đợt ({vnd.format(milestonesTotal)}) chưa bằng phí thiết kế ({vnd.format(feeNumber)}).
+                </p>
+              )}
+              {totalsMatch && (
+                <p className="mt-2.5 flex items-center gap-1.5 text-[11px] font-semibold text-emerald-600">
+                  <CheckCircle2 size={13} /> Tổng các đợt khớp với phí thiết kế.
+                </p>
+              )}
+            </div>
+          </section>
+
+          <div className="flex justify-end gap-3">
             <button
               type="button"
-              disabled={saving}
-              onClick={() => void saveContract('Awaiting signature')}
-              className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-md transition flex items-center justify-center gap-2"
+              onClick={() => navigate(-1)}
+              className="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50"
+            >
+              Huỷ
+            </button>
+            <button
+              type="button"
+              disabled={submitting || !projectIdValid || !totalsMatch}
+              onClick={() => void handleSubmit()}
+              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-xs font-bold text-white shadow-md transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Send size={14} />
-              <span>{saving ? 'Sending…' : 'Send to homeowner'}</span>
+              {submitting ? 'Đang tạo…' : 'Tạo hợp đồng'}
             </button>
-
-            <button
-              type="button"
-              className="w-full py-3 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs rounded-xl transition flex items-center justify-center gap-2"
-            >
-              <Download size={14} />
-              <span>Download PDF</span>
-            </button>
-
-            {/* Thông báo xanh */}
-            <div className="bg-sky-50 border border-sky-100 rounded-xl p-3.5 flex items-start gap-2.5 text-xs text-sky-800 leading-relaxed">
-              <Lock size={15} className="text-sky-600 flex-shrink-0 mt-0.5" />
-              <span>
-                Staff prepares the contract. The homeowner reviews and signs online.
-              </span>
-            </div>
           </div>
         </div>
       </main>
