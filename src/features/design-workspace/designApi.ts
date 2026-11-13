@@ -1,9 +1,9 @@
-import { apiRequest, getCurrentUser } from '@/services/authService';
+import { apiRequest, apiUpload, getCurrentUser } from '@/services/authService';
 import { projectApi } from '@/features/projects/projectApi';
 import { uploadFloorRefs } from './logic';
 import type {
-  Comment, CommentReply, ComparedElement, DesignElement, DesignVersion, DraftProduct, ElementEdit, ElementRef, Opening, Product, ProductOption,
-  Project, RevisionLimit, RevisionType, Role, RoomDraft, RoomDraftInput, SceneJson, UploadInput, VersionComparison, VersionFloor, VersionSummary, VersionType, Viewer,
+  Comment, CommentReply, ComparedElement, DesignElement, DesignVersion, DraftProduct, DraftLastUpload, DraftLayoutChange, ElementEdit, LayoutMerge, ElementRef, Opening, Product, ProductOption,
+  Project, RevisionLimit, RevisionType, Role, RoomDraft, RoomDraftInput, RoomDraftUploadResult, SceneJson, UploadInput, VersionComparison, VersionFloor, VersionSummary, VersionType, Viewer,
 } from './types';
 
 export interface DesignApi {
@@ -22,12 +22,16 @@ export interface DesignApi {
   approve(versionId: string): Promise<VersionSummary>;
   listProductOptions(elementId: string): Promise<ProductOption[]>;
   /** choose_all_remaining: món chưa chọn giữ model hiện tại (sản phẩm có block_code trùng tên block). */
-  saveEdits(versionId: string, input: { title: string; revision_type: RevisionType; edits: ElementEdit[]; choose_all_remaining?: boolean; addressed_comment_ids?: string[]; room_draft_ids?: string[] }): Promise<DesignVersion & { skipped_room_ids: string[] }>;
+  saveEdits(versionId: string, input: { title: string; revision_type: RevisionType; edits: ElementEdit[]; choose_all_remaining?: boolean; addressed_comment_ids?: string[]; room_draft_ids?: string[] }): Promise<DesignVersion & { skipped_room_ids: string[]; layout_merge: LayoutMerge | null }>;
   /** Lead: every draft of the version. Member: their own. */
   listRoomDrafts(versionId: string): Promise<RoomDraft[]>;
   /** Replaces the whole draft of the room and puts it back to DRAFT. */
   saveRoomDraft(versionId: string, roomId: string, input: RoomDraftInput): Promise<void>;
   markRoomDraftReady(versionId: string, roomId: string): Promise<void>;
+  /** Member: the edited DXF of their rooms goes into the room drafts. No version is made. floorId is required on a multi-floor version. */
+  uploadRoomDrafts(versionId: string, file: File, floorId: string | null, onProgress?: (fraction: number) => void): Promise<RoomDraftUploadResult>;
+  /** Path of the DXF the Member last uploaded into the room's draft (for downloadFile). */
+  roomDraftFilePath(versionId: string, roomId: string): string;
   /** Designer: comment needed no drawing change (e.g. a question). */
   addressComment(commentId: string, addressedInVersionId: string): Promise<void>;
   compare(versionId: string, withId: string, floorId?: string): Promise<VersionComparison>;
@@ -96,12 +100,24 @@ const compared = (e: Raw): ComparedElement => ({ id: e.id, floor_id: e.floorId, 
 const change = (c: Raw) => ({ from: compared(c.from), to: compared(c.to) });
 
 const draftProduct = (p: Raw): DraftProduct | null => (p ? { id: p.id, name: p.name, price: p.price ?? null, thumbnail_url: p.thumbnailUrl ?? null, available: p.available ?? true } : null);
+const layoutChange = (c: Raw): DraftLayoutChange => ({
+  op: c.op, floor_id: c.floorId, handle: c.handle ?? null, block_name: c.blockName, layer: c.layer ?? '',
+  insert: c.insert, rotation: c.rotation ?? 0, scale: c.scale ?? { x: 1, y: 1 }, at: c.at,
+});
+const accepted = (a: Raw) => ({ op: a.op, handle: a.handle ?? null, block_name: a.blockName, room_id: a.roomId, room_name: a.roomName });
+const ignored = (i: Raw) => ({ handle: i.handle ?? null, block_name: i.blockName ?? null, room_name: i.roomName ?? null, reason: i.reason });
+const lastUpload = (u: Raw): DraftLastUpload => ({
+  uploaded_at: u.uploadedAt, file_name: u.fileName, accepted: (u.accepted ?? []).map(accepted), ignored: (u.ignored ?? []).map(ignored),
+});
 const roomDraft = (d: Raw): RoomDraft => ({
   id: d.id, room_id: d.roomId, room_name: d.roomName, designer_id: d.designerId, designer_name: d.designerName, status: d.status,
   selections: (d.selections ?? []).map((s: Raw) => ({ element_id: s.elementId, product_id: s.productId, product: draftProduct(s.product) })),
   overrides: (d.overrides ?? []).map((o: Raw) => ({ element_id: o.elementId, overrides: o.overrides })),
   addressed_comment_ids: d.addressedCommentIds ?? [],
   dropped_changes: (d.droppedChanges ?? []).map((x: Raw) => ({ element_id: x.elementId, floor_id: x.floorId, dxf_handle: x.dxfHandle, product: draftProduct(x.product) })),
+  layout_changes: (d.layoutChanges ?? []).map(layoutChange),
+  last_upload: d.lastUpload ? lastUpload(d.lastUpload) : null,
+  has_source_file: !!d.hasSourceFile,
 });
 
 const post = (body: unknown, method = 'POST'): RequestInit => ({ method, body: JSON.stringify(body) });
@@ -156,7 +172,11 @@ export const designApi: DesignApi = {
     const selections = edits.filter((e) => e.product_id).map((e) => ({ elementId: e.element_id, productId: e.product_id }));
     const overrides = edits.filter((e) => e.overrides).map((e) => ({ elementId: e.element_id, overrides: e.overrides }));
     const saved = await apiRequest<Raw>(`/design-versions/${id}/edits`, post({ title, revisionType: revision_type, selections, overrides, ...(choose_all_remaining ? { chooseAllRemaining: true } : {}), ...(addressed_comment_ids?.length ? { addressedCommentIds: addressed_comment_ids } : {}), ...(room_draft_ids?.length ? { roomDraftIds: room_draft_ids } : {}) }));
-    return { ...detail(saved), skipped_room_ids: saved.skippedRoomIds ?? [] };
+    const lm = saved.layoutMerge;
+    return {
+      ...detail(saved), skipped_room_ids: saved.skippedRoomIds ?? [],
+      layout_merge: lm ? { skipped: (lm.skipped ?? []).map((x: Raw) => ({ draft_id: x.draftId, op: x.op, handle: x.handle ?? null, block_name: x.blockName, reason: x.reason })) } : null,
+    };
   },
   listRoomDrafts: async (id) => (await apiRequest<Raw>(`/design-versions/${id}/room-drafts`)).items.map(roomDraft),
   async saveRoomDraft(id, roomId, input) {
@@ -167,6 +187,17 @@ export const designApi: DesignApi = {
     }, 'PUT'));
   },
   async markRoomDraftReady(id, roomId) { await apiRequest(`/design-versions/${id}/room-drafts/${roomId}`, post({ status: 'READY' }, 'PATCH')); },
+  async uploadRoomDrafts(id, file, floorId, onProgress) {
+    const form = new FormData();
+    form.append('file', file, file.name);
+    if (floorId) form.append('floorId', floorId);
+    const r = await apiUpload<Raw>(`/design-versions/${id}/room-drafts/uploads`, form, onProgress);
+    return {
+      accepted: (r.accepted ?? []).map(accepted), ignored: (r.ignored ?? []).map(ignored),
+      drafts: (r.drafts ?? []).map((d: Raw) => ({ room_id: d.roomId, room_name: d.roomName, change_count: d.changeCount, status: d.status })),
+    };
+  },
+  roomDraftFilePath: (id, roomId) => `/design-versions/${id}/room-drafts/${roomId}/upload-file`,
   async compare(id, withId, floorId) {
     const r = await apiRequest<Raw>(`/design-versions/${id}/comparison${qs({ with: withId, floorId })}`);
     return {

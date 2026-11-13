@@ -2,7 +2,7 @@ import { t } from '../../i18n/index.ts';
 import { elementName, formatVnd, latestVersion } from './logic.ts';
 import type { DiffKind } from './logic';
 import { itemPrice, sumMoney } from './rooms.ts';
-import type { ComparedElement, DesignElement, DraftSelection, Overrides, Product, RoomDraft, RoomDraftInput, VersionComparison, VersionSummary } from './types';
+import type { ComparedElement, DesignElement, DraftLayoutChange, DraftSelection, LayoutOp, Overrides, Product, RoomDraft, RoomDraftInput, VersionComparison, VersionSummary } from './types';
 
 /** Changes laid over a version's items, by item id. */
 export type Patches = Record<string, Partial<DesignElement>>;
@@ -58,6 +58,77 @@ export function roomEdits(items: readonly DesignElement[], patches: Patches): Ro
 export const changeCount = ({ selections, overrides }: Pick<RoomEdits, 'selections' | 'overrides'> | Pick<RoomDraft, 'selections' | 'overrides'>) =>
   new Set([...selections, ...overrides].map((x) => x.element_id)).size;
 
+/** Items added, removed or moved by the draft's uploaded DXF. */
+export const layoutCount = (d: Pick<RoomDraft, 'layout_changes'>) => d.layout_changes?.length ?? 0;
+/** Everything a whole draft changes: product swaps and overrides, plus layout changes. */
+export const draftChangeCount = (d: RoomDraft) => changeCount(d) + layoutCount(d);
+export const hasLayoutChanges = (drafts: readonly RoomDraft[]) => drafts.some((d) => layoutCount(d) > 0);
+
+/** The version's item a DELETE or MOVE points at (same floor, same DXF handle). */
+export const layoutTarget = (elements: readonly DesignElement[], c: Pick<DraftLayoutChange, 'op' | 'floor_id' | 'handle'>) =>
+  c.op !== 'ADD' && c.handle ? elements.find((e) => e.floor_id === c.floor_id && e.dxf_handle === c.handle) : undefined;
+
+const ADDED_PREFIX = 'layout-add:';
+/** Id of the stand-in item drawn for an ADD. It does not exist on the server: never select it or send it. */
+export const addedItemId = (c: Pick<DraftLayoutChange, 'floor_id' | 'handle' | 'at'>) => `${ADDED_PREFIX}${c.floor_id}:${c.handle ?? `${c.at.x},${c.at.y}`}`;
+export const isAddedItem = (id: string | null | undefined) => !!id?.startsWith(ADDED_PREFIX);
+
+/** Where a moved item was, drawn faded under its new place. */
+export interface LayoutGhost { id: string; element: DesignElement }
+
+/**
+ * The drafts' layout changes laid over the items, with the tint each one gets.
+ * MOVE: the item at its new place, plus a ghost at the old one. ADD: a stand-in item, sized like another item of the same block.
+ * DELETE: kept and tinted removed, or dropped when `dropRemoved` (the "after merge" side of Compare).
+ */
+export function applyLayout(elements: readonly DesignElement[], drafts: readonly RoomDraft[], { dropRemoved = false } = {}): { elements: DesignElement[]; highlight: Record<string, DiffKind>; ghosts: LayoutGhost[] } {
+  const changes = drafts.flatMap((d) => (d.layout_changes ?? []).map((c) => ({ c, roomId: d.room_id })));
+  if (!changes.length) return { elements: [...elements], highlight: {}, ghosts: [] };
+  const highlight: Record<string, DiffKind> = {};
+  const moved = new Map<string, DraftLayoutChange>(), removed = new Set<string>();
+  const added: DesignElement[] = [], ghosts: LayoutGhost[] = [];
+  for (const { c, roomId } of changes) {
+    if (c.op === 'ADD') {
+      const like = elements.find((e) => e.block_name === c.block_name);
+      const id = addedItemId(c);
+      added.push({
+        id, floor_id: c.floor_id, room_id: roomId, dxf_handle: c.handle, block_name: c.block_name, name: like?.name ?? c.block_name,
+        element_type: like?.element_type ?? 'FURNITURE', category: like?.category ?? null, default_model_url: like?.default_model_url ?? null,
+        position: { x: c.at.x, y: c.at.y, rotation_deg: c.rotation }, width_mm: like?.width_mm ?? 500, depth_mm: like?.depth_mm ?? 500, height_mm: like?.height_mm ?? 500,
+        overrides: null, choice: null, product: null, line_total: null,
+      });
+      highlight[id] = 'added';
+      continue;
+    }
+    const target = layoutTarget(elements, c);
+    if (!target) continue;
+    if (c.op === 'DELETE') { removed.add(target.id); highlight[target.id] = 'removed'; continue; }
+    moved.set(target.id, c);
+    highlight[target.id] = 'moved';
+    ghosts.push({ id: `ghost:${target.id}`, element: target });
+  }
+  const out = elements.flatMap((e) => {
+    if (removed.has(e.id)) return dropRemoved ? [] : [e];
+    const m = moved.get(e.id);
+    return m ? [{ ...e, position: { x: m.at.x, y: m.at.y, rotation_deg: m.rotation } }] : [e];
+  });
+  if (dropRemoved) for (const id of removed) delete highlight[id];
+  return { elements: [...out, ...added], highlight, ghosts };
+}
+
+/** One line per layout change, read like a product change line. `elements` are the version's own items. */
+export function layoutLines(elements: readonly DesignElement[], drafts: readonly RoomDraft[]): ChangeLine[] {
+  return drafts.flatMap((d) => (d.layout_changes ?? []).map((c): ChangeLine => {
+    const base = layoutTarget(elements, c);
+    return {
+      elementId: c.op === 'ADD' || !base ? addedItemId(c) : base.id, floorId: c.floor_id,
+      name: base ? elementName(base, 'designer') : c.block_name,
+      position: c.op === 'DELETE' && base ? base.position : c.at,
+      swap: null, overridesChanged: false, delta: null, layout: { op: c.op, handle: c.handle, roomId: d.room_id },
+    };
+  }));
+}
+
 /** One line of the Member's bottom bar. */
 export interface MemberDraftRow {
   roomId: string;
@@ -90,7 +161,7 @@ export function memberDraftRows({ elements, drafts, local, ticks, roomNames }: {
     const savedTicks = draft?.addressed_comment_ids ?? [];
     const addressed = ticks[roomId] ?? savedTicks;
     const dirty = JSON.stringify(edits) !== JSON.stringify(before) || [...addressed].sort().join() !== [...savedTicks].sort().join();
-    const count = changeCount(edits);
+    const count = changeCount(edits) + (draft ? layoutCount(draft) : 0);
     if (!count && !dirty && !addressed.length) continue;
     rows.push({ roomId, roomName: draft?.room_name ?? roomNames[roomId] ?? '', input: { ...edits, addressed_comment_ids: addressed }, count, dirty, ready: draft?.status === 'READY' });
   }
@@ -117,6 +188,8 @@ export interface ChangeLine {
   overridesChanged: boolean;
   /** New price minus old price; null when there is no swap or the new price is unknown. */
   delta: string | null;
+  /** Set when the line comes from the draft's uploaded DXF (added, removed or moved item). */
+  layout?: { op: LayoutOp; handle: string | null; roomId: string };
 }
 
 const negate = (v: string) => (v.startsWith('-') ? v.slice(1) : `-${v}`);
@@ -148,11 +221,11 @@ export const signedVnd = (v: string | null) => {
 };
 
 export interface MergeRow { key: string; room: string; count: number; delta: string }
-export interface MergeSummary { rooms: MergeRow[]; own: { count: number; delta: string } | null; total: string; lines: ChangeLine[] }
+export interface MergeSummary { rooms: MergeRow[]; own: { count: number; delta: string } | null; total: string; lines: ChangeLine[]; hasLayout: boolean }
 
 /** What Merge & save would change: per room, the Lead's own changes, and the total. One designer per room, so these never overlap. */
 export function mergeSummary(elements: readonly DesignElement[], ready: readonly RoomDraft[], own: Patches): MergeSummary {
-  const perRoom = ready.map((d) => ({ d, lines: changeLines(elements, draftPatches([d])) }));
+  const perRoom = ready.map((d) => ({ d, lines: [...changeLines(elements, draftPatches([d])), ...layoutLines(elements, [d])] }));
   const mine = changeLines(elements, own);
   const lines = [...perRoom.flatMap((r) => r.lines), ...mine];
   return {
@@ -160,6 +233,7 @@ export function mergeSummary(elements: readonly DesignElement[], ready: readonly
     own: mine.length ? { count: mine.length, delta: totalDelta(mine) } : null,
     total: totalDelta(lines),
     lines,
+    hasLayout: hasLayoutChanges(ready),
   };
 }
 
@@ -185,18 +259,21 @@ export function foldOwnDrafts(elements: readonly DesignElement[], own: readonly 
 }
 
 /** The shape ComparePanel reads, for a result that does not exist as a version yet. Every change counts as Changed. */
-export function mergeComparison(elements: readonly DesignElement[], lines: readonly ChangeLine[], floorId: string): VersionComparison {
-  const ids = new Set(lines.map((l) => l.elementId));
-  const ref = (e: DesignElement): ComparedElement => ({ id: e.id, floor_id: e.floor_id, dxf_handle: e.dxf_handle, name: e.name });
+export function mergeComparison(lines: readonly ChangeLine[], floorId: string): VersionComparison {
+  const here = lines.filter((l) => l.floorId === floorId);
+  const ref = (l: ChangeLine): ComparedElement => ({ id: l.elementId, floor_id: l.floorId, dxf_handle: null, name: l.name });
+  const op = (o: LayoutOp) => here.filter((l) => l.layout?.op === o).map(ref);
+  const layoutIds = new Set(here.filter((l) => l.layout).map((l) => l.elementId));
   return {
-    from: { id: '', label: '' }, to: { id: '', label: '' }, added: [], removed: [], moved: [], replaced: [],
-    overrides_changed: elements.filter((e) => e.floor_id === floorId && ids.has(e.id)).map((e) => ({ from: ref(e), to: ref(e) })),
+    from: { id: '', label: '' }, to: { id: '', label: '' }, added: op('ADD'), removed: op('DELETE'),
+    moved: op('MOVE').map((r) => ({ from: r, to: r, distance: 0, rotation_deg: 0 })), replaced: [],
+    overrides_changed: here.filter((l) => !l.layout && !layoutIds.has(l.elementId)).map((l) => ({ from: ref(l), to: ref(l) })),
     walls_changed: false, openings_changed: false, totals: null,
   };
 }
 
 /** Rooms whose draft has item changes but is not marked ready. */
-export const unreadyDraftRooms = (drafts: readonly RoomDraft[]) => drafts.filter((d) => d.status === 'DRAFT' && changeCount(d) > 0).map((d) => d.room_name);
+export const unreadyDraftRooms = (drafts: readonly RoomDraft[]) => drafts.filter((d) => d.status === 'DRAFT' && draftChangeCount(d) > 0).map((d) => d.room_name);
 
 /** The viewer's unsaved changes that really differ from the version, in one room. */
 export const localChangesInRoom = (elements: readonly DesignElement[], roomId: string, local: Patches) =>

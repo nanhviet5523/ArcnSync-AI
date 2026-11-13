@@ -177,6 +177,8 @@ export type Action =
   | 'editItem'
   /** Member keeps a per-room draft. With ctx.roomId: that room. Without: the draft bar shows, and says so if no room is assigned yet. */
   | 'saveRoomDraft'
+  /** Member uploads the DXF they edited in AutoCAD; only changes in their own rooms reach their drafts. */
+  | 'uploadRoomDxf'
   /** Lead reads, previews and merges the Members' drafts. */
   | 'reviewDrafts'
   /** Lead takes a room from another designer, with their unmerged changes. */
@@ -209,6 +211,22 @@ export interface CanCtx {
   notChosenCount?: number;
   /** Major change rounds left in this version's stage; undefined = not known yet. */
   revisionsLeft?: number;
+}
+
+/**
+ * Why a change in an uploaded DXF did not reach the draft, worded for the Member.
+ * `owner`: who has the room, for OUTSIDE_ASSIGNED_ROOMS (the backend only names the room).
+ */
+export function ignoredReasonText(reason: string, room: string | null, owner?: string | null): string {
+  switch (reason) {
+    case 'OUTSIDE_ASSIGNED_ROOMS':
+      return room && owner ? t('drafts.ignoredReason.outsideOwned', { room, name: owner }) : room ? t('drafts.ignoredReason.outside', { room }) : t('drafts.ignoredReason.outsideNoRoom');
+    case 'MOVED_OUT_OF_ROOM': return t('drafts.ignoredReason.movedOut');
+    case 'STRUCTURE_LEAD_ONLY': return t('drafts.ignoredReason.structure');
+    case 'BLOCK_NOT_IN_BASE': return t('drafts.ignoredReason.blockNotInBase');
+    case 'UNKNOWN_ROOM': return t('drafts.ignoredReason.unknownRoom');
+    default: return reason;
+  }
 }
 
 /** Why this version cannot be approved yet, one line each, worded for the viewer. */
@@ -265,6 +283,8 @@ export function can(action: Action, { role, version, project, projectRole = null
     case 'takeOverRoom': return lead && choosing && roomOwnedByOther ? yes : no;
     case 'editItem': return choosing && ((lead && !roomOwnedByOther) || (member && inRoom)) ? yes : no;
     case 'saveRoomDraft': return member && choosing && (roomId === undefined || inRoom) ? yes : no;
+    // Backend: current RENDER_3D version, PRODUCT_SELECTION, at least one assigned room (else 403 ROOM_NOT_ASSIGNED).
+    case 'uploadRoomDxf': return member && choosing && assignedRoomIds.length > 0 ? yes : no;
     // Backend records ADDRESS on the stage's current version: the newest one still awaiting review.
     case 'addressComment': return lead && (version.status === 'SUBMITTED' || version.status === 'REVISION_REQUESTED') ? yes : no;
     case 'requestChanges':

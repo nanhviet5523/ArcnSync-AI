@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import type { RoomAssignment } from '@/features/projects/projectApi';
-import { changeCount, draftPatches, memberDraftRows, mergePatches } from './roomDrafts';
+import { draftChangeCount, draftPatches, memberDraftRows, mergePatches } from './roomDrafts';
 import type { Patches } from './roomDrafts';
 import type { DesignVersion, ProjectRole, RoomDraft } from './types';
 
@@ -22,7 +22,7 @@ export function useRoomWork({ viewerId, projectRole, version, local }: { viewerI
   const ownerOf = useMemo(() => new Map(assignments.map((a) => [a.roomId, a])), [assignments]);
   const previewDraft = drafts.find((d) => d.id === previewId) ?? null;
   /** Lead: drafts that came with a room taken over. They are the Lead's own work, not something to review. */
-  const ownDrafts = useMemo(() => (member ? [] : drafts.filter((d) => d.designer_id === viewerId && changeCount(d) > 0)), [member, drafts, viewerId]);
+  const ownDrafts = useMemo(() => (member ? [] : drafts.filter((d) => d.designer_id === viewerId && draftChangeCount(d) > 0)), [member, drafts, viewerId]);
   const reviewDrafts = useMemo(() => drafts.filter((d) => d.designer_id !== viewerId), [drafts, viewerId]);
   const readyDrafts = useMemo(() => reviewDrafts.filter((d) => d.status === 'READY'), [reviewDrafts]);
   /** Lead: everything that is their own change, saved in a taken-over draft or still unsaved on this page. */

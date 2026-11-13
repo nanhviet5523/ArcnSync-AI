@@ -239,6 +239,63 @@ export interface RoomDraft {
   overrides: DraftOverride[];
   addressed_comment_ids: string[];
   dropped_changes: DroppedChange[];
+  /** Items added, removed or moved by the Member's uploaded DXF. Merging any of them makes a Major UPLOAD version. */
+  layout_changes: DraftLayoutChange[];
+  /** The last DXF upload into this draft; null = never uploaded. */
+  last_upload: DraftLastUpload | null;
+  /** The uploaded DXF can be downloaded again (Lead, draft owner). */
+  has_source_file: boolean;
+}
+
+export type LayoutOp = 'ADD' | 'DELETE' | 'MOVE';
+
+/** One item change read from an uploaded DXF. `at` is the item's centre in metres (canvas units); `insert` is in drawing units. */
+export interface DraftLayoutChange {
+  op: LayoutOp;
+  floor_id: string;
+  /** Handle in the version's drawing (DELETE, MOVE) or in the uploaded file (ADD). */
+  handle: string | null;
+  block_name: string;
+  layer: string;
+  insert: { x: number; y: number };
+  rotation: number;
+  scale: { x: number; y: number };
+  at: { x: number; y: number };
+}
+
+export interface AcceptedLayoutChange {
+  op: LayoutOp;
+  handle: string | null;
+  block_name: string;
+  room_id: string;
+  room_name: string;
+}
+
+export type IgnoredLayoutReason = 'OUTSIDE_ASSIGNED_ROOMS' | 'MOVED_OUT_OF_ROOM' | 'BLOCK_NOT_IN_BASE' | 'UNKNOWN_ROOM' | 'STRUCTURE_LEAD_ONLY';
+
+export interface IgnoredLayoutChange {
+  handle: string | null;
+  block_name: string | null;
+  room_name: string | null;
+  reason: IgnoredLayoutReason;
+}
+
+export interface DraftLastUpload {
+  uploaded_at: string;
+  file_name: string;
+  accepted: AcceptedLayoutChange[];
+  ignored: IgnoredLayoutChange[];
+}
+
+export interface RoomDraftUploadResult {
+  accepted: AcceptedLayoutChange[];
+  ignored: IgnoredLayoutChange[];
+  drafts: { room_id: string; room_name: string; change_count: number; status: RoomDraftStatus }[];
+}
+
+/** What Merge & save did with the drafts' layout changes. */
+export interface LayoutMerge {
+  skipped: { draft_id: string; op: LayoutOp; handle: string | null; block_name: string; reason: string }[];
 }
 
 export interface RoomDraftInput {

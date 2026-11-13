@@ -34,6 +34,8 @@ interface Props {
   room?: Pt[] | null;
   /** Outlines of rooms the viewer cannot edit, faded over their items. */
   dimmed?: Pt[][];
+  /** Old places of moved items: dashed, faded, not clickable. */
+  ghosts?: { id: string; element: DesignElement }[];
   /** Controlled view: pass both to drive zoom/pan from outside (reset, room zoom, synced compare). */
   view?: ViewBox | null;
   onViewChange?: (v: ViewBox | null) => void;
@@ -51,7 +53,7 @@ const LAYER_OF: Record<DesignElement['element_type'], keyof Layers> = {
 const ring = (l: Pt[]) => `M${l.map(([x, y]) => `${x},${-y}`).join('L')}Z`;
 const deg = (r: number) => (-r * 180) / Math.PI;
 
-export function Plan2D({ floor, elements, layers, selectedId, onSelect, pins = [], onPinClick, onEmptyClick, highlight, focus, room, dimmed, view: viewProp, onViewChange, interactive = true, ref }: Props) {
+export function Plan2D({ floor, elements, layers, selectedId, onSelect, pins = [], onPinClick, onEmptyClick, highlight, focus, room, dimmed, ghosts, view: viewProp, onViewChange, interactive = true, ref }: Props) {
   const s = floor.scene_json;
   const svgRef = useRef<SVGSVGElement>(null);
   const drag = useRef<{ x: number; y: number; moved: boolean } | null>(null);
@@ -172,7 +174,7 @@ export function Plan2D({ floor, elements, layers, selectedId, onSelect, pins = [
     const w = e.width_mm / 1000, d = e.depth_mm / 1000;
     const hl = highlight?.[e.id];
     const sel = e.id === selectedId;
-    const off = e.overrides?.on === false;
+    const off = e.overrides?.on === false || hl === 'removed';
     const unknown = isUnknownItem(e);
     const stroke = sel ? '#2563eb' : hl ? DIFF_COLORS[hl] : unknown ? '#94a3b8' : '#6b7280';
     const fill = sel ? '#2563eb22' : hl ? `${DIFF_COLORS[hl]}33` : unknown ? '#e2e8f0' : e.element_type === 'FURNITURE' ? '#efe7d8' : '#ffffff';
@@ -189,6 +191,7 @@ export function Plan2D({ floor, elements, layers, selectedId, onSelect, pins = [
         ) : (
           <rect x={-w / 2} y={-d / 2} width={w} height={Math.max(d, 0.04)} rx={Math.min(w, d) * 0.06} {...common} />
         )}
+        {hl === 'removed' && <path d={`M${-w / 2},${-d / 2}L${w / 2},${d / 2}M${-w / 2},${d / 2}L${w / 2},${-d / 2}`} stroke={stroke} strokeWidth={2} vectorEffect="non-scaling-stroke" />}
       </g>
     );
   };
@@ -213,6 +216,11 @@ export function Plan2D({ floor, elements, layers, selectedId, onSelect, pins = [
               ? <path d={`M0,0L0,${-o.width}A${o.width},${o.width} 0 0 1 ${o.width},0`} fill="none" stroke="#94a3b8" vectorEffect="non-scaling-stroke" />
               : <path d={`M0,${-s.wall_thickness / 4}H${o.width}M0,${s.wall_thickness / 4}H${o.width}`} stroke="#0ea5e9" vectorEffect="non-scaling-stroke" />}
           </g>
+        ))}
+        {ghosts?.filter((g) => g.element.floor_id === floor.id).map(({ id, element: e }) => (
+          <rect key={id} transform={`translate(${e.position.x} ${-e.position.y}) rotate(${-e.position.rotation_deg})`} className="pointer-events-none"
+            x={-e.width_mm / 2000} y={-e.depth_mm / 2000} width={e.width_mm / 1000} height={Math.max(e.depth_mm / 1000, 0.04)}
+            fill="none" stroke={DIFF_COLORS.moved} strokeDasharray="4 3" strokeWidth={1.5} opacity={0.6} vectorEffect="non-scaling-stroke" />
         ))}
         {/* selected and highlighted items on top, so a lamp is not hidden under its table */}
         {[...shown.filter((e) => !(e.id === selectedId || highlight?.[e.id])), ...shown.filter((e) => e.id === selectedId || highlight?.[e.id])].map(item)}

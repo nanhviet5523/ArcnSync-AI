@@ -44,7 +44,7 @@ export function ComparePanel({ merge, role, fromId, toId, floorId, layers, view,
   const [attempt, setAttempt] = useState(0);
   const merging = !!merge;
   const pair: [DesignVersion, DesignVersion] | null = merge ? [merge.base, { ...merge.base, elements: merge.elements, label: t('drafts.afterMerge') }] : fetchedPair;
-  const diff = merge ? mergeComparison(merge.base.elements, merge.lines, floorId) : fetchedDiff;
+  const diff = merge ? mergeComparison(merge.lines, floorId) : fetchedDiff;
 
   // The old pair and tint stay until the new ones arrive: picking another version must not blank the drawing or its zoom.
   useEffect(() => {

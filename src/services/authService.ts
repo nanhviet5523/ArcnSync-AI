@@ -520,6 +520,44 @@ export async function apiFetch(
   }
 }
 
+/**
+ * Multipart POST that reports upload progress (0–1). fetch cannot, so this uses XHR with the same token and one
+ * retry after a refresh on 401, like apiFetch.
+ */
+export async function apiUpload<T>(
+  path: string,
+  form: FormData,
+  onProgress?: (fraction: number) => void,
+): Promise<T> {
+  const send = (token: string | null) =>
+    new Promise<{ status: number; data: unknown }>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', `${API_BASE_URL}${path}`);
+      if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) onProgress?.(e.loaded / e.total);
+      };
+      xhr.onload = () => {
+        let data: unknown = null;
+        try { data = JSON.parse(xhr.responseText); } catch { /* empty or not JSON */ }
+        resolve({ status: xhr.status, data });
+      };
+      xhr.onerror = () =>
+        reject(new ApiError('Cannot connect to the server. Please check your connection and try again.'));
+      xhr.send(form);
+    });
+
+  let res = await send(getAccessToken());
+  if (res.status === 401) {
+    onProgress?.(0);
+    res = await send(await refreshAccessToken());
+  }
+  if (res.status < 200 || res.status >= 300) {
+    throw buildApiError(res.status, res.data, `Request failed (${res.status}). Please try again.`);
+  }
+  return res.data as T;
+}
+
 export async function apiRequest<T>(
   path: string,
   init: RequestInit = {},

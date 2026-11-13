@@ -26,12 +26,13 @@ import { CommentHint, QuickComment } from './QuickComment';
 import { ProjectInfoDrawer } from './ProjectInfoDrawer';
 import { RoomOwnerMenu } from './RoomOwnerMenu';
 import { ChangeSummary, MemberDraftBar, RoomDraftsBlock } from './RoomDraftBars';
+import { IgnoredList, MemberDxfUploadDialog, UploadResultModal } from './MemberDxfUpload';
 import { useRoomWork } from './useRoomWork';
-import { changeCount, draftPatches, droppedItemNames, foldOwnDrafts, localChangesInRoom, skippedRoomNames, mergePatches, mergeSummary, olderVersionDraftSource, previewHighlight, signedVnd, suggestedAddressed, withPatches } from './roomDrafts';
+import { applyLayout, draftChangeCount, draftPatches, droppedItemNames, foldOwnDrafts, hasLayoutChanges, isAddedItem, layoutLines, layoutTarget, localChangesInRoom, skippedRoomNames, mergePatches, mergeSummary, olderVersionDraftSource, previewHighlight, signedVnd, suggestedAddressed, withPatches } from './roomDrafts';
 import type { ChangeLine, MemberDraftRow, Patches } from './roomDrafts';
 import { boxOf, elementRoom, floorRooms, roomAt } from './rooms';
 import type { RoomInfo } from './rooms';
-import type { Comment, CommentTarget, DesignElement, DesignVersion, Floor, Project, RevisionLimit, RevisionType, Role, RoomDraft, VersionSummary } from './types';
+import type { AcceptedLayoutChange, Comment, CommentTarget, DesignElement, DesignVersion, Floor, IgnoredLayoutChange, Project, RevisionLimit, RevisionType, Role, RoomDraft, VersionSummary } from './types';
 
 /** Workspace steps (steps.workspace): Concept, Layout, Products, Quotation, Approved. Completed = all done. */
 const STEP_OF: Partial<Record<Project['status'], number>> = { IN_DESIGN: 1, PRODUCT_SELECTION: 2, QUOTING: 3, COMPLETED: 5 };
@@ -182,7 +183,10 @@ type Dialog =
   | { kind: 'confirm'; title: string; body: string; label: string; run: () => void }
   | { kind: 'request' }
   | { kind: 'save' }
-  | { kind: 'assignUnsaved'; roomId: string; roomName: string; designerId: string; designerName: string; n: number };
+  | { kind: 'assignUnsaved'; roomId: string; roomName: string; designerId: string; designerName: string; n: number }
+  | { kind: 'memberUpload' }
+  | { kind: 'uploadResult'; title: string; accepted: AcceptedLayoutChange[]; ignored: IgnoredLayoutChange[] }
+  | { kind: 'ignored'; room: string; designer: string; items: IgnoredLayoutChange[] };
 
 type RightTab = 'room' | 'item' | 'comments';
 
@@ -434,7 +438,10 @@ export function WorkspacePage() {
   const threads = useMemo(() => (version ? commentThreads(comments, version) : []), [comments, version]);
   const openThreads = threads.filter((x) => x.root.status === 'OPEN');
   // the viewer's unsaved changes, a Member's saved drafts, or the draft the Lead is previewing
-  const elements = useMemo(() => withPatches(version?.elements ?? [], work.patches), [version, work.patches]);
+  // ...plus the layout changes of a Member's own drafts, or of the draft the Lead is previewing (uploaded DXF)
+  const layoutDrafts = useMemo(() => (isMember ? work.drafts : work.previewDraft ? [work.previewDraft] : []), [isMember, work.drafts, work.previewDraft]);
+  const layoutView = useMemo(() => applyLayout(withPatches(version?.elements ?? [], work.patches), layoutDrafts), [version, work.patches, layoutDrafts]);
+  const elements = layoutView.elements;
   const floorEls = useMemo(() => elements.filter((e) => e.floor_id === floorId), [elements, floorId]);
   const floor = version?.floors.find((f) => f.id === floorId);
   const rooms = useMemo(() => (floor ? floorRooms(floor.scene_json) : []), [floor]);
@@ -534,6 +541,17 @@ export function WorkspacePage() {
   const leadCount = Object.keys(work.leadWork).length;
   const summary = reviewing ? mergeSummary(baseElements, work.readyDrafts, work.leadWork) : null;
   const mergeChange = mergeCompareOn && selElement ? summary?.lines.find((l) => l.elementId === selElement.id) : undefined;
+  /** Merging an uploaded DXF makes an UPLOAD version: the backend always counts it as one Major round. */
+  const mergingLayout = reviewing && (!!summary?.hasLayout || hasLayoutChanges(work.ownDrafts));
+  const renderLimit = limits.RENDER_3D ?? null;
+  const layoutBlocked = mergingLayout && renderLimit?.remaining === 0;
+  /** Who has the room of that name, for "in Bedroom 2, assigned to An". A room given to nobody stays with the Lead. */
+  const ownerOfRoomName = (name: string | null) => {
+    if (!name) return null;
+    const id = version?.floors.flatMap((f) => f.scene_json.rooms).find((r) => r.name === name)?.room_id;
+    if (!id) return null;
+    return work.ownerOf.get(id)?.designerName ?? project.designer?.fullName ?? null;
+  };
   const canTakeOver = (roomId: string | null | undefined) => !!roomId && allow('takeOverRoom', roomId).ok;
   // The Comments composer follows the selected item unless the user picked a spot or switched to a general comment (✕).
   const composeTarget: CommentTarget | null = target ?? (selElement ? { kind: 'element', element: selElement } : null);
@@ -570,6 +588,8 @@ export function WorkspacePage() {
   };
   const clickElement = (e: DesignElement | null, at?: ClickPoint) => {
     if (holdQuick()) return;
+    // an item added by an uploaded DXF has no id on the server yet
+    if (e && isAddedItem(e.id)) return;
     if (e && e.floor_id !== floorId) changeFloor(e.floor_id);
     patchCanvas({ selEl: e?.id ?? null, selComment: null });
     if (commenting && e && at) { patchCanvas({ hint: null, quick: { target: { kind: 'element', element: e }, ...anchor(at) } }); return; }
@@ -688,9 +708,14 @@ export function WorkspacePage() {
         if (r.changed) await designApi.saveRoomDraft(version!.id, r.draft.room_id, r.input);
         if (r.count && (r.changed || r.draft.status !== 'READY')) await designApi.markRoomDraftReady(version!.id, r.draft.room_id);
       }
-      const v = await designApi.saveEdits(version!.id, { title: text.trim(), revision_type: revision, edits, choose_all_remaining: chooseAll > 0, addressed_comment_ids: addressed, room_draft_ids: [...work.readyDrafts, ...own.rooms.filter((r) => r.count).map((r) => r.draft)].map((d) => d.id) });
+      const v = await designApi.saveEdits(version!.id, { title: text.trim(), revision_type: mergingLayout ? 'MAJOR' : revision, edits, choose_all_remaining: chooseAll > 0, addressed_comment_ids: addressed, room_draft_ids: [...work.readyDrafts, ...own.rooms.filter((r) => r.count).map((r) => r.draft)].map((d) => d.id) });
       const skipped = skippedRoomNames(v.skipped_room_ids, version!.floors);
-      if (skipped.length) setNotice(t('workspace.skippedRooms', { rooms: skipped.join(', ') }));
+      const lostLayout = v.layout_merge?.skipped ?? [];
+      const notices = [
+        skipped.length ? t('workspace.skippedRooms', { rooms: skipped.join(', ') }) : '',
+        lostLayout.length ? t('drafts.layoutSkipped', { n: lostLayout.length, items: lostLayout.map((x) => x.block_name).join(', ') }) : '',
+      ].filter(Boolean);
+      if (notices.length) setNotice(notices.join(' '));
       setDraft({});
       setDialog(null);
       if (assignAfterSave) {
@@ -708,6 +733,8 @@ export function WorkspacePage() {
       }
       if (roomConflict(e)) return;
       if (isStale(e)) { setDialog(staleNotice(e)); return; }
+      // a Member changed a draft while the Lead was merging: show the new drafts, keep the dialog open
+      if ((e as { code?: string }).code === 'ROOM_DRAFT_CHANGED') { setSaveError(errorText(e)); loadRef.current(); return; }
       // The dialog stays open with everything typed; the backend names the refused ticks.
       const err = e as { code?: string; details?: { invalidCommentIds?: string[] } };
       if (err.code === 'INVALID_ADDRESSED_COMMENTS') setInvalidAddressed(err.details?.invalidCommentIds ?? []);
@@ -741,7 +768,7 @@ export function WorkspacePage() {
       return;
     }
     // the backend deletes the room's draft when it goes to anyone but the Lead
-    if (work.drafts.some((d) => d.room_id === roomId && changeCount(d) > 0)) setDialog({ kind: 'confirm', title: t('team.reassignTitle'), body: t('team.reassignBody'), label: t('team.reassign'), run: go });
+    if (work.drafts.some((d) => d.room_id === roomId && draftChangeCount(d) > 0)) setDialog({ kind: 'confirm', title: t('team.reassignTitle'), body: t('team.reassignBody'), label: t('team.reassign'), run: go });
     else go();
   };
   const ownerMenu = (roomId: string, roomName: string, variant?: 'avatar' | 'link') => {
@@ -769,11 +796,33 @@ export function WorkspacePage() {
       },
     });
   };
+  /** Floors that hold at least one of the Member's rooms. */
+  const uploadFloors = (version?.floors ?? []).filter((f) => f.scene_json.rooms.some((r) => r.room_id && work.assignedRoomIds.includes(r.room_id)));
+  const downloadFloor = (v: Pick<DesignVersion, 'label' | 'floors'>, id: string | null) => {
+    const f = v.floors.find((x) => x.id === id) ?? v.floors[0];
+    if (f) downloadFile(f.file_url, `${v.label}-${f.name}.dxf`).catch((e) => setDialog({ kind: 'notice', title: t('workspace.downloadError'), body: errorText(e) }));
+  };
+  const uploadMemberDxf = async (file: File, floor: string | null, onProgress: (f: number) => void) => {
+    const r = await designApi.uploadRoomDrafts(version!.id, file, floor, onProgress);
+    await loadRef.current();
+    setDialog({ kind: 'uploadResult', title: t('drafts.resultTitle'), accepted: r.accepted, ignored: r.ignored });
+  };
+  /** The item an accepted change points at, by handle, in the reloaded drafts. */
+  const acceptedLine = (a: AcceptedLayoutChange) =>
+    layoutLines(baseElements, work.drafts).find((l) => l.layout?.op === a.op && l.layout.handle === a.handle && l.layout.roomId === a.room_id);
+  const acceptedName = (a: AcceptedLayoutChange) => {
+    const line = acceptedLine(a);
+    if (line) return line.name;
+    const base = layoutTarget(baseElements, { op: a.op, floor_id: floorId, handle: a.handle });
+    return base ? elementName(base, 'designer') : a.block_name;
+  };
+  const lastUpload = isMember ? work.drafts.flatMap((d) => (d.last_upload ? [d.last_upload] : [])).sort((a, b) => b.uploaded_at.localeCompare(a.uploaded_at))[0] ?? null : null;
   const focusLine = (l: ChangeLine) => {
     if (holdQuick()) return;
     if (l.floorId !== floorId) changeFloor(l.floorId);
-    patchCanvas({ selEl: l.elementId, selComment: null, quick: null, hint: null, target: null });
-    setRightTab('item');
+    const real = !isAddedItem(l.elementId);
+    patchCanvas({ selEl: real ? l.elementId : null, selComment: null, quick: null, hint: null, target: null });
+    if (real) setRightTab('item');
     setView2d({ x: l.position.x - 1.5, y: -l.position.y - 1.5, w: 3, h: 3 });
     // after the floor change above has been drawn
     requestAnimationFrame(() => sceneRef.current?.focusAt(l.position.x, l.position.y));
@@ -913,8 +962,8 @@ export function WorkspacePage() {
                 {mergeCompareOn && summary ? (
                   <ComparePanel planRef={planRef} role={viewer.role} fromId={version.id} toId={version.id} floorId={floorId} layers={layers} view={view2d} onViewChange={setView2d}
                     merge={{
-                      base: version, elements: withPatches(baseElements, mergePatches(draftPatches(work.readyDrafts), work.leadWork)), lines: summary.lines, selectedId: selEl,
-                      onPick: (id) => { patchCanvas({ selEl: id, selComment: null }); setRightTab('item'); setDrawer('right'); },
+                      base: version, elements: applyLayout(withPatches(baseElements, mergePatches(draftPatches(work.readyDrafts), work.leadWork)), work.readyDrafts, { dropRemoved: true }).elements, lines: summary.lines, selectedId: selEl,
+                      onPick: (id) => { if (isAddedItem(id)) return; patchCanvas({ selEl: id, selComment: null }); setRightTab('item'); setDrawer('right'); },
                     }} />
                 ) : compareOn && compareTarget ? (
                   <ComparePanel planRef={planRef} role={viewer.role} fromId={compareTarget.id} toId={version.id} floorId={floorId} layers={layers} view={view2d} onViewChange={setView2d} />
@@ -926,7 +975,7 @@ export function WorkspacePage() {
                 ) : (
                   <Plan2D ref={planRef} floor={floor} elements={floorEls} layers={layers} selectedId={selEl} onSelect={clickElement} pins={pins}
                     onPinClick={(id) => { patchCanvas({ selComment: id }); setRightTab('comments'); setDrawer('right'); }} focus={focus}
-                    room={room?.boundary} dimmed={dimmed} highlight={previewHighlight(work.previewDraft)} view={view2d} onViewChange={setView2d}
+                    room={room?.boundary} dimmed={dimmed} highlight={{ ...previewHighlight(work.previewDraft), ...layoutView.highlight }} ghosts={layoutView.ghosts} view={view2d} onViewChange={setView2d}
                     onEmptyClick={commenting ? clickSpot : undefined} />
                 )}
               </div>
@@ -1051,7 +1100,9 @@ export function WorkspacePage() {
               {reviewing && (
                 <RoomDraftsBlock drafts={work.reviewDrafts} avatars={avatars} elements={baseElements} previewId={work.previewId} onPreview={togglePreview} onPickLine={focusLine}
                   commentText={(id) => threads.find((x) => x.root.id === id)?.root.content}
-                  comparing={mergeCompareOn} canCompare={!!summary?.lines.length} onCompare={toggleMergeCompare} />
+                  comparing={mergeCompareOn} canCompare={!!summary?.lines.length} onCompare={toggleMergeCompare}
+                  onShowIgnored={(d) => setDialog({ kind: 'ignored', room: d.room_name, designer: d.designer_name, items: d.last_upload?.ignored ?? [] })}
+                  onDownloadFile={(d) => downloadFile(designApi.roomDraftFilePath(version.id, d.room_id), `${d.room_name}.dxf`).catch((e) => setDialog({ kind: 'notice', title: t('workspace.downloadError'), body: errorText(e) }))} />
               )}
               {leadEditing && (
                 <div className="flex shrink-0 items-center gap-2 border-t border-line bg-surface px-4 py-3">
@@ -1059,13 +1110,16 @@ export function WorkspacePage() {
                     {leadCount ? t('items.draft', { n: leadCount }) : work.readyDrafts.length ? t('drafts.readyCount', { n: work.readyDrafts.length }) : t('ws.noDraft')}
                   </span>
                   {leadCount > 0 && <Button size="sm" variant="ghost" onClick={discardLeadWork} disabled={busy}>{t('items.discard')}</Button>}
-                  <Button size="sm" variant={leadCount || work.readyDrafts.length ? 'primary' : 'secondary'} disabled={!leadCount && !work.readyDrafts.length} loading={busy}
+                  <Button size="sm" variant={leadCount || work.readyDrafts.length ? 'primary' : 'secondary'} disabled={(!leadCount && !work.readyDrafts.length) || layoutBlocked} loading={busy}
+                    title={layoutBlocked ? t('reasons.noMajorLeft') : undefined}
                     onClick={() => openSave('', 0)}>
                     {busy ? t('common.saving') : work.readyDrafts.length ? t('drafts.mergeSave') : t('common.save')}
                   </Button>
                 </div>
               )}
-              {memberDrafting && <MemberDraftBar rows={work.memberRows} hasRooms={work.assignedRoomIds.length > 0} busy={busy} onSave={saveMemberDraft} onReady={markMemberReady} />}
+              {memberDrafting && <MemberDraftBar rows={work.memberRows} hasRooms={work.assignedRoomIds.length > 0} busy={busy} onSave={saveMemberDraft} onReady={markMemberReady}
+                onUploadDxf={allow('uploadRoomDxf').ok ? () => setDialog({ kind: 'memberUpload' }) : undefined}
+                onShowLastUpload={lastUpload ? () => setDialog({ kind: 'uploadResult', title: `${t('drafts.lastUpload')} · ${lastUpload.file_name}`, accepted: work.drafts.flatMap((d) => d.last_upload?.accepted.filter((a) => a.room_id === d.room_id) ?? []), ignored: lastUpload.ignored }) : undefined} />}
               {showDecision && (
                 <section ref={decisionRef} tabIndex={-1} aria-label={t('workspace.decision')}
                   className="shrink-0 space-y-2 border-t border-line bg-surface px-4 py-3 outline-none focus:ring-2 focus:ring-inset focus:ring-brand/40">
@@ -1160,14 +1214,40 @@ export function WorkspacePage() {
           <Textarea autoFocus rows={3} maxLength={2000} value={text} aria-label={t('workspace.requestChanges')} onChange={(e) => setText(e.target.value)} />
         </Modal>
       )}
+      {dialog?.kind === 'memberUpload' && version && (
+        <MemberDxfUploadDialog floors={uploadFloors.map((f) => ({ id: f.id, name: f.name }))} multiFloor={version.floors.length > 1}
+          initialFloorId={floorId} onClose={closeDialog} onUpload={uploadMemberDxf}
+          onDownload={(id) => downloadFloor(version, id)}
+          onDownloadLatest={async (id, fl) => {
+            setDialog(null);
+            if (!id) { loadRef.current(); return; }
+            try { downloadFloor(await designApi.getVersion(id), fl); } finally { goVersion(id); }
+          }}
+          onForbidden={() => { setDialog(null); loadRef.current(); }} />
+      )}
+      {dialog?.kind === 'uploadResult' && (
+        <UploadResultModal title={dialog.title} accepted={dialog.accepted} ignored={dialog.ignored} nameOf={acceptedName} ownerOfRoom={ownerOfRoomName}
+          onClose={closeDialog}
+          onPick={(a) => { const l = acceptedLine(a); if (l) { setDialog(null); focusLine(l); } }} />
+      )}
+      {dialog?.kind === 'ignored' && (
+        <Modal title={t('drafts.ignoredTitle', { room: dialog.room })} size="md" onClose={closeDialog} footer={<Button variant="primary" onClick={closeDialog}>{t('common.close')}</Button>}>
+          <p className="mb-2 text-[13px] text-slate-600">{t('drafts.ignoredIntro', { name: dialog.designer })}</p>
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-1 text-amber-900"><IgnoredList items={dialog.items} ownerOfRoom={ownerOfRoomName} /></div>
+        </Modal>
+      )}
       {dialog?.kind === 'save' && version && (
         <Modal title={t('workspace.saveTitle')} size="md" onClose={closeDialog} footer={<>
           <Button onClick={closeDialog}>{t('common.cancel')}</Button>
-          <Button variant="primary" loading={busy} disabled={!text.trim()} onClick={saveDraft}>{busy ? t('common.saving') : t('common.save')}</Button>
+          <Button variant="primary" loading={busy} disabled={!text.trim() || layoutBlocked} title={layoutBlocked ? t('reasons.noMajorLeft') : undefined} onClick={saveDraft}>{busy ? t('common.saving') : t('common.save')}</Button>
         </>}>
           <div className="space-y-4">
             <Field label={t('workspace.titleLabel')}>{(f) => <Input {...f} autoFocus value={text} maxLength={255} onChange={(e) => setText(e.target.value)} placeholder={t('workspace.savePlaceholder')} />}</Field>
-            <RevisionPicker value={revision} onChange={setRevision} limit={limits.RENDER_3D ?? null} major={allow('majorRevision')} />
+            {mergingLayout ? (
+              <p className={`rounded-lg border px-3 py-2 text-[13px] ${layoutBlocked ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-line bg-slate-50 text-slate-700'}`}>
+                {layoutBlocked ? t('reasons.noMajorLeft') : t('drafts.majorUse', { used: renderLimit?.used ?? 0, max: renderLimit?.limit ?? '—' })}
+              </p>
+            ) : <RevisionPicker value={revision} onChange={setRevision} limit={limits.RENDER_3D ?? null} major={allow('majorRevision')} />}
             {assignAfterSave && <Banner>{t('team.assignAfterSave', { room: assignAfterSave.roomName, name: assignAfterSave.designerName })}</Banner>}
             {chooseAll > 0 && <Banner tone="amber">{t('workspace.keepRemainingBody', { n: chooseAll })}</Banner>}
             {(leadCount > 0 || !work.readyDrafts.length) && <p className="text-xs text-slate-500">{t('workspace.draftCount', { n: leadCount })}</p>}
