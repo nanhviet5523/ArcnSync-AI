@@ -67,7 +67,7 @@ export const VerifyOtpPage: React.FC = () => {
     <div className="flex w-full min-h-screen items-center justify-center bg-white p-8 font-sans">
       <div className="w-full max-w-[420px]">
         <div className="mb-6">
-          <Logo size={38} />
+          <Logo size={38} to="/" />
         </div>
         <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight mb-2">Verify your email</h1>
         <p className="text-sm text-slate-500 mb-6 leading-relaxed">

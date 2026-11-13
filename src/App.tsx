@@ -1,7 +1,9 @@
-import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { HomePage } from '@/features/home/HomePage';
+import { getCurrentUser } from '@/services/authService';
+import { DEFAULT_ROLE_REDIRECT } from '@/routes/routes.config';
 import { LoginPage } from '@/features/auth/LoginPage';
 import { SignUpPage } from '@/features/auth/SignUpPage';
 import { VerifyOtpPage } from '@/features/auth/VerifyOtpPage';
@@ -97,10 +99,14 @@ function App() {
           <Route
             path="/"
             element={
-              <HomePage
-                onNavigateToLogin={() => navigate('/login')}
-                onNavigateToSignUp={() => navigate('/signup')}
-              />
+              getCurrentUser()?.role === 'admin' ? (
+                <Navigate to={DEFAULT_ROLE_REDIRECT.admin} replace />
+              ) : (
+                <HomePage
+                  onNavigateToLogin={() => navigate('/login')}
+                  onNavigateToSignUp={() => navigate('/signup')}
+                />
+              )
             }
           />
 

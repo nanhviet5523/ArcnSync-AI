@@ -93,14 +93,7 @@ export const AcceptInvitation: React.FC = () => {
       {/* Minimal Public Top Header */}
       <header className="bg-white border-b border-slate-200/80">
         <div className="w-full max-w-[1440px] mx-auto px-6 lg:px-12 h-16 flex items-center">
-          <button
-            type="button"
-            onClick={() => navigate('/')}
-            className="cursor-pointer hover:opacity-90 transition-opacity"
-            aria-label="ArchSync AI home"
-          >
-            <Logo size={32} />
-          </button>
+          <Logo size={32} to="/" />
         </div>
       </header>
 

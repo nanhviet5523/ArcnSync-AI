@@ -101,19 +101,12 @@ export const Header: React.FC<HeaderProps> = ({
       ? 'homeowner'
       : undefined);
 
-  // If on landing home page and no authenticated role
-  if (!detectedRole || (location.pathname === '/' && !role)) {
+  // Guest (chưa đăng nhập): header công khai. Đã đăng nhập -> hiện menu theo role, kể cả trên trang chủ.
+  if (!detectedRole) {
     return (
       <header className="sticky top-0 z-50 bg-white border-b border-slate-200/80 shadow-2xs">
         <div className="w-full max-w-[1440px] mx-auto px-6 lg:px-12 h-16 flex items-center justify-between gap-6">
-          <button
-            type="button"
-            onClick={() => navigate('/')}
-            className="cursor-pointer transition-opacity hover:opacity-90"
-            aria-label="ArchSync AI home"
-          >
-            <Logo size={32} />
-          </button>
+          <Logo size={32} to="/" />
 
           <nav
             className="hidden lg:flex gap-8 text-sm font-medium text-slate-700"
@@ -288,13 +281,7 @@ export const Header: React.FC<HeaderProps> = ({
       <div className="w-full max-w-[1440px] mx-auto px-6 lg:px-12 h-16 flex items-center justify-between">
         {/* Left: Brand Logo & Navigation Links */}
         <div className="flex items-center gap-10">
-          <div
-            className="cursor-pointer transition-opacity hover:opacity-90 shrink-0"
-            onClick={() => navigate(config.defaultPath)}
-            title="ArchSync AI"
-          >
-            <Logo size={32} />
-          </div>
+          <Logo size={32} to={config.defaultPath} />
 
           <nav
             className="flex items-center gap-8 text-sm overflow-x-auto"

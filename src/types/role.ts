@@ -9,10 +9,11 @@ export interface User {
   badgeTitle?: string; // Ví dụ: "Staff", "Supplier Partner", "Studio Designer", "Admin"
 }
 
-// Cấu hình Route mặc định & Navigation Navbar cho từng Role
+// Cấu hình Route mặc định & Navigation Navbar cho từng Role.
+// defaultPath là nơi Logo/redirect-sau-login đưa người dùng tới: Trang chủ chung ('/') cho mọi role, riêng Admin vào thẳng Dashboard.
 export const ROLE_CONFIG: Record<UserRole, { defaultPath: string; badge: string; navItems: { label: string; path: string }[] }> = {
   homeowner: {
-    defaultPath: '/homeowner-dashboard',
+    defaultPath: '/',
     badge: 'Homeowner',
     navItems: [
       { label: 'Dashboard', path: '/homeowner-dashboard' },
@@ -22,7 +23,7 @@ export const ROLE_CONFIG: Record<UserRole, { defaultPath: string; badge: string;
     ],
   },
   staff: {
-    defaultPath: '/staff-dashboard',
+    defaultPath: '/',
     badge: 'Staff',
     navItems: [
       { label: 'Dashboard', path: '/staff-dashboard' },
@@ -33,7 +34,7 @@ export const ROLE_CONFIG: Record<UserRole, { defaultPath: string; badge: string;
     ],
   },
   designer: {
-    defaultPath: '/designer-projects',
+    defaultPath: '/',
     badge: 'Studio Designer',
     navItems: [
       { label: 'My Projects', path: '/designer-projects' },
@@ -43,7 +44,7 @@ export const ROLE_CONFIG: Record<UserRole, { defaultPath: string; badge: string;
     ],
   },
   supplier: {
-    defaultPath: '/supplier-dashboard',
+    defaultPath: '/',
     badge: 'Supplier Partner',
     navItems: [
       { label: 'Dashboard', path: '/supplier-dashboard' },

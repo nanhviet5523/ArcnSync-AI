@@ -1,15 +1,20 @@
+import { Link } from 'react-router-dom';
+
 export interface LogoProps {
   size?: number;
   showText?: boolean;
   className?: string;
+  /** Khi có giá trị, Logo trở thành Link điều hướng SPA tới route này. Bỏ trống cho Logo tĩnh (vd: Footer). */
+  to?: string;
 }
 
 export const Logo: React.FC<LogoProps> = ({
   size = 36,
   showText = true,
   className = '',
+  to,
 }: LogoProps) => {
-  return (
+  const mark = (
     <div className={`inline-flex items-center gap-2.5 ${className}`}>
       {/* Icon Nền xanh đen bo góc */}
       <div
@@ -57,5 +62,17 @@ export const Logo: React.FC<LogoProps> = ({
         </span>
       )}
     </div>
+  );
+
+  if (!to) return mark;
+
+  return (
+    <Link
+      to={to}
+      aria-label="ArchSync AI home"
+      className="inline-flex shrink-0 cursor-pointer rounded-lg transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+    >
+      {mark}
+    </Link>
   );
 };
