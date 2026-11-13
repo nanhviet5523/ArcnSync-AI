@@ -394,8 +394,8 @@ export function WorkspacePage() {
       setVersions(all);
       const id = all.find((v) => v.id === versionId)?.id ?? (latestVersion(render.items) ?? latestVersion(layout.items))?.id;
       if (!id) { shownId.current = 'none'; setVersion(null); setDrafts([]); setLatestDrafts([]); setError(''); setReady(true); return; }
-      // Only the design team has drafts, and only at the Products stage.
-      const hasDrafts = viewer.role === 'designer' && all.find((x) => x.id === id)?.version_type === 'RENDER_3D';
+      // Only the design team has drafts: product swaps at Products, the Members' DXF uploads at Layout.
+      const hasDrafts = viewer.role === 'designer' && ['RENDER_3D', 'LAYOUT_2D'].includes(all.find((x) => x.id === id)?.version_type ?? '');
       const shownSummary = all.find((x) => x.id === id)!;
       // a Member left on an older version still has to hear about changes dropped from their draft
       const newest = resolveProjectRole(p, viewer.id) === 'MEMBER' ? olderVersionDraftSource(render.items, shownSummary) : null;
@@ -487,6 +487,9 @@ export function WorkspacePage() {
   const leadEditing = allow('editItems').ok;
   const reviewing = allow('reviewDrafts').ok;
   const memberDrafting = allow('saveRoomDraft').ok;
+  /** Member's draft bar: product swaps at Products, only DXF upload and Mark ready at Layout. */
+  const memberBar = memberDrafting || allow('markRoomReady').ok;
+  const layoutStage = version?.version_type === 'LAYOUT_2D';
   const latest = versions[0];
   const current = versions.find((v) => v.id === version?.id) ?? null;
   const layoutVersions = versions.filter((v) => v.version_type === 'LAYOUT_2D');
@@ -532,7 +535,7 @@ export function WorkspacePage() {
     : itemOwner ? (itemOwner.designerId === viewer.id ? t('team.assignedToYou') : t('team.assignedTo', { name: itemOwner.designerName }))
     : memberDrafting && !editable ? t('team.notYourRoom') : undefined;
   // Only outlines from the current floor; a room with no outline cannot be shaded.
-  const dimmed = memberDrafting ? rooms.flatMap((r) => (r.boundary && !allow('editItem', r.room_id).ok ? [r.boundary] : [])) : [];
+  const dimmed = memberBar ? rooms.flatMap((r) => (r.boundary && !(r.room_id && work.assignedRoomIds.includes(r.room_id)) ? [r.boundary] : [])) : [];
   const team = [...(project.designer ? [{ id: project.designer.id, name: project.designer.fullName }] : []), ...(project.members ?? []).map((m) => ({ id: m.designerId, name: m.fullName }))];
   const avatars = avatarLabels(team);
   const droppedNames = isMember ? droppedItemNames([...work.drafts, ...work.latestDrafts], version?.elements ?? []) : [];
@@ -542,9 +545,10 @@ export function WorkspacePage() {
   const summary = reviewing ? mergeSummary(baseElements, work.readyDrafts, work.leadWork) : null;
   const mergeChange = mergeCompareOn && selElement ? summary?.lines.find((l) => l.elementId === selElement.id) : undefined;
   /** Merging an uploaded DXF makes an UPLOAD version: the backend always counts it as one Major round. */
-  const mergingLayout = reviewing && (!!summary?.hasLayout || hasLayoutChanges(work.ownDrafts));
-  const renderLimit = limits.RENDER_3D ?? null;
-  const layoutBlocked = mergingLayout && renderLimit?.remaining === 0;
+  // At Layout every merge is a layout merge: drafts there only hold DXF changes.
+  const mergingLayout = reviewing && (layoutStage || !!summary?.hasLayout || hasLayoutChanges(work.ownDrafts));
+  const stageLimit = (version && limits[version.version_type]) ?? null;
+  const layoutBlocked = mergingLayout && stageLimit?.remaining === 0;
   /** Who has the room of that name, for "in Bedroom 2, assigned to An". A room given to nobody stays with the Lead. */
   const ownerOfRoomName = (name: string | null) => {
     if (!name) return null;
@@ -1117,7 +1121,18 @@ export function WorkspacePage() {
                   </Button>
                 </div>
               )}
-              {memberDrafting && <MemberDraftBar rows={work.memberRows} hasRooms={work.assignedRoomIds.length > 0} busy={busy} onSave={saveMemberDraft} onReady={markMemberReady}
+              {reviewing && !leadEditing && (
+                <div className="flex shrink-0 items-center gap-2 border-t border-line bg-surface px-4 py-3">
+                  <span className={`min-w-0 flex-1 truncate text-[13px] ${work.readyDrafts.length ? 'font-medium text-slate-900' : 'text-slate-500'}`}>
+                    {work.readyDrafts.length ? t('drafts.readyCount', { n: work.readyDrafts.length }) : t('drafts.noneReady')}
+                  </span>
+                  <Button size="sm" variant="primary" disabled={!work.readyDrafts.length || layoutBlocked} loading={busy}
+                    title={layoutBlocked ? t('reasons.noMajorLeft') : undefined} onClick={() => openSave('', 0)}>
+                    {busy ? t('common.saving') : t('drafts.mergeSave')}
+                  </Button>
+                </div>
+              )}
+              {memberBar && <MemberDraftBar rows={work.memberRows} hasRooms={work.assignedRoomIds.length > 0} busy={busy} onSave={saveMemberDraft} onReady={markMemberReady} swaps={memberDrafting}
                 onUploadDxf={allow('uploadRoomDxf').ok ? () => setDialog({ kind: 'memberUpload' }) : undefined}
                 onShowLastUpload={lastUpload ? () => setDialog({ kind: 'uploadResult', title: `${t('drafts.lastUpload')} · ${lastUpload.file_name}`, accepted: work.drafts.flatMap((d) => d.last_upload?.accepted.filter((a) => a.room_id === d.room_id) ?? []), ignored: lastUpload.ignored }) : undefined} />}
               {showDecision && (
@@ -1245,12 +1260,14 @@ export function WorkspacePage() {
             <Field label={t('workspace.titleLabel')}>{(f) => <Input {...f} autoFocus value={text} maxLength={255} onChange={(e) => setText(e.target.value)} placeholder={t('workspace.savePlaceholder')} />}</Field>
             {mergingLayout ? (
               <p className={`rounded-lg border px-3 py-2 text-[13px] ${layoutBlocked ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-line bg-slate-50 text-slate-700'}`}>
-                {layoutBlocked ? t('reasons.noMajorLeft') : t('drafts.majorUse', { used: renderLimit?.used ?? 0, max: renderLimit?.limit ?? '—' })}
+                {layoutBlocked ? t('reasons.noMajorLeft')
+                  : layoutStage ? t('drafts.layoutRevision', { used: (stageLimit?.used ?? 0) + 1, max: stageLimit?.limit ?? '—' })
+                  : t('drafts.majorUse', { used: stageLimit?.used ?? 0, max: stageLimit?.limit ?? '—' })}
               </p>
             ) : <RevisionPicker value={revision} onChange={setRevision} limit={limits.RENDER_3D ?? null} major={allow('majorRevision')} />}
             {assignAfterSave && <Banner>{t('team.assignAfterSave', { room: assignAfterSave.roomName, name: assignAfterSave.designerName })}</Banner>}
             {chooseAll > 0 && <Banner tone="amber">{t('workspace.keepRemainingBody', { n: chooseAll })}</Banner>}
-            {(leadCount > 0 || !work.readyDrafts.length) && <p className="text-xs text-slate-500">{t('workspace.draftCount', { n: leadCount })}</p>}
+            {!layoutStage && (leadCount > 0 || !work.readyDrafts.length) && <p className="text-xs text-slate-500">{t('workspace.draftCount', { n: leadCount })}</p>}
             {!!work.readyDrafts.length && summary && (
               <section aria-label={t('drafts.mergeSummary')} className="rounded-lg border border-line p-3 text-[13px]">
                 <h3 className="font-medium text-slate-900">{t('drafts.mergeSummary')}</h3>
@@ -1258,7 +1275,7 @@ export function WorkspacePage() {
                   {summary.rooms.map((r) => (
                     <li key={r.key} className="flex justify-between gap-3 text-slate-700">
                       <span className="min-w-0 truncate">{r.room} · {t('drafts.changes', { n: r.count })}</span>
-                      <span className="shrink-0 tabular-nums">{signedVnd(r.delta)}</span>
+                      {!layoutStage && <span className="shrink-0 tabular-nums">{signedVnd(r.delta)}</span>}
                     </li>
                   ))}
                   {summary.own && (
@@ -1268,10 +1285,10 @@ export function WorkspacePage() {
                     </li>
                   )}
                 </ul>
-                <p className="mt-2 flex justify-between gap-3 border-t border-line pt-2 font-semibold text-slate-900">
+                {!layoutStage && <p className="mt-2 flex justify-between gap-3 border-t border-line pt-2 font-semibold text-slate-900">
                   <span>{t('drafts.mergeTotal')}</span>
                   <span className="tabular-nums">{signedVnd(summary.total)}</span>
-                </p>
+                </p>}
               </section>
             )}
             <AddressedPicker threads={openThreads.map((x) => x.root)} value={addressed} onChange={setAddressed} invalid={invalidAddressed} />

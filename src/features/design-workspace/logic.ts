@@ -179,6 +179,8 @@ export type Action =
   | 'saveRoomDraft'
   /** Member uploads the DXF they edited in AutoCAD; only changes in their own rooms reach their drafts. */
   | 'uploadRoomDxf'
+  /** Member hands a room draft to the Lead (Products and Layout). */
+  | 'markRoomReady'
   /** Lead reads, previews and merges the Members' drafts. */
   | 'reviewDrafts'
   /** Lead takes a room from another designer, with their unmerged changes. */
@@ -268,6 +270,8 @@ export function can(action: Action, { role, version, project, projectRole = null
   const locked = closed || (version.status === 'SUPERSEDED' && !earlierApprovable) || version.status === 'APPROVED';
   if (locked) return no;
   const choosing = render && project.status === 'PRODUCT_SELECTION';
+  // Room drafts: product swaps at Products; at Layout only the Members' DXF uploads (backend lockDraftableVersion).
+  const drafting = choosing || (layout && project.status === 'IN_DESIGN');
   const ctx = { role, openCount, unknownCount, notChosenCount };
   const blocked = (a: 'approveLayout' | 'approveProducts') => {
     const why = approveBlockers(a, ctx);
@@ -278,13 +282,14 @@ export function can(action: Action, { role, version, project, projectRole = null
     case 'comment':
     case 'reply': return lead || member || customer ? yes : no;
     case 'respond': return customer ? yes : no;
-    case 'editItems':
-    case 'reviewDrafts': return lead && choosing ? yes : no;
+    case 'editItems': return lead && choosing ? yes : no;
+    case 'reviewDrafts': return lead && drafting ? yes : no;
     case 'takeOverRoom': return lead && choosing && roomOwnedByOther ? yes : no;
     case 'editItem': return choosing && ((lead && !roomOwnedByOther) || (member && inRoom)) ? yes : no;
     case 'saveRoomDraft': return member && choosing && (roomId === undefined || inRoom) ? yes : no;
-    // Backend: current RENDER_3D version, PRODUCT_SELECTION, at least one assigned room (else 403 ROOM_NOT_ASSIGNED).
-    case 'uploadRoomDxf': return member && choosing && assignedRoomIds.length > 0 ? yes : no;
+    // Backend: newest RENDER_3D in PRODUCT_SELECTION or newest LAYOUT_2D in IN_DESIGN, at least one assigned room (else 403 ROOM_NOT_ASSIGNED).
+    case 'uploadRoomDxf': return member && drafting && assignedRoomIds.length > 0 ? yes : no;
+    case 'markRoomReady': return member && drafting && (roomId === undefined || inRoom) ? yes : no;
     // Backend records ADDRESS on the stage's current version: the newest one still awaiting review.
     case 'addressComment': return lead && (version.status === 'SUBMITTED' || version.status === 'REVISION_REQUESTED') ? yes : no;
     case 'requestChanges':

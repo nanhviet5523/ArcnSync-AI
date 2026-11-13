@@ -151,6 +151,9 @@ export const en = {
     ignoredIntro: '{name} tried to change these items outside their rooms. They were not added to the draft.',
     memberFile: 'Download the uploaded file',
     majorUse: 'This uses 1 major revision ({used}/{max})',
+    layoutRevision: 'This creates layout revision {used}/{max}',
+    noneLayout: 'Download the DXF, edit your rooms in AutoCAD, then upload it to start a draft.',
+    noneReady: 'No drafts are ready to merge',
     layoutSkipped: { one: '{n} layout change could not be merged: {items}', other: '{n} layout changes could not be merged: {items}' },
   },
   steps: {

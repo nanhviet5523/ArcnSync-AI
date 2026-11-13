@@ -9,12 +9,14 @@ import type { ChangeLine, MemberDraftRow } from './roomDrafts';
 import type { DesignElement, Product, RoomDraft } from './types';
 
 /** Member's bar at the bottom of the right column: one line per room with a draft. */
-export function MemberDraftBar({ rows, hasRooms, busy, onSave, onReady, onUploadDxf, onShowLastUpload }: {
+export function MemberDraftBar({ rows, hasRooms, busy, onSave, onReady, onUploadDxf, onShowLastUpload, swaps = true }: {
   rows: MemberDraftRow[]; hasRooms: boolean; busy: boolean; onSave: (r: MemberDraftRow) => void; onReady: (r: MemberDraftRow) => void;
   /** Shown when can('uploadRoomDxf'). */
   onUploadDxf?: () => void;
   /** Reopens the result of the last DXF upload, when there was one. */
   onShowLastUpload?: () => void;
+  /** false at Layout: no product swaps on the web, so no Save draft; changes come only from the uploaded DXF. */
+  swaps?: boolean;
 }) {
   const uploadRow = onUploadDxf && (
     <div className="flex shrink-0 items-center justify-end gap-2 border-t border-line bg-surface px-4 py-2">
@@ -25,7 +27,7 @@ export function MemberDraftBar({ rows, hasRooms, busy, onSave, onReady, onUpload
   if (!rows.length) {
     return (
       <>
-        <p className="shrink-0 border-t border-line bg-surface px-4 py-3 text-[13px] text-slate-500">{t(hasRooms ? 'drafts.none' : 'drafts.noRooms')}</p>
+        <p className="shrink-0 border-t border-line bg-surface px-4 py-3 text-[13px] text-slate-500">{t(!hasRooms ? 'drafts.noRooms' : swaps ? 'drafts.none' : 'drafts.noneLayout')}</p>
         {uploadRow}
       </>
     );
@@ -47,7 +49,7 @@ export function MemberDraftBar({ rows, hasRooms, busy, onSave, onReady, onUpload
             </div>
             {waiting ? <p className="text-xs text-slate-500">{t('drafts.waitingLead')}</p> : (
               <div className="flex justify-end gap-2">
-                <Button size="sm" disabled={!r.dirty || busy} onClick={() => onSave(r)}>{t('drafts.saveDraft')}</Button>
+                {swaps && <Button size="sm" disabled={!r.dirty || busy} onClick={() => onSave(r)}>{t('drafts.saveDraft')}</Button>}
                 {r.count > 0 && <Button size="sm" variant={r === first ? 'primary' : 'secondary'} disabled={busy} onClick={() => onReady(r)}>{t('drafts.markReady')}</Button>}
               </div>
             )}
