@@ -12,6 +12,7 @@ import { ResetPasswordPage } from '@/features/auth/ResetPasswordPage';
 import { AcceptInvitation } from '@/features/auth/AcceptInvitation';
 import { StaffDashboard } from '@/features/staff/StaffDashboard';
 import { CreateContract } from '@/features/staff/CreateContract';
+import { ContractDetail } from '@/features/projects/ContractDetail';
 import { StaffRequests } from '@/features/staff/StaffRequests';
 import { StaffRequestDetail } from '@/features/staff/StaffRequestDetail';
 import { StaffContracts } from '@/features/staff/StaffContracts';
@@ -157,6 +158,7 @@ function App() {
             <Route path="/messages" element={<Messages />} />
             <Route path="/call-meeting" element={<CallMeeting />} />
             <Route path="/settings" element={<ProfileSettings />} />
+            <Route path="/project-contract" element={<ContractDetail />} />
           </Route>
           {PREVIEW_ROLES.flatMap((role) =>
             ROLE_CONFIG[role].navItems
