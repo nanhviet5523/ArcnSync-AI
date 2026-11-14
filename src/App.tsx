@@ -23,6 +23,7 @@ import { StaffProjectDetail } from '@/features/staff/StaffProjectDetail';
 import { Messages } from '@/features/shared/Messages';
 import { CallMeeting } from '@/features/shared/CallMeeting';
 import { ProfileSettings } from '@/features/shared/ProfileSettings';
+import { BookConsultation } from '@/features/shared/BookConsultation';
 import { AdminUsersRoles } from '@/features/admin/AdminUsersRoles';
 import { AdminUsersPage } from '@/features/admin/users/AdminUsersPage';
 import { AdminDashboard } from '@/features/admin/AdminDashboard';
@@ -153,6 +154,9 @@ function App() {
             <Route path="/designer-ai-studio" element={<DesignerAIStudio />} />
             <Route path="/designer-catalog" element={<DesignerProjectDetail initialTab="Products" />} />
             <Route path="/designer-portfolio" element={<DesignerPortfolio />} />
+          </Route>
+          <Route element={<ProtectedRoute allowedRoles={['homeowner']} />}>
+            <Route path="/consultation/book" element={<BookConsultation />} />
           </Route>
           <Route element={<ProtectedRoute allowedRoles={ALL_ROLES} />}>
             <Route path="/messages" element={<Messages />} />

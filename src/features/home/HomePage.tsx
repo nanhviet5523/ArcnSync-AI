@@ -1,11 +1,16 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Header } from '@/components/layout';
 import { Footer } from '@/components/layout';
+import { getCurrentUser } from '@/services/authService';
 import { HeroSection } from './components/HeroSection';
 import { HowItWorksSection } from './components/HowItWorksSection';
 import { InspirationsSection } from './components/InspirationsSection';
 import { FeaturesSection } from './components/FeaturesSection';
 import { CtaSection } from './components/CtaSection';
+
+const GENERIC_LOGIN_PROMPT = 'Log in to access this feature';
+const CONSULTATION_LOGIN_PROMPT = 'Please log in to request a consultation';
 
 interface HomePageProps {
   onNavigateToLogin?: () => void;
@@ -16,7 +21,9 @@ export const HomePage: React.FC<HomePageProps> = ({
   onNavigateToLogin,
   onNavigateToSignUp,
 }) => {
+  const navigate = useNavigate();
   const [loginPromptOpen, setLoginPromptOpen] = useState(false);
+  const [loginPromptTitle, setLoginPromptTitle] = useState(GENERIC_LOGIN_PROMPT);
 
   useEffect(() => {
     if (!loginPromptOpen) return;
@@ -27,7 +34,20 @@ export const HomePage: React.FC<HomePageProps> = ({
     return () => window.removeEventListener('keydown', closeOnEscape);
   }, [loginPromptOpen]);
 
-  const promptLogin = () => setLoginPromptOpen(true);
+  const promptLogin = () => {
+    setLoginPromptTitle(GENERIC_LOGIN_PROMPT);
+    setLoginPromptOpen(true);
+  };
+
+  // Guest -> modal "Please log in to request a consultation". Đã đăng nhập (Homeowner) -> vào thẳng form yêu cầu tư vấn.
+  const handleBookConsultation = () => {
+    if (getCurrentUser()) {
+      navigate('/consultation/book');
+      return;
+    }
+    setLoginPromptTitle(CONSULTATION_LOGIN_PROMPT);
+    setLoginPromptOpen(true);
+  };
 
   return (
     <div className="min-h-screen bg-white font-sans">
@@ -36,7 +56,7 @@ export const HomePage: React.FC<HomePageProps> = ({
         onSignUpClick={onNavigateToSignUp}
       />
       <main>
-        <HeroSection onFeatureClick={promptLogin} />
+        <HeroSection onBookConsultation={handleBookConsultation} />
         <HowItWorksSection />
         <InspirationsSection onFeatureClick={promptLogin} />
         <FeaturesSection />
@@ -57,7 +77,7 @@ export const HomePage: React.FC<HomePageProps> = ({
             className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl sm:p-7"
           >
             <h2 id="login-prompt-title" className="text-xl font-bold text-slate-900">
-              Log in to access this feature
+              {loginPromptTitle}
             </h2>
             <div className="mt-6 flex justify-end gap-3">
               <button
