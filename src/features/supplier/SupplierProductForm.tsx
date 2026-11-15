@@ -2,12 +2,13 @@ import React, { useEffect, useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ApiError } from '@/services/authService';
-import { catalogService, type CatalogCategory, type CatalogProduct, type ProductPayload, type ProductUnit, type StockStatus } from '@/services/catalogService';
+import { catalogService, type CatalogCategory } from '@/services/catalogService';
+import { productsService, type Product, type ProductPayload, type ProductUnit, type StockStatus } from '@/services/productsService';
 import { SupplierButton, SupplierCard, SupplierPageFrame } from './SupplierPageFrame';
 
 type FormState = { categoryId: string; sku: string; name: string; description: string; brand: string; material: string; colorName: string; colorCode: string; widthMm: string; depthMm: string; heightMm: string; unit: ProductUnit; price: string; stockStatus: StockStatus; thumbnailUrl: string; model3dUrl: string; status: 'ACTIVE'|'INACTIVE' };
 const blank: FormState = { categoryId: '', sku: '', name: '', description: '', brand: '', material: '', colorName: '', colorCode: '', widthMm: '', depthMm: '', heightMm: '', unit: 'PIECE', price: '', stockStatus: 'IN_STOCK', thumbnailUrl: '', model3dUrl: '', status: 'ACTIVE' };
-const fromProduct = (product: CatalogProduct): FormState => ({ categoryId: product.category.id, sku: product.sku, name: product.name, description: product.description ?? '', brand: product.brand ?? '', material: product.material ?? '', colorName: product.colorName ?? '', colorCode: product.colorCode ?? '', widthMm: product.widthMm == null ? '' : String(product.widthMm), depthMm: product.depthMm == null ? '' : String(product.depthMm), heightMm: product.heightMm == null ? '' : String(product.heightMm), unit: product.unit, price: product.price, stockStatus: product.stockStatus, thumbnailUrl: product.thumbnailUrl ?? '', model3dUrl: product.model3dUrl ?? '', status: product.status });
+const fromProduct = (product: Product): FormState => ({ categoryId: product.category.id, sku: product.sku, name: product.name, description: product.description ?? '', brand: product.brand ?? '', material: product.material ?? '', colorName: product.colorName ?? '', colorCode: product.colorCode ?? '', widthMm: product.widthMm == null ? '' : String(product.widthMm), depthMm: product.depthMm == null ? '' : String(product.depthMm), heightMm: product.heightMm == null ? '' : String(product.heightMm), unit: product.unit, price: product.price, stockStatus: product.stockStatus, thumbnailUrl: product.thumbnailUrl ?? '', model3dUrl: product.model3dUrl ?? '', status: product.status });
 const optionalNumber = (value: string) => value.trim() ? Number(value) : undefined;
 
 export const SupplierProductForm: React.FC = () => {
@@ -16,7 +17,7 @@ export const SupplierProductForm: React.FC = () => {
   const [loading, setLoading] = useState(true); const [saving, setSaving] = useState(false); const [error, setError] = useState(''); const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   useEffect(() => {
     let active = true;
-    Promise.all([catalogService.listOwnCategories(true), productId ? catalogService.getProduct(productId) : Promise.resolve(null)])
+    Promise.all([catalogService.listOwnCategories(true), productId ? productsService.get(productId) : Promise.resolve(null)])
       .then(([categoryList, product]) => { if (!active) return; setCategories(categoryList); if (product) setForm(fromProduct(product)); else if (categoryList[0]) setForm((current) => ({ ...current, categoryId: categoryList[0].id })); })
       .catch((cause: unknown) => { if (active) setError(cause instanceof ApiError ? `${cause.message} (HTTP ${cause.status || 'network'}).` : 'Could not load product data.'); })
       .finally(() => { if (active) setLoading(false); });
@@ -31,7 +32,7 @@ export const SupplierProductForm: React.FC = () => {
       widthMm: optionalNumber(form.widthMm), depthMm: optionalNumber(form.depthMm), heightMm: optionalNumber(form.heightMm), unit: form.unit,
       price: form.price, stockStatus: form.stockStatus, thumbnailUrl: form.thumbnailUrl || undefined, model3dUrl: form.model3dUrl || undefined, status: form.status,
     };
-    try { if (productId) await catalogService.updateProduct(productId, payload); else await catalogService.createProduct(payload); navigate('/supplier-catalog'); }
+    try { if (productId) await productsService.update(productId, payload); else await productsService.create(payload); navigate('/supplier-catalog'); }
     catch (cause) { if (cause instanceof ApiError) { setError(Object.keys(cause.fieldErrors).length ? `Could not save the product (HTTP ${cause.status}). Check the highlighted fields.` : `${cause.message} (HTTP ${cause.status || 'network'}).`); setFieldErrors(cause.fieldErrors); } else setError('Could not save the product.'); }
     finally { setSaving(false); }
   };

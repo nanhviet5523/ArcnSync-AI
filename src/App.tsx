@@ -8,39 +8,17 @@ import { VerifyOtpPage } from '@/features/auth/VerifyOtpPage';
 import { ForgotPasswordPage } from '@/features/auth/ForgotPasswordPage';
 import { ResetPasswordPage } from '@/features/auth/ResetPasswordPage';
 import { AcceptInvitation } from '@/features/auth/AcceptInvitation';
-import { StaffDashboard } from '@/features/staff/StaffDashboard';
-import { CreateContract } from '@/features/staff/CreateContract';
-import { StaffRequests } from '@/features/staff/StaffRequests';
-import { StaffRequestDetail } from '@/features/staff/StaffRequestDetail';
-import { StaffContracts } from '@/features/staff/StaffContracts';
-import { StaffContractDetail } from '@/features/staff/StaffContractDetail';
-import { StaffAddendum } from '@/features/staff/StaffAddendum';
-import { StaffProjects } from '@/features/staff/StaffProjects';
-import { StaffProjectDetail } from '@/features/staff/StaffProjectDetail';
-import { Messages } from '@/features/shared/Messages';
-import { CallMeeting } from '@/features/shared/CallMeeting';
 import { ProfileSettings } from '@/features/shared/ProfileSettings';
 import { CustomerDirectory } from '@/features/shared/CustomerDirectory';
-import { AdminUsersRoles } from '@/features/admin/AdminUsersRoles';
-import { AdminDashboard } from '@/features/admin/AdminDashboard';
+import { ApartmentManagement } from '@/features/shared/ApartmentManagement';
 import { AdminMasterData } from '@/features/admin/AdminMasterData';
 import { AdminProducts } from '@/features/admin/AdminProducts';
-import { RolePreviewPage } from '@/features/shared/RolePreviewPage';
-import { AdminAISettings } from '@/features/admin/AdminAISettings';
-import { AdminPromptDetail } from '@/features/admin/AdminPromptDetail';
-import { AdminReports } from '@/features/admin/AdminReports';
-import { SupplierDashboard } from '@/features/supplier/SupplierDashboard';
 import { SupplierCatalog } from '@/features/supplier/SupplierCatalog';
 import { SupplierProductDetail } from '@/features/supplier/SupplierProductDetail';
 import { SupplierProductForm } from '@/features/supplier/SupplierProductForm';
-import { SupplierCatalogImport } from '@/features/supplier/SupplierCatalogImport';
+import { SupplierDashboard } from '@/features/supplier/SupplierDashboard';
 import { DesignerCatalog } from '@/features/designer/DesignerCatalog';
-import { SupplierInquiries } from '@/features/supplier/SupplierInquiries';
-import { SupplierApplicationStatus } from '@/features/supplier/SupplierApplicationStatus';
-import { DesignerProjects } from '@/features/designer/DesignerProjects';
-import { DesignerProjectDetail } from '@/features/designer/DesignerProjectDetail';
-import { DesignerAIStudio } from '@/features/designer/DesignerAIStudio';
-import { DesignerPortfolio } from '@/features/designer/DesignerPortfolio';
+import { NoApiPage } from '@/components/common/NoApiPage';
 import { ProtectedRoute } from '@/routes/ProtectedRoute';
 import { ROLE_CONFIG } from '@/types/role';
 import type { UserRole } from '@/types/role';
@@ -54,6 +32,7 @@ function App() {
   const [, setAuthRevision] = useState(0);
 
   useEffect(() => {
+    window.localStorage.removeItem('archsync-demo-workspace-v1');
     const refreshAuth = () => setAuthRevision((revision) => revision + 1);
     window.addEventListener('archsync-auth-change', refreshAuth);
     window.addEventListener('storage', refreshAuth);
@@ -107,31 +86,33 @@ function App() {
           />
 
           <Route element={<ProtectedRoute allowedRoles={['staff']} />}>
-            <Route path="/staff-dashboard" element={<StaffDashboard />} />
-            <Route path="/staff-requests" element={<StaffRequests />} />
-            <Route path="/staff-request-detail" element={<StaffRequestDetail />} />
-            <Route path="/create-contract" element={<CreateContract />} />
-            <Route path="/staff-contracts" element={<StaffContracts />} />
-            <Route path="/staff-contract-detail" element={<StaffContractDetail />} />
-            <Route path="/staff-addendum" element={<StaffAddendum />} />
-            <Route path="/staff-projects" element={<StaffProjects />} />
-            <Route path="/staff-project-detail" element={<StaffProjectDetail />} />
+            <Route path="/staff-dashboard" element={<NoApiPage role="staff" title="Staff dashboard" />} />
+            <Route path="/staff-apartments" element={<ApartmentManagement />} />
+            <Route path="/staff-requests" element={<NoApiPage role="staff" title="Requests" />} />
+            <Route path="/staff-request-detail" element={<NoApiPage role="staff" title="Request details" />} />
+            <Route path="/create-contract" element={<NoApiPage role="staff" title="Create contract" />} />
+            <Route path="/staff-contracts" element={<NoApiPage role="staff" title="Contracts" />} />
+            <Route path="/staff-contract-detail" element={<NoApiPage role="staff" title="Contract details" />} />
+            <Route path="/staff-addendum" element={<NoApiPage role="staff" title="Contract addendum" />} />
+            <Route path="/staff-projects" element={<NoApiPage role="staff" title="Projects" />} />
+            <Route path="/staff-project-detail" element={<NoApiPage role="staff" title="Project details" />} />
           </Route>
           <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
-            <Route path="/admin-dashboard" element={<AdminDashboard />} />
-            <Route path="/admin-users" element={<AdminUsersRoles />} />
+            <Route path="/admin-dashboard" element={<NoApiPage role="admin" title="Admin dashboard" />} />
+            <Route path="/admin-apartments" element={<ApartmentManagement />} />
+            <Route path="/admin-users" element={<NoApiPage role="admin" title="Users and roles" />} />
             <Route path="/admin-master-data" element={<AdminMasterData />} />
             <Route path="/admin-products" element={<AdminProducts />} />
-            <Route path="/admin-ai-settings" element={<AdminAISettings />} />
-            <Route path="/admin-prompts/:promptId" element={<AdminPromptDetail />} />
-            <Route path="/admin-reports" element={<AdminReports />} />
-            <Route path="/admin" element={<AdminUsersRoles />} />
-            <Route path="/admin/users" element={<AdminUsersRoles />} />
-            <Route path="/admin/roles" element={<AdminUsersRoles />} />
-            <Route path="/admin/overview" element={<AdminDashboard />} />
-            <Route path="/admin/dashboard" element={<AdminDashboard />} />
+            <Route path="/admin-ai-settings" element={<NoApiPage role="admin" title="AI settings" />} />
+            <Route path="/admin-prompts/:promptId" element={<NoApiPage role="admin" title="Prompt details" />} />
+            <Route path="/admin-reports" element={<NoApiPage role="admin" title="Reports" />} />
+            <Route path="/admin" element={<NoApiPage role="admin" title="Roles and permissions" />} />
+            <Route path="/admin/users" element={<NoApiPage role="admin" title="Users and roles" />} />
+            <Route path="/admin/roles" element={<NoApiPage role="admin" title="Roles and permissions" />} />
+            <Route path="/admin/overview" element={<NoApiPage role="admin" title="Admin dashboard" />} />
+            <Route path="/admin/dashboard" element={<NoApiPage role="admin" title="Admin dashboard" />} />
             <Route path="/admin/master-data" element={<AdminMasterData />} />
-            <Route path="/admin/ai-settings" element={<AdminAISettings />} />
+            <Route path="/admin/ai-settings" element={<NoApiPage role="admin" title="AI settings" />} />
           </Route>
           <Route element={<ProtectedRoute allowedRoles={['supplier']} />}>
             <Route path="/supplier-dashboard" element={<SupplierDashboard />} />
@@ -139,20 +120,23 @@ function App() {
             <Route path="/supplier-products/:productId" element={<SupplierProductDetail />} />
             <Route path="/supplier-products/new" element={<SupplierProductForm />} />
             <Route path="/supplier-products/:productId/edit" element={<SupplierProductForm />} />
-            <Route path="/supplier-catalog/import" element={<SupplierCatalogImport />} />
-            <Route path="/supplier-inquiries" element={<SupplierInquiries />} />
-            <Route path="/supplier-application" element={<SupplierApplicationStatus />} />
+            <Route path="/supplier-catalog/import" element={<NoApiPage role="supplier" title="Catalog import" />} />
+            <Route path="/supplier-inquiries" element={<NoApiPage role="supplier" title="Inquiries" />} />
+            <Route path="/supplier-application" element={<NoApiPage role="supplier" title="Supplier application" />} />
           </Route>
           <Route element={<ProtectedRoute allowedRoles={['designer']} />}>
-            <Route path="/designer-projects" element={<DesignerProjects />} />
-            <Route path="/designer-projects/:projectId" element={<DesignerProjectDetail />} />
-            <Route path="/designer-ai-studio" element={<DesignerAIStudio />} />
+            <Route path="/designer-projects" element={<NoApiPage role="designer" title="Designer projects" />} />
+            <Route path="/designer-projects/:projectId" element={<NoApiPage role="designer" title="Project details" />} />
+            <Route path="/designer-ai-studio" element={<NoApiPage role="designer" title="AI Studio" />} />
             <Route path="/designer-catalog" element={<DesignerCatalog />} />
-            <Route path="/designer-portfolio" element={<DesignerPortfolio />} />
+            <Route path="/designer-portfolio" element={<NoApiPage role="designer" title="Designer portfolio" />} />
+          </Route>
+          <Route element={<ProtectedRoute allowedRoles={['homeowner']} />}>
+            <Route path="/homeowner-apartments" element={<ApartmentManagement />} />
           </Route>
           <Route element={<ProtectedRoute allowedRoles={ALL_ROLES} />}>
-            <Route path="/messages" element={<Messages />} />
-            <Route path="/call-meeting" element={<CallMeeting />} />
+            <Route path="/messages" element={<NoApiPage title="Messages" />} />
+            <Route path="/call-meeting" element={<NoApiPage title="Call and meeting" />} />
             <Route path="/settings" element={<ProfileSettings />} />
           </Route>
           <Route element={<ProtectedRoute allowedRoles={['staff', 'admin']} />}>
@@ -161,9 +145,10 @@ function App() {
           {PREVIEW_ROLES.flatMap((role) =>
             ROLE_CONFIG[role].navItems
               .filter((item) => item.path !== '/messages')
+              .filter((item) => item.path !== '/homeowner-apartments')
               .map((item) => (
                 <Route key={`${role}-${item.path}`} element={<ProtectedRoute allowedRoles={[role]} />}>
-                  <Route path={item.path} element={<RolePreviewPage role={role} />} />
+                  <Route path={item.path} element={<NoApiPage role={role} title={item.label} />} />
                 </Route>
               )),
           )}
