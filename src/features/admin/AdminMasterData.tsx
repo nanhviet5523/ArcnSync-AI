@@ -4,11 +4,6 @@ import { Header, Footer } from '@/components/layout';
 import { ApiError } from '@/services/authService';
 import { designStyleService, type DesignStyle } from '@/services/designStyleService';
 import { catalogService, type CatalogCategory } from '@/services/catalogService';
-import {
-  INITIAL_BUILDING_TYPES,
-  INITIAL_MATERIALS_FINISHES,
-  INITIAL_CONSTRAINT_RULES,
-} from '@/features/admin/services/adminService';
 import type {
   BuildingTypeItem,
   MaterialFinishItem,
@@ -31,44 +26,11 @@ interface ServicePackageItem {
   included: string[];
 }
 
-const INITIAL_SERVICE_PACKAGES: ServicePackageItem[] = [
-  {
-    id: 'pkg-1',
-    name: 'Essential',
-    price: 45,
-    rounds: 2,
-    weeks: 8,
-    included: ['Concept design', '3D per floor'],
-  },
-  {
-    id: 'pkg-2',
-    name: 'Standard',
-    price: 68,
-    rounds: 3,
-    weeks: 10,
-    included: ['Concept', 'AI studio', '3D per floor', 'BOM & estimate'],
-  },
-  {
-    id: 'pkg-3',
-    name: 'Premium',
-    price: 95,
-    rounds: 4,
-    weeks: 12,
-    included: ['Everything in Standard', '2 site visits', 'Supplier sourcing'],
-  },
-];
-
 interface PaymentMilestones {
   signed: number;
   concept: number;
   handover: number;
 }
-
-const INITIAL_MILESTONES: PaymentMilestones = {
-  signed: 30,
-  concept: 40,
-  handover: 30,
-};
 
 const DesignStyleImage: React.FC<{ src: string; alt: string; className: string }> = ({ src, alt, className }) => {
   const [failed, setFailed] = useState(!src);
@@ -82,10 +44,10 @@ const DesignStyleImage: React.FC<{ src: string; alt: string; className: string }
   return <img src={src} alt={alt} onError={() => setFailed(true)} className={`rounded-lg bg-slate-100 object-cover ${className}`}/>;
 };
 export const AdminMasterData: React.FC = () => {
-  const [activeSubTab, setActiveSubTab] = useState<MasterDataSubTab>('building');
+  const [activeSubTab, setActiveSubTab] = useState<MasterDataSubTab>('styles');
 
   // Sub-tab 1: Building types
-  const [buildingTypes, setBuildingTypes] = useState<BuildingTypeItem[]>(INITIAL_BUILDING_TYPES);
+  const [buildingTypes, setBuildingTypes] = useState<BuildingTypeItem[]>([]);
 
   // Sub-tab 2: Design styles
   const [designStyles, setDesignStyles] = useState<DesignStyle[]>([]);
@@ -106,24 +68,24 @@ export const AdminMasterData: React.FC = () => {
   const [apiCategories, setApiCategories] = useState<CatalogCategory[]>([]);
   const [adminCategoryDetail, setAdminCategoryDetail] = useState<CatalogCategory | null>(null);
   const [categoryApiError, setCategoryApiError] = useState('');
-  const [materialsFinishes, setMaterialsFinishes] = useState<MaterialFinishItem[]>(INITIAL_MATERIALS_FINISHES);
+  const [materialsFinishes, setMaterialsFinishes] = useState<MaterialFinishItem[]>([]);
 
   // Sub-tab 4: Constraint rules & Edit Rule Modal (Image 1)
-  const [constraintRules, setConstraintRules] = useState<ConstraintRuleItem[]>(INITIAL_CONSTRAINT_RULES);
+  const [constraintRules, setConstraintRules] = useState<ConstraintRuleItem[]>([]);
   const [editingRule, setEditingRule] = useState<ConstraintRuleItem | null>(null);
   const [isRuleModalOpen, setIsRuleModalOpen] = useState<boolean>(false);
   const [ruleDescription, setRuleDescription] = useState<string>('');
   const [ruleSeverity, setRuleSeverity] = useState<'Warn only' | 'Block saving'>('Warn only');
 
   // Sub-tab 5: Packages & fees (Image 2 & Image 3)
-  const [packages, setPackages] = useState<ServicePackageItem[]>(INITIAL_SERVICE_PACKAGES);
-  const [savedPackages, setSavedPackages] = useState<ServicePackageItem[]>(INITIAL_SERVICE_PACKAGES);
+  const [packages, setPackages] = useState<ServicePackageItem[]>([]);
+  const [savedPackages, setSavedPackages] = useState<ServicePackageItem[]>([]);
 
   const [extraRoundFee, setExtraRoundFee] = useState<number>(5);
   const [savedExtraRoundFee, setSavedExtraRoundFee] = useState<number>(5);
 
-  const [milestones, setMilestones] = useState<PaymentMilestones>(INITIAL_MILESTONES);
-  const [savedMilestones, setSavedMilestones] = useState<PaymentMilestones>(INITIAL_MILESTONES);
+  const [milestones, setMilestones] = useState<PaymentMilestones>({ signed: 0, concept: 0, handover: 0 });
+  const [savedMilestones, setSavedMilestones] = useState<PaymentMilestones>({ signed: 0, concept: 0, handover: 0 });
 
   // Save changes toast notification
   const [savedNotification, setSavedNotification] = useState<string | null>(null);
@@ -423,7 +385,7 @@ export const AdminMasterData: React.FC = () => {
             </p>
           </div>
 
-          {activeSubTab !== 'styles' && <button
+          {false && <button
             type="button"
             onClick={handleSaveChanges}
             className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-sm font-semibold rounded-xl shadow-xs transition cursor-pointer self-start sm:self-auto"
@@ -451,8 +413,9 @@ export const AdminMasterData: React.FC = () => {
           })}
         </div>
 
+        {activeSubTab === 'styles' || activeSubTab === 'furniture' ? <>
         {/* SUB-TAB 1: BUILDING TYPES (Image 1) */}
-        {activeSubTab === 'building' && (
+        {activeSubTab === ('building' as MasterDataSubTab) && (
           <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-6 max-w-4xl">
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-base font-bold text-slate-900">
@@ -589,7 +552,7 @@ export const AdminMasterData: React.FC = () => {
               </h2>
 
               <div className="divide-y divide-slate-100">
-                {materialsFinishes.map((item) => (
+                {materialsFinishes.length === 0 ? <p className="py-8 text-center text-sm font-semibold text-slate-600">Trống - chưa có API</p> : materialsFinishes.map((item) => (
                   <div
                     key={item.id}
                     className="py-3.5 flex items-center justify-between gap-4 first:pt-0 last:pb-0"
@@ -630,7 +593,7 @@ export const AdminMasterData: React.FC = () => {
         )}
 
         {/* SUB-TAB 4: CONSTRAINT RULES (Image 5) */}
-        {activeSubTab === 'rules' && (
+        {activeSubTab === ('rules' as MasterDataSubTab) && (
           <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-6 max-w-4xl flex flex-col gap-6">
             <div className="flex items-center justify-between">
               <h2 className="text-base font-bold text-slate-900">
@@ -691,7 +654,7 @@ export const AdminMasterData: React.FC = () => {
         )}
 
         {/* SUB-TAB 5: PACKAGES & FEES (Image 2 & Image 3) */}
-        {activeSubTab === 'packages' && (
+        {activeSubTab === ('packages' as MasterDataSubTab) && (
           <div className="space-y-6">
             {/* Unsaved Changes Banner (Image 3) */}
             {hasUnsavedPackagesChanges && (
@@ -921,6 +884,7 @@ export const AdminMasterData: React.FC = () => {
             </div>
           </div>
         )}
+        </> : <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center text-sm font-semibold text-slate-600">Trống - chưa có API</div>}
       </main>
 
       {/* MODAL: EDIT DESIGN STYLE (Image 3 from previous prompt) */}

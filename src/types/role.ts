@@ -17,6 +17,7 @@ export const ROLE_CONFIG: Record<UserRole, { defaultPath: string; badge: string;
     badge: 'Homeowner',
     navItems: [
       { label: 'Dashboard', path: '/homeowner-dashboard' },
+      { label: 'My properties', path: '/homeowner-apartments' },
       { label: 'My Projects', path: '/homeowner-projects' },
       { label: 'AI Studio', path: '/homeowner-ai-studio' },
       { label: 'Messages', path: '/messages' },
@@ -28,6 +29,7 @@ export const ROLE_CONFIG: Record<UserRole, { defaultPath: string; badge: string;
     navItems: [
       { label: 'Dashboard', path: '/staff-dashboard' },
       { label: 'Requests', path: '/staff-requests' },
+      { label: 'Apartments', path: '/staff-apartments' },
       { label: 'Contracts', path: '/staff-contracts' },
       { label: 'Projects', path: '/staff-projects' },
       { label: 'Customers', path: '/customers' },
@@ -60,6 +62,7 @@ export const ROLE_CONFIG: Record<UserRole, { defaultPath: string; badge: string;
     navItems: [
       { label: 'Dashboard', path: '/admin-dashboard' },
       { label: 'Users & Roles', path: '/admin-users' },
+      { label: 'Apartments', path: '/admin-apartments' },
       { label: 'Products', path: '/admin-products' },
       { label: 'Master Data', path: '/admin-master-data' },
       { label: 'AI Settings', path: '/admin-ai-settings' },

@@ -26,10 +26,10 @@ const FORM_FIELDS: FieldName[] = [
 ];
 
 const FIELD_KEYWORDS: Array<[FieldName, RegExp]> = [
-  ['fullName', /full\s*name|họ\s*và\s*tên|họ tên|tên/i],
-  ['phone', /phone|số điện thoại|điện thoại/i],
+  ['fullName', /full\s*name|name/i],
+  ['phone', /phone/i],
   ['email', /email/i],
-  ['password', /password|mật khẩu/i],
+  ['password', /password/i],
 ];
 
 // Maps BE validation response (per-field errors or message list) to form fields.
@@ -97,38 +97,38 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({
     const errors: FieldErrors = {};
 
     if (!fullName.trim()) {
-      errors.fullName = 'Vui lòng nhập họ và tên';
+      errors.fullName = 'Please enter your full name.';
     }
 
     if (!phone.trim()) {
-      errors.phone = 'Vui lòng nhập số điện thoại';
+      errors.phone = 'Please enter your phone number.';
     } else if (!PHONE_REGEX.test(phone.trim())) {
       errors.phone =
-        'Số điện thoại phải bắt đầu bằng 0 và gồm đúng 10 chữ số';
+        'Enter a 10-digit phone number starting with 0.';
     }
 
     if (!email.trim()) {
-      errors.email = 'Vui lòng nhập email';
+      errors.email = 'Please enter your email address.';
     } else if (!EMAIL_REGEX.test(email.trim())) {
       errors.email =
-        'Email không đúng định dạng (ví dụ: ten@example.com)';
+        'Enter a valid email address (e.g. name@example.com).';
     }
 
     if (!password) {
-      errors.password = 'Vui lòng nhập mật khẩu';
+      errors.password = 'Please enter a password.';
     } else if (password.length < MIN_PASSWORD_LENGTH) {
-      errors.password = `Mật khẩu phải có tối thiểu ${MIN_PASSWORD_LENGTH} ký tự`;
+      errors.password = `Password must contain at least ${MIN_PASSWORD_LENGTH} characters.`;
     }
 
     if (!confirmPassword) {
-      errors.confirmPassword = 'Vui lòng nhập lại mật khẩu';
+      errors.confirmPassword = 'Please confirm your password.';
     } else if (password !== confirmPassword) {
-      errors.confirmPassword = 'Mật khẩu xác nhận không khớp';
+      errors.confirmPassword = 'Passwords do not match.';
     }
 
     if (!agreeTerms) {
       errors.terms =
-        'Vui lòng đồng ý với Điều khoản dịch vụ và Chính sách bảo mật';
+        'Please agree to the Terms of Service and Privacy Policy.';
     }
 
     return errors;

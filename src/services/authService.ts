@@ -106,6 +106,7 @@ function buildApiError(
   fallback: string,
 ): ApiError {
   const body = data as {
+    code?: unknown;
     message?: unknown;
     errors?: unknown;
     details?: unknown;
@@ -170,11 +171,80 @@ function buildApiError(
     }
   }
 
-  const message =
-    messages[0] ||
-    `${fallback} (${status}). Please try again.`;
+  const code = typeof body?.code === 'string' ? body.code.toUpperCase() : '';
+  const knownCodeMessages: Record<string, string> = {
+    TOKEN_EXPIRED: 'Your session has expired. Please sign in again.',
+    DESIGN_STYLE_CODE_EXISTS: 'A design style with this code already exists.',
+    CATEGORY_CODE_EXISTS: 'A category with this code already exists.',
+    PRODUCT_SKU_EXISTS: 'A product with this SKU already exists.',
+    APARTMENT_ALREADY_EXISTS: 'An apartment with these details already exists.',
+    USER_NOT_FOUND: 'No registered user was found for the provided email address.',
+    USER_NOT_ACTIVE: 'The customer account is not active.',
+    NOT_APARTMENT_STAFF: 'You can edit only apartments assigned to projects you manage.',
+    APARTMENT_LOCKED: 'This apartment cannot be edited while its project is active.',
+  };
+  const statusMessage = status >= 500
+    ? 'The server encountered an error. Please try again later.'
+    : status === 401
+      ? 'Your session has expired or your credentials are invalid. Please sign in again.'
+      : status === 403
+        ? 'You do not have permission to perform this action.'
+        : status === 404
+          ? 'The requested item could not be found or is not available.'
+          : status === 409
+            ? 'This request conflicts with existing data. Review the item and try again.'
+            : status === 400 || status === 422
+              ? 'The submitted information is invalid. Check the fields and try again.'
+              : status === 429
+                ? 'Too many requests. Wait a moment and try again.'
+                : `${fallback} (${status}). Please try again.`;
 
-  return new ApiError(message, status, messages, fieldErrors);
+  const normalizedFieldErrors = status >= 500
+    ? {}
+    : Object.fromEntries(
+      Object.entries(fieldErrors).map(([field, message]) => [
+        field,
+        hasVietnameseText(message) ? englishFieldError(field) : message,
+      ]),
+    );
+  const normalizedMessages = status >= 500
+    ? [statusMessage]
+    : messages.map((message) => {
+      if (!hasVietnameseText(message)) return message;
+      if (status === 401 || status === 403 || status === 404 || status === 409 || status === 429) {
+        return statusMessage;
+      }
+      return englishFieldErrorFromMessage(message);
+    });
+  const message = knownCodeMessages[code]
+    ?? (status >= 500 ? statusMessage : normalizedMessages[0] ?? statusMessage);
+
+  return new ApiError(message, status, normalizedMessages, normalizedFieldErrors);
+}
+
+function hasVietnameseText(value: string): boolean {
+  return /[À-ỹĐđ]/u.test(value)
+    || /\b(khong|loi|du lieu|het han|dang nhap|vui long|khong hop le|that bai|khong tim thay)\b/i.test(value);
+}
+
+function englishFieldError(field: string): string {
+  const key = field.toLowerCase().replace(/[^a-z]/g, '');
+  if (key.includes('email')) return 'Enter a valid email address.';
+  if (key.includes('phone')) return 'Enter a valid phone number.';
+  if (key.includes('password')) return 'Check the password requirements and try again.';
+  if (key.includes('fullname') || key === 'name') return 'Enter a valid name.';
+  if (key.includes('sku')) return 'Enter a valid product SKU.';
+  if (key.includes('code')) return 'Enter a valid code.';
+  return 'This field is invalid. Check it and try again.';
+}
+
+function englishFieldErrorFromMessage(message: string): string {
+  const text = message.toLowerCase();
+  if (text.includes('email') || text.includes('e-mail')) return 'Enter a valid email address.';
+  if (text.includes('phone') || text.includes('điện thoại')) return 'Enter a valid phone number.';
+  if (text.includes('password') || text.includes('mật khẩu')) return 'Check the password requirements and try again.';
+  if (text.includes('name') || text.includes('tên')) return 'Enter a valid name.';
+  return 'The submitted information is invalid. Check the fields and try again.';
 }
 
 async function postJson<T>(
