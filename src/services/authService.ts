@@ -23,6 +23,8 @@ export class ApiError extends Error {
   fieldErrors: Record<string, string>;
   /** Backend error code, e.g. BAD_REQUEST, MILESTONE_TOTAL_MISMATCH. '' when unknown. */
   code: string;
+  /** Extra structured context from the backend error body, e.g. { projectId, projectCode, status }. */
+  details: unknown;
 
   constructor(
     message: string,
@@ -30,6 +32,7 @@ export class ApiError extends Error {
     messages: string[] = [],
     fieldErrors: Record<string, string> = {},
     code = '',
+    details: unknown = undefined,
   ) {
     super(message);
     this.name = 'ApiError';
@@ -37,6 +40,7 @@ export class ApiError extends Error {
     this.messages = messages;
     this.fieldErrors = fieldErrors;
     this.code = code;
+    this.details = details;
   }
 }
 
@@ -67,6 +71,14 @@ export interface VerifyEmailPayload {
 export interface VerifyEmailResponse {
   message: string;
   user: RegisterResponse['user'];
+}
+
+export interface ResendOtpPayload {
+  email: string;
+}
+
+export interface ResendOtpResponse {
+  message: string;
 }
 
 export interface LoginPayload {
@@ -166,7 +178,7 @@ function buildApiError(
     messages[0] ||
     `${fallback} (${status}). Please try again.`;
 
-  return new ApiError(message, status, messages, fieldErrors, code);
+  return new ApiError(message, status, messages, fieldErrors, code, body?.details);
 }
 
 async function postJson<T>(
@@ -224,6 +236,20 @@ export function verifyEmail(
     '/auth/verify-email',
     payload,
     'Verification failed',
+  );
+}
+
+/**
+ * Gửi lại OTP kích hoạt tài khoản. POST /auth/resend-otp.
+ * Backend luôn trả cùng một message dù email có tồn tại hay không (tránh lộ thông tin).
+ */
+export function resendOtp(
+  payload: ResendOtpPayload,
+): Promise<ResendOtpResponse> {
+  return postJson<ResendOtpResponse>(
+    '/auth/resend-otp',
+    payload,
+    'Could not resend the OTP code',
   );
 }
 
