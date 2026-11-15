@@ -11,6 +11,9 @@ import { AcceptInvitation } from '@/features/auth/AcceptInvitation';
 import { ProfileSettings } from '@/features/shared/ProfileSettings';
 import { CustomerDirectory } from '@/features/shared/CustomerDirectory';
 import { ApartmentManagement } from '@/features/shared/ApartmentManagement';
+import { AdminUsersRoles } from '@/features/admin/AdminUsersRoles';
+import { AdminUsersPage } from '@/features/admin/users/AdminUsersPage';
+import { AdminDashboard } from '@/features/admin/AdminDashboard';
 import { AdminMasterData } from '@/features/admin/AdminMasterData';
 import { AdminProducts } from '@/features/admin/AdminProducts';
 import { SupplierCatalog } from '@/features/supplier/SupplierCatalog';
@@ -91,109 +94,3 @@ function App() {
             <Route path="/staff-requests" element={<NoApiPage role="staff" title="Requests" />} />
             <Route path="/staff-request-detail" element={<NoApiPage role="staff" title="Request details" />} />
             <Route path="/create-contract" element={<NoApiPage role="staff" title="Create contract" />} />
-            <Route path="/staff-contracts" element={<NoApiPage role="staff" title="Contracts" />} />
-            <Route path="/staff-contract-detail" element={<NoApiPage role="staff" title="Contract details" />} />
-            <Route path="/staff-addendum" element={<NoApiPage role="staff" title="Contract addendum" />} />
-            <Route path="/staff-projects" element={<NoApiPage role="staff" title="Projects" />} />
-            <Route path="/staff-project-detail" element={<NoApiPage role="staff" title="Project details" />} />
-          </Route>
-          <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
-            <Route path="/admin-dashboard" element={<NoApiPage role="admin" title="Admin dashboard" />} />
-            <Route path="/admin-apartments" element={<ApartmentManagement />} />
-            <Route path="/admin-users" element={<NoApiPage role="admin" title="Users and roles" />} />
-            <Route path="/admin-master-data" element={<AdminMasterData />} />
-            <Route path="/admin-products" element={<AdminProducts />} />
-            <Route path="/admin-ai-settings" element={<NoApiPage role="admin" title="AI settings" />} />
-            <Route path="/admin-prompts/:promptId" element={<NoApiPage role="admin" title="Prompt details" />} />
-            <Route path="/admin-reports" element={<NoApiPage role="admin" title="Reports" />} />
-            <Route path="/admin" element={<NoApiPage role="admin" title="Roles and permissions" />} />
-            <Route path="/admin/users" element={<NoApiPage role="admin" title="Users and roles" />} />
-            <Route path="/admin/roles" element={<NoApiPage role="admin" title="Roles and permissions" />} />
-            <Route path="/admin/overview" element={<NoApiPage role="admin" title="Admin dashboard" />} />
-            <Route path="/admin/dashboard" element={<NoApiPage role="admin" title="Admin dashboard" />} />
-            <Route path="/admin/master-data" element={<AdminMasterData />} />
-            <Route path="/admin/ai-settings" element={<NoApiPage role="admin" title="AI settings" />} />
-          </Route>
-          <Route element={<ProtectedRoute allowedRoles={['supplier']} />}>
-            <Route path="/supplier-dashboard" element={<SupplierDashboard />} />
-            <Route path="/supplier-catalog" element={<SupplierCatalog />} />
-            <Route path="/supplier-products/:productId" element={<SupplierProductDetail />} />
-            <Route path="/supplier-products/new" element={<SupplierProductForm />} />
-            <Route path="/supplier-products/:productId/edit" element={<SupplierProductForm />} />
-            <Route path="/supplier-catalog/import" element={<NoApiPage role="supplier" title="Catalog import" />} />
-            <Route path="/supplier-inquiries" element={<NoApiPage role="supplier" title="Inquiries" />} />
-            <Route path="/supplier-application" element={<NoApiPage role="supplier" title="Supplier application" />} />
-          </Route>
-          <Route element={<ProtectedRoute allowedRoles={['designer']} />}>
-            <Route path="/designer-projects" element={<NoApiPage role="designer" title="Designer projects" />} />
-            <Route path="/designer-projects/:projectId" element={<NoApiPage role="designer" title="Project details" />} />
-            <Route path="/designer-ai-studio" element={<NoApiPage role="designer" title="AI Studio" />} />
-            <Route path="/designer-catalog" element={<DesignerCatalog />} />
-            <Route path="/designer-portfolio" element={<NoApiPage role="designer" title="Designer portfolio" />} />
-          </Route>
-          <Route element={<ProtectedRoute allowedRoles={['homeowner']} />}>
-            <Route path="/homeowner-apartments" element={<ApartmentManagement />} />
-          </Route>
-          <Route element={<ProtectedRoute allowedRoles={ALL_ROLES} />}>
-            <Route path="/messages" element={<NoApiPage title="Messages" />} />
-            <Route path="/call-meeting" element={<NoApiPage title="Call and meeting" />} />
-            <Route path="/settings" element={<ProfileSettings />} />
-          </Route>
-          <Route element={<ProtectedRoute allowedRoles={['staff', 'admin']} />}>
-            <Route path="/customers" element={<CustomerDirectory />} />
-          </Route>
-          {PREVIEW_ROLES.flatMap((role) =>
-            ROLE_CONFIG[role].navItems
-              .filter((item) => item.path !== '/messages')
-              .filter((item) => item.path !== '/homeowner-apartments')
-              .map((item) => (
-                <Route key={`${role}-${item.path}`} element={<ProtectedRoute allowedRoles={[role]} />}>
-                  <Route path={item.path} element={<NoApiPage role={role} title={item.label} />} />
-                </Route>
-              )),
-          )}
-   
-          
-          {/* Auth Routes */}
-          <Route
-            path="/login"
-            element={
-              <motion.div
-                variants={pageVariants}
-                initial="initial"
-                animate="animate"
-                exit="exit"
-                className="w-full h-full absolute inset-0"
-              >
-                <LoginPage onNavigateToSignUp={() => navigate('/signup')} />
-              </motion.div>
-            }
-          />
-
-          <Route
-            path="/signup"
-            element={
-              <motion.div
-                variants={pageVariants}
-                initial="initial"
-                animate="animate"
-                exit="exit"
-                className="w-full h-full absolute inset-0"
-              >
-                <SignUpPage onNavigateToLogin={() => navigate('/login')} />
-              </motion.div>
-            }
-          />
-
-          <Route path="/verify-otp" element={<VerifyOtpPage />} />
-          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-          <Route path="/reset-password" element={<ResetPasswordPage />} />
-          <Route path="/accept-invitation" element={<AcceptInvitation />} />
-          <Route path="/auth/accept-invitation" element={<AcceptInvitation />} />
-        </Routes>
-      </AnimatePresence>
-    </div>
-  );
-}
-
-export default App;

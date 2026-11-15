@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { Header, Footer } from '@/components/layout';
 import { AdminButton, AdminCard } from './AdminPageFrame';
+import { TotalAccountsCard } from './users/components/TotalAccountsCard';
 import { useDemoWorkspace } from '@/hooks/useDemoWorkspace';
 import {
   GENERATION_STATS_WEEK,
@@ -34,13 +35,6 @@ export const AdminDashboard: React.FC = () => {
   const [exportIssues, setExportIssues] = useState(true);
 
   const stats = [
-    {
-      label: 'Demo accounts',
-      value: '5',
-      icon: Users,
-      color: 'bg-blue-50 text-blue-600',
-      path: '/admin-users',
-    },
     {
       label: 'Active projects',
       value: String(
@@ -179,6 +173,7 @@ Sections: ${[
 
           {/* Demo Workspace Statistics */}
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 mb-8">
+            <TotalAccountsCard onClick={() => navigate('/admin-users')} />
             {stats.map(({ label, value, icon: Icon, color, path }) => (
               <button
                 key={label}

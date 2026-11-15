@@ -1,7 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Check } from 'lucide-react';
-import { Logo } from '@/components/common';
+import { Logo, PasswordInput } from '@/components/common';
+import { acceptInvite } from '@/services/authService';
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const MIN_PASSWORD_LENGTH = 8;
+
+type FieldErrors = { email?: string; otp?: string; password?: string; confirmPassword?: string; terms?: string };
 
 export const AcceptInvitation: React.FC = () => {
   const navigate = useNavigate();
@@ -10,12 +16,22 @@ export const AcceptInvitation: React.FC = () => {
   // State param from URL: 'default' | 'error' | 'success' | 'expired'
   const stateQuery = searchParams.get('state');
 
+  // Email from the invitation link (?email=...) is locked; otherwise the user types it.
+  const emailFromUrl = (searchParams.get('email') ?? '').trim();
+  const [email, setEmail] = useState<string>(emailFromUrl);
+  const [otp, setOtp] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [confirmPassword, setConfirmPassword] = useState<string>('');
   const [agreeTerms, setAgreeTerms] = useState<boolean>(false);
-  const [hasError, setHasError] = useState<boolean>(stateQuery === 'error');
-  const [notice, setNotice] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [loading, setLoading] = useState(false);
   const isExpired = stateQuery === 'expired';
+  // ?state=success previews the confirmation screen; real activation redirects to /login.
+  const isSuccess = stateQuery === 'success';
+
+  const handleGoToProjects = () => navigate('/login');
 
   // Validation rules
   const hasMinLength = password.length >= 8;
@@ -26,21 +42,50 @@ export const AcceptInvitation: React.FC = () => {
   const strengthScore =
     (hasMinLength ? 1 : 0) + (hasNumber ? 1 : 0) + (hasUppercase ? 1 : 0);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const clearFieldError = (field: keyof FieldErrors) =>
+    setFieldErrors((prev) => (prev[field] ? { ...prev, [field]: undefined } : prev));
+
+  const inputClass = (field: keyof FieldErrors) =>
+    `w-full px-3.5 py-2.5 border rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none transition ${
+      fieldErrors[field]
+        ? 'border-red-400 ring-1 ring-red-400 bg-red-50/20'
+        : 'border-slate-200 focus:ring-1 focus:ring-blue-500'
+    }`;
+
+  const renderError = (field: keyof FieldErrors) =>
+    fieldErrors[field] ? (
+      <p role="alert" className="text-xs text-red-500 font-medium mt-1.5">
+        {fieldErrors[field]}
+      </p>
+    ) : null;
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
+    setSuccess('');
 
-    if (password !== confirmPassword) {
-      setHasError(true);
-      return;
+    const errors: FieldErrors = {};
+    if (!email.trim()) errors.email = 'Email is required';
+    else if (!EMAIL_REGEX.test(email.trim())) errors.email = 'Enter a valid email address (e.g. name@example.com)';
+    if (!otp.trim()) errors.otp = 'OTP code is required';
+    else if (!/^\d{6}$/.test(otp.trim())) errors.otp = 'OTP code must be 6 digits';
+    if (!password) errors.password = 'Password is required';
+    else if (password.length < MIN_PASSWORD_LENGTH) errors.password = `Password must be at least ${MIN_PASSWORD_LENGTH} characters`;
+    if (!confirmPassword) errors.confirmPassword = 'Please confirm your password';
+    else if (password !== confirmPassword) errors.confirmPassword = 'Passwords do not match';
+    if (!agreeTerms) errors.terms = 'Please agree to the terms of use';
+    setFieldErrors(errors);
+    if (Object.keys(errors).length > 0) return;
+
+    setLoading(true);
+    try {
+      await acceptInvite({ email: email.trim(), otp: otp.trim(), password });
+      setSuccess('Account activated successfully!');
+      setTimeout(() => navigate('/login', { replace: true }), 1500);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
+      setLoading(false);
     }
-
-    if (!agreeTerms) {
-      setNotice('Please agree to the terms of use.');
-      return;
-    }
-
-    setHasError(false);
-    setNotice('Invitation acceptance is not connected yet. The /auth/accept-invite endpoint is still pending.');
   };
 
   return (
@@ -84,6 +129,29 @@ export const AcceptInvitation: React.FC = () => {
               Back to sign in
             </button>
           </div>
+        ) : isSuccess ? (
+          /* STATE 3: SUCCESS (Image 1) */
+          <div className="w-full max-w-[390px] bg-white rounded-3xl border border-slate-200/80 shadow-xs p-8 text-center animate-in fade-in zoom-in-95 duration-200">
+            {/* Checkmark Circle Icon */}
+            <div className="w-11 h-11 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto mb-4">
+              <Check className="w-5 h-5 stroke-[2.5]" />
+            </div>
+
+            <h1 className="text-xl font-extrabold text-slate-900 tracking-tight">
+              Your account is ready
+            </h1>
+            <p className="text-xs text-slate-500 mt-2 mb-6">
+              You can now sign in with your new password.
+            </p>
+
+            <button
+              type="button"
+              onClick={handleGoToProjects}
+              className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold text-xs rounded-xl shadow-xs transition cursor-pointer"
+            >
+              Go to sign in
+            </button>
+          </div>
         ) : (
           /* STATE 1 & 2: DEFAULT & ERROR (Image 4 & Image 3) */
           <div className="w-full max-w-[460px] bg-white rounded-3xl border border-slate-200/80 shadow-xs p-8 animate-in fade-in zoom-in-95 duration-200">
@@ -111,39 +179,70 @@ export const AcceptInvitation: React.FC = () => {
             </p>
 
             {/* Invitee User Box */}
-            <div className="mt-5 p-4 rounded-2xl border border-slate-200/80 bg-slate-50/60 flex items-center gap-3.5">
-              <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs shrink-0">
-                LT
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="text-xs font-bold text-slate-900 leading-tight">
-                  Le Trang
+            {email.trim() && (
+              <div className="mt-5 p-4 rounded-2xl border border-slate-200/80 bg-slate-50/60 flex items-center gap-3.5">
+                <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs shrink-0 uppercase">
+                  {email.trim().charAt(0)}
                 </div>
-                <div className="text-xs text-slate-500 leading-tight mt-0.5">
-                  trang@archsync.vn
-                </div>
-                <div className="mt-1">
-                  <span className="inline-block px-2 py-0.5 bg-blue-50 text-blue-600 text-[10px] font-semibold rounded-full border border-blue-100/70">
-                    Designer
-                  </span>
+                <div className="min-w-0 flex-1">
+                  <div className="text-xs text-slate-500 leading-tight">Invited as</div>
+                  <div className="text-xs font-bold text-slate-900 leading-tight mt-0.5 truncate">{email.trim()}</div>
                 </div>
               </div>
-            </div>
+            )}
 
             {/* Set Password Form */}
-            <form onSubmit={handleSubmit} className="mt-5 space-y-4">
+            <form onSubmit={handleSubmit} noValidate className="mt-5 space-y-4">
+              {/* Email */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">Email</label>
+                <input
+                  type="email"
+                  value={email}
+                  readOnly={!!emailFromUrl}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    clearFieldError('email');
+                  }}
+                  placeholder="you@example.com"
+                  className={`${inputClass('email')} ${emailFromUrl ? 'bg-slate-50 text-slate-500 cursor-not-allowed' : ''}`}
+                />
+                {renderError('email')}
+              </div>
+
+              {/* OTP */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">OTP code</label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  value={otp}
+                  onChange={(e) => {
+                    setOtp(e.target.value.replace(/\D/g, ''));
+                    clearFieldError('otp');
+                  }}
+                  placeholder="6-digit code from your email"
+                  className={inputClass('otp')}
+                />
+                {renderError('otp')}
+              </div>
+
               {/* Password */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                   Password
                 </label>
-                <input
-                  type="password"
+                <PasswordInput
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    clearFieldError('password');
+                  }}
                   placeholder="Enter your password"
-                  className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className={inputClass('password')}
                 />
+                {renderError('password')}
               </div>
 
               {/* Confirm Password */}
@@ -151,26 +250,16 @@ export const AcceptInvitation: React.FC = () => {
                 <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                   Confirm password
                 </label>
-                <input
-                  type="password"
+                <PasswordInput
                   value={confirmPassword}
                   onChange={(e) => {
                     setConfirmPassword(e.target.value);
-                    if (hasError) setHasError(false);
+                    clearFieldError('confirmPassword');
                   }}
                   placeholder="Re-enter password"
-                  className={`w-full px-3.5 py-2.5 border rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none transition ${
-                    hasError
-                      ? 'border-red-400 ring-1 ring-red-400 bg-red-50/20'
-                      : 'border-slate-200 focus:ring-1 focus:ring-blue-500'
-                  }`}
+                  className={inputClass('confirmPassword')}
                 />
-                {/* Error Message (Image 3) */}
-                {hasError && (
-                  <p className="text-xs text-red-500 font-medium mt-1.5 animate-in fade-in duration-150">
-                    Passwords do not match.
-                  </p>
-                )}
+                {renderError('confirmPassword')}
               </div>
 
               {/* Password Strength Meter (3 segments) */}
@@ -245,7 +334,10 @@ export const AcceptInvitation: React.FC = () => {
                 {/* Agree to terms */}
                 <label className="flex items-center gap-2 cursor-pointer select-none pt-1">
                   <div
-                    onClick={() => setAgreeTerms(!agreeTerms)}
+                    onClick={() => {
+                      setAgreeTerms(!agreeTerms);
+                      clearFieldError('terms');
+                    }}
                     className={`w-4 h-4 rounded flex items-center justify-center transition ${
                       agreeTerms
                         ? 'bg-blue-600 text-white'
@@ -260,13 +352,26 @@ export const AcceptInvitation: React.FC = () => {
                 </label>
               </div>
 
+              {renderError('terms')}
+
               {/* Submit Button */}
-              {notice && <p role="status" className="text-xs font-medium text-amber-700">{notice}</p>}
+              {error && (
+                <p role="alert" className="text-xs font-medium text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+                  {error}
+                </p>
+              )}
+              {success && (
+                <p role="status" className="text-xs font-medium text-green-700 bg-green-50 border border-green-100 rounded-lg px-3 py-2">
+                  {success}
+                </p>
+              )}
               <button
                 type="submit"
-                className="w-full mt-4 py-2.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold text-xs rounded-xl shadow-xs transition cursor-pointer"
+                disabled={loading || !!success}
+                className="w-full mt-4 py-2.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold text-xs rounded-xl shadow-xs transition cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                Accept invitation
+                {loading && <span className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />}
+                {loading ? 'Activating...' : 'Activate Account'}
               </button>
 
               {/* Link expiration note */}
