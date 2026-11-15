@@ -205,7 +205,7 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({
     <div className="w-full max-w-[480px] mx-auto flex flex-col justify-center h-full py-2">
       {/* Logo */}
       <div className="mb-5">
-        <Logo size={38} />
+        <Logo size={38} to="/" />
       </div>
 
       {/* Header Title */}

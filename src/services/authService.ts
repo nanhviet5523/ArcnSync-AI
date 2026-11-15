@@ -1,7 +1,7 @@
 import type { User, UserRole } from '@/types/role';
 
 const API_BASE_URL =
-  import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
+  import.meta.env.VITE_API_URL ?? 'http://localhost:3001';
 
 const SESSION_KEY = 'archsync-auth-session';
 const LEGACY_DEMO_SESSION_KEY = 'archsync-demo-session';
@@ -21,18 +21,25 @@ export class ApiError extends Error {
   status: number;
   messages: string[];
   fieldErrors: Record<string, string>;
+  /** Mã lỗi backend, vd UNKNOWN_BLOCKS, COMMENTS_OPEN */
+  code: string;
+  details: Record<string, unknown>;
 
   constructor(
     message: string,
     status = 0,
     messages: string[] = [],
     fieldErrors: Record<string, string> = {},
+    code = '',
+    details: Record<string, unknown> = {},
   ) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
     this.messages = messages;
     this.fieldErrors = fieldErrors;
+    this.code = code;
+    this.details = details;
   }
 }
 
@@ -100,7 +107,7 @@ const BE_ROLE_MAP: Record<string, UserRole> = {
   ADMIN: 'admin',
 };
 
-function buildApiError(
+export function buildApiError(
   status: number,
   data: unknown,
   fallback: string,
@@ -126,7 +133,10 @@ function buildApiError(
     messages.push(body.message);
   }
 
-  const errors = body?.errors ?? body?.details;
+  const validationFields = (body?.details as { fields?: unknown } | undefined)?.fields;
+  const errors = Array.isArray(validationFields)
+    ? validationFields.map((f: { field?: unknown; errors?: unknown }) => ({ field: f?.field, message: Array.isArray(f?.errors) ? f.errors[0] : undefined }))
+    : body?.errors ?? body?.details;
 
   if (Array.isArray(errors)) {
     for (const item of errors) {
@@ -219,7 +229,9 @@ function buildApiError(
   const message = knownCodeMessages[code]
     ?? (status >= 500 ? statusMessage : normalizedMessages[0] ?? statusMessage);
 
-  return new ApiError(message, status, normalizedMessages, normalizedFieldErrors);
+  const details = body?.details && typeof body.details === 'object' && !Array.isArray(body.details)
+    ? (body.details as Record<string, unknown>) : {};
+  return new ApiError(message, status, normalizedMessages, normalizedFieldErrors, code ? String(body?.code) : '', details);
 }
 
 function hasVietnameseText(value: string): boolean {
@@ -536,6 +548,7 @@ export async function apiFetch(
 
     if (
       init.body !== undefined &&
+      !(init.body instanceof FormData) &&
       !headers.has('Content-Type')
     ) {
       headers.set('Content-Type', 'application/json');
@@ -574,6 +587,44 @@ export async function apiFetch(
       'Cannot connect to the server. Please check your connection and try again.',
     );
   }
+}
+
+/**
+ * Multipart POST that reports upload progress (0–1). fetch cannot, so this uses XHR with the same token and one
+ * retry after a refresh on 401, like apiFetch.
+ */
+export async function apiUpload<T>(
+  path: string,
+  form: FormData,
+  onProgress?: (fraction: number) => void,
+): Promise<T> {
+  const send = (token: string | null) =>
+    new Promise<{ status: number; data: unknown }>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', `${API_BASE_URL}${path}`);
+      if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) onProgress?.(e.loaded / e.total);
+      };
+      xhr.onload = () => {
+        let data: unknown = null;
+        try { data = JSON.parse(xhr.responseText); } catch { /* empty or not JSON */ }
+        resolve({ status: xhr.status, data });
+      };
+      xhr.onerror = () =>
+        reject(new ApiError('Cannot connect to the server. Please check your connection and try again.'));
+      xhr.send(form);
+    });
+
+  let res = await send(getAccessToken());
+  if (res.status === 401) {
+    onProgress?.(0);
+    res = await send(await refreshAccessToken());
+  }
+  if (res.status < 200 || res.status >= 300) {
+    throw buildApiError(res.status, res.data, `Request failed (${res.status}). Please try again.`);
+  }
+  return res.data as T;
 }
 
 export async function apiRequest<T>(
@@ -653,4 +704,38 @@ export interface AcceptInviteResponse {
 
 export function acceptInvite(payload: AcceptInvitePayload): Promise<AcceptInviteResponse> {
   return postJson<AcceptInviteResponse>('/auth/accept-invite', payload, 'Account activation failed');
+}
+
+// ---------------------------------------------------------------------------
+// Files behind auth (images, .glb, DXF)
+// ---------------------------------------------------------------------------
+
+/** File cần Bearer token (ảnh, .glb, DXF): tải qua apiFetch rồi tạo blob URL. Lỗi giữ nguyên ApiError (có status, code). */
+const blobCache = new Map<string, Promise<string>>();
+export function fetchBlobUrl(path: string): Promise<string> {
+  let p = blobCache.get(path);
+  if (!p) {
+    p = apiFetch(path).then(async (res) => {
+      if (!res.ok) throw buildApiError(res.status, await res.json().catch(() => null), 'Không tải được file');
+      return URL.createObjectURL(await res.blob());
+    });
+    p.catch(() => blobCache.delete(path));
+    blobCache.set(path, p);
+  }
+  return p;
+}
+export function revokeBlobUrls() {
+  for (const p of blobCache.values()) p.then(URL.revokeObjectURL, () => undefined);
+  blobCache.clear();
+}
+
+export async function downloadFile(path: string, fallbackName: string) {
+  const res = await apiFetch(path);
+  if (!res.ok) throw buildApiError(res.status, await res.json().catch(() => null), 'Không tải được file');
+  const name = /filename="?([^";]+)"?/.exec(res.headers.get('Content-Disposition') ?? '')?.[1] ?? fallbackName;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(await res.blob());
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
