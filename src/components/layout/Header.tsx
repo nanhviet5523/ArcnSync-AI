@@ -21,6 +21,7 @@ const publicLinks = [
   ['Our Team', '#our-team'],
   ['Our Work', '#our-work'],
   ['Partners', '#partners'],
+  ['Contact', '#contact'],
 ];
 
 const BADGE_STYLE: Record<UserRole, string> = {
@@ -177,7 +178,8 @@ export const Header: React.FC<HeaderProps> = ({ role, activeTab, onLoginClick, o
                 href={href}
                 onClick={(event) => {
                   event.preventDefault();
-                  navigate('/');
+                  // keep the hash so the homepage can scroll after it renders when we come from another page
+                  navigate(`/${href}`);
                   document.querySelector(href)?.scrollIntoView({ behavior: 'smooth' });
                 }}
                 className="text-slate-600 transition-colors hover:text-slate-900"
@@ -209,6 +211,8 @@ export const Header: React.FC<HeaderProps> = ({ role, activeTab, onLoginClick, o
     if (path === itemPath) return true;
     // Trang con của trang thật, vd /staff/projects/:id, /homeowner/projects/:id
     if (path.startsWith(`${itemPath}/`)) return true;
+    // Trang theo dự án dùng chung mọi vai (vd /projects/:id/quotation) thuộc mục dự án của vai đó
+    if (path.startsWith('/projects/') && itemPath.endsWith('/projects')) return true;
 
     // Admin alias routes matching Figma
     if (detectedRole === 'admin') {

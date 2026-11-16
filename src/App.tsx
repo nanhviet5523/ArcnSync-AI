@@ -30,11 +30,14 @@ import { ProjectList } from '@/features/projects/ProjectList';
 import { ProjectDetail } from '@/features/projects/ProjectDetail';
 import { StaffProjectNew } from '@/features/projects/StaffProjectNew';
 import { AdminCategories } from '@/features/admin/AdminCategories';
+import { AdminDashboard } from '@/features/admin/AdminDashboard';
+import { QuotationPage } from '@/features/quotations/QuotationPage';
+import { ReviewsPage } from '@/features/reviews/ReviewsPage';
+import { InquiriesPage } from '@/features/inquiries/InquiriesPage';
 // Pages still running on sample data (demoWorkspaceService), kept until their API exists
 import { CreateContract } from '@/features/staff/CreateContract';
 import { StaffContracts } from '@/features/staff/StaffContracts';
 import { StaffContractDetail } from '@/features/staff/StaffContractDetail';
-import { AdminDashboard } from '@/features/admin/AdminDashboard';
 import { AdminReports } from '@/features/admin/AdminReports';
 import { AdminAISettings } from '@/features/admin/AdminAISettings';
 import { AdminPromptDetail } from '@/features/admin/AdminPromptDetail';
@@ -126,6 +129,10 @@ function App() {
             <Route path="/staff/projects/new" element={<StaffProjectNew />} />
             <Route path="/staff/projects/:id" element={<ProjectDetail />} />
             <Route path="/customers" element={<CustomerDirectory />} />
+            <Route path="/staff/inquiries" element={<InquiriesPage />} />
+          </Route>
+          <Route element={<ProtectedRoute allowedRoles={['staff', 'admin', 'designer']} />}>
+            <Route path="/reviews" element={<ReviewsPage />} />
           </Route>
           <Route element={<ProtectedRoute allowedRoles={['staff']} />}>
             <Route path="/staff-apartments" element={<ApartmentManagement />} />
@@ -143,9 +150,9 @@ function App() {
             <Route path="/admin/users" element={<AdminUsersPage />} />
             <Route path="/admin/roles" element={<AdminUsersPage />} />
             <Route path="/admin/master-data" element={<AdminMasterData />} />
-            <Route path="/admin-dashboard" element={<SampleData><AdminDashboard /></SampleData>} />
-            <Route path="/admin/overview" element={<SampleData><AdminDashboard /></SampleData>} />
-            <Route path="/admin/dashboard" element={<SampleData><AdminDashboard /></SampleData>} />
+            <Route path="/admin-dashboard" element={<AdminDashboard />} />
+            <Route path="/admin/overview" element={<AdminDashboard />} />
+            <Route path="/admin/dashboard" element={<AdminDashboard />} />
             <Route path="/admin-reports" element={<SampleData><AdminReports /></SampleData>} />
             <Route path="/admin-ai-settings" element={<SampleData><AdminAISettings /></SampleData>} />
             <Route path="/admin/ai-settings" element={<SampleData><AdminAISettings /></SampleData>} />
@@ -173,13 +180,10 @@ function App() {
             <Route path="/homeowner/projects/:id" element={<ProjectDetail />} />
             <Route path="/homeowner/payments" element={<HomeownerPayments />} />
           </Route>
+          {/* Design workspace (design-versions APIs): every project role; actions gated by can() in design-workspace/logic.ts */}
           <Route element={<ProtectedRoute allowedRoles={['homeowner', 'designer', 'staff', 'admin']} />}>
             <Route path="/projects/:projectId/workspace" element={<WorkspacePage />} />
-            <Route path="/homeowner/projects" element={<ProjectList />} />
-            <Route path="/homeowner/projects/:id" element={<ProjectDetail />} />
-          </Route>
-          <Route element={<ProtectedRoute allowedRoles={['homeowner', 'designer', 'staff', 'admin']} />}>
-            <Route path="/projects/:projectId/workspace" element={<WorkspacePage />} />
+            <Route path="/projects/:projectId/quotation" element={<QuotationPage />} />
           </Route>
           <Route element={<ProtectedRoute allowedRoles={ALL_ROLES} />}>
             <Route path="/settings" element={<ProfileSettings />} />

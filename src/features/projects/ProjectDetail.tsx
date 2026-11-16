@@ -11,6 +11,7 @@ import type { Role } from '@/features/design-workspace/types';
 import { DesignTeamCard } from './DesignTeamCard';
 import { NotOnTeam } from './NotOnTeam';
 import { HomeownerProjectView } from './HomeownerProjectView';
+import { ReviewCard } from '@/features/reviews/ReviewCard';
 import { conceptStep, nextFor, useLatestVersions } from './projectView';
 
 /** Project overview for Staff (/staff/projects/:id), Designer (/designer/projects/:id) and Homeowner (/homeowner/projects/:id). */
@@ -74,9 +75,20 @@ export function ProjectDetail() {
   // one sentence for this page and the project's card; a designer waits for the version check
   const next = designer && !ready ? '' : nextFor(role, project, designer ? latest(project.id) : undefined);
 
+  // quotation stage: staff's next step is the quotation, the workspace stays one click away
+  const quoting = project.status === 'QUOTING' || project.status === 'COMPLETED';
+  const quotationFirst = staff && project.status === 'QUOTING';
+  const openQuotation = () => navigate(`/projects/${project.id}/quotation`);
+  const workspaceLabel = t(role === 'admin' ? 'projectDetail.openViewOnly' : 'projectDetail.openWorkspace');
+  const secondary = quotationFirst
+    ? (workspace ? <Button onClick={open}>{workspaceLabel}</Button> : undefined)
+    : quoting ? <Button onClick={openQuotation}>{t('projectDetail.openQuotation')}</Button> : undefined;
+
   // exactly one primary action, following the next step
-  const primary = workspace
-    ? <Button variant="primary" onClick={open}>{t(staff ? 'projectDetail.openViewOnly' : 'projectDetail.openWorkspace')}</Button>
+  const primary = quotationFirst
+    ? <Button variant="primary" onClick={openQuotation}>{t('projectDetail.openQuotation')}</Button>
+    : workspace
+    ? <Button variant="primary" onClick={open}>{workspaceLabel}</Button>
     : staff && preparing
       ? <Button variant="primary" loading={busy === 'kickoff'} disabled={!project.designer} title={project.designer ? undefined : t('projectDetail.startDesignHint')}
           onClick={() => act('kickoff', () => projectApi.kickoff(project.id))}>{t('projectDetail.startDesign')}</Button>
@@ -90,6 +102,7 @@ export function ProjectDetail() {
         chip={<StatusChip kind="project" value={project.status} />}
         description={<>{project.code}<span className="mx-2 text-slate-300">|</span>{t('projectDetail.created', { date: formatDate(project.createdAt) })}</>}
         primary={primary}
+        secondary={secondary}
       />
       {staff && preparing && !project.designer && <p className="-mt-4 mb-5 text-right text-xs text-amber-700">{t('projectDetail.startDesignHint')}</p>}
 
@@ -161,6 +174,12 @@ export function ProjectDetail() {
           )}
         </Card>
       </div>
+
+      {project.status === 'COMPLETED' && (
+        <div className="mt-5 lg:w-1/2 lg:pr-2.5">
+          <ReviewCard projectId={project.id} completed homeowner={false} />
+        </div>
+      )}
     </AppShell>
   );
 }

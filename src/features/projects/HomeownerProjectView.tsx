@@ -9,6 +9,8 @@ import type { Project } from './projectApi';
 import { BudgetCard, HomeCard, PeopleCard } from './ProjectInfoSections';
 import { PlanThumb } from './PlanThumb';
 import { getCurrentUser } from '@/services/authService';
+import { QuotationSummaryCard } from '@/features/quotations/QuotationSummaryCard';
+import { ReviewCard } from '@/features/reviews/ReviewCard';
 import { conceptStep, designLabel, isClosed, knownVersion, needsAction, needsCheck, nextFor, useLatestVersions } from './projectView';
 
 /** Homeowner overview of one project (/homeowner/projects/:id). Staff keeps its own layout in ProjectDetail.
@@ -50,6 +52,8 @@ export function HomeownerProjectView({ project }: { project: Project }) {
         </Card>
       )}
 
+
+      {(project.status === 'QUOTING' || project.status === 'COMPLETED') && <QuotationSummaryCard projectId={project.id} homeowner />}
 
       <section className="mb-5 flex flex-col gap-4 rounded-card border border-blue-100 bg-white p-5 shadow-card sm:flex-row sm:items-center sm:justify-between sm:p-6">
         <div className="flex items-start gap-3">
@@ -130,6 +134,7 @@ export function HomeownerProjectView({ project }: { project: Project }) {
       <div className="grid items-start gap-5 lg:grid-cols-3">
         <HomeCard project={project} className="lg:col-span-2" />
         <div className="space-y-5">
+          <ReviewCard projectId={project.id} completed={project.status === 'COMPLETED'} homeowner />
           <PeopleCard project={project} />
           <BudgetCard project={project} />
         </div>

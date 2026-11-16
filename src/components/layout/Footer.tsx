@@ -39,7 +39,8 @@ export const Footer: React.FC = () => {
                 {section.links.map((link) => (
                   <li key={link}>
                     <a
-                      href={`#${link.toLowerCase().replace(/\s+/g, '-')}`}
+                      // the contact form lives on the homepage, so that link works from every page
+                      href={link === 'Contact' ? '/#contact' : `#${link.toLowerCase().replace(/\s+/g, '-')}`}
                       className="hover:text-gray-900 transition-colors"
                     >
                       {link}
