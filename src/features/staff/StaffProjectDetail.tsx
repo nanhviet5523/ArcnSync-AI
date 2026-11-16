@@ -5,7 +5,7 @@ import { Header } from '@/components/layout';
 import { Footer } from '@/components/layout';
 import { useDemoWorkspace } from '@/hooks/useDemoWorkspace';
 import { ApiError } from '@/services/authService';
-import { assignProjectDesigner, type ProjectDesignerRef } from '@/features/projects/services/projectsApi';
+import { assignLeadDesigner, type ProjectDesignerRef } from '@/features/projects/projectApi';
 import { RoomAssignmentsTab } from '@/features/projects/RoomAssignmentsTab';
 
 export const StaffProjectDetail: React.FC = () => {
@@ -38,7 +38,7 @@ export const StaffProjectDetail: React.FC = () => {
 
     setAssigning(true);
     try {
-      const updated = await assignProjectDesigner(projectId, designerId);
+      const updated = await assignLeadDesigner(projectId, designerId);
       setAssignedDesigner(updated.designer);
       setShowAssignForm(false);
       setDesignerIdInput('');

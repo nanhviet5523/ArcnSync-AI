@@ -1,12 +1,15 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Plus, Trash2, Send, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Header } from '@/components/layout';
 import { Footer } from '@/components/layout';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { t } from '@/i18n';
 import { ApiError } from '@/services/authService';
 import {
   createProjectContract,
+  getContract,
   isUuid,
+  updateContract,
   type CreateContractPayload,
   type DueTrigger,
   type PaymentMilestoneInput,
@@ -52,7 +55,16 @@ function toNumber(value: string): number {
 
 const vnd = new Intl.NumberFormat('vi-VN');
 
-export const CreateContract: React.FC = () => {
+interface CreateContractProps {
+  /** 409 CONTRACT_ALREADY_EXISTS: lets an embedding page reload and show the existing contract. */
+  onAlreadyExists?: () => void;
+}
+
+/** Row 1 is always the deposit; later rows can't repeat it. */
+const LATER_STAGE_TYPES = STAGE_TYPES.filter((s) => s.value !== 'DEPOSIT');
+const MAX_MILESTONES = 4;
+
+export const CreateContract: React.FC<CreateContractProps> = ({ onAlreadyExists }) => {
   const navigate = useNavigate();
   const [params] = useSearchParams();
 
@@ -65,23 +77,68 @@ export const CreateContract: React.FC = () => {
     { ...EMPTY_MILESTONE, name: 'Đặt cọc thiết kế' },
   ]);
 
+  /** Edit mode: PATCH /contracts/:id instead of POST /projects/:id/contract. */
+  const contractId = params.get('contractId') ?? '';
+  const editing = contractId !== '';
+  const [loadingContract, setLoadingContract] = useState(editing);
+
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [toast, setToast] = useState<{ tone: 'error' | 'warning'; message: string } | null>(null);
+
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => setToast(null), 4000);
+    return () => clearTimeout(timer);
+  }, [toast]);
+
+  // Edit mode: prefill from the saved contract. A contract that can't be edited any more goes back to its page.
+  useEffect(() => {
+    if (!contractId) return;
+    let cancelled = false;
+    getContract(contractId)
+      .then((c) => {
+        if (cancelled) return;
+        if (c.status !== 'DRAFT' || c.esignStatus !== 'NOT_SENT') {
+          setToast({ tone: 'error', message: t('editContract.notEditable') });
+          window.setTimeout(() => navigate(`/project-contract?projectId=${encodeURIComponent(c.projectId)}`), 1500);
+          return;
+        }
+        const money = (v: string) => v.replace(/\.0+$/, ''); // "50000000.00" -> "50000000"
+        setProjectId(c.projectId);
+        setTotalDesignFee(money(c.totalDesignFee));
+        setMaxRevisionsPerStage(String(c.maxRevisionsPerStage));
+        setReviewWindowDays(String(c.reviewWindowDays));
+        setNote(c.note ?? '');
+        setMilestones(c.milestones.map((m, i) => ({
+          name: m.name,
+          stageType: i === 0 ? 'DEPOSIT' : m.stageType,
+          amount: money(m.amount),
+          dueTrigger: i === 0 ? 'ON_CONTRACT_ACTIVE' : 'ON_STAGE_APPROVED',
+        })));
+      })
+      .catch((err) => { if (!cancelled) handleError(err); })
+      .finally(() => { if (!cancelled) setLoadingContract(false); });
+    return () => { cancelled = true; };
+    // handleError only reads state setters and props; the load must run once per contract.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contractId]);
 
   const updateMilestone = (index: number, patch: Partial<MilestoneRow>) => {
     setMilestones((rows) => rows.map((row, i) => {
       if (i !== index) return row;
+      // Row 1 is fixed DEPOSIT / ON_CONTRACT_ACTIVE; every other row is ON_STAGE_APPROVED.
       const next = { ...row, ...patch };
-      // Keep dueTrigger aligned with the stage unless the user picked it explicitly.
-      if (patch.stageType && patch.dueTrigger === undefined) {
-        next.dueTrigger = defaultTrigger(patch.stageType);
-      }
+      if (index === 0) next.stageType = 'DEPOSIT';
+      next.dueTrigger = defaultTrigger(next.stageType);
       return next;
     }));
   };
 
   const addMilestone = () => setMilestones((rows) => {
+    if (rows.length >= MAX_MILESTONES) return rows;
     const stageType: StageType = rows.length === 0 ? 'DEPOSIT' : 'LAYOUT_2D';
     return [...rows, { ...EMPTY_MILESTONE, stageType, dueTrigger: defaultTrigger(stageType) }];
   });
@@ -110,23 +167,77 @@ export const CreateContract: React.FC = () => {
     milestones: milestones.map((row, index): PaymentMilestoneInput => ({
       seqNo: index + 1,
       name: row.name.trim(),
-      stageType: row.stageType,
+      stageType: index === 0 ? 'DEPOSIT' : row.stageType,
       amount: row.amount.trim(),
-      dueTrigger: row.dueTrigger,
+      dueTrigger: index === 0 ? 'ON_CONTRACT_ACTIVE' : 'ON_STAGE_APPROVED',
     })),
   });
+
+  const handleError = (err: unknown) => {
+    if (!(err instanceof ApiError)) { setError(t('errors.unknownNoCode')); return; }
+    switch (err.code) {
+      case 'VALIDATION_ERROR':
+        setFieldErrors(err.fieldErrors);
+        setError(t('errors.VALIDATION_ERROR'));
+        return;
+      case 'NOT_PROJECT_STAFF':
+        setToast({ tone: 'error', message: t(editing ? 'editContract.notProjectStaff' : 'newContract.notProjectStaff') });
+        return;
+      case 'CONTRACT_NOT_FOUND': setToast({ tone: 'error', message: t('editContract.notFound') }); return;
+      case 'CONTRACT_NOT_EDITABLE':
+        setToast({ tone: 'error', message: t('editContract.notEditable') });
+        window.setTimeout(() => navigate(`/project-contract?projectId=${encodeURIComponent(projectId.trim())}`), 1500);
+        return;
+      case 'PROJECT_NOT_FOUND': setToast({ tone: 'error', message: t('newContract.projectNotFound') }); return;
+      case 'CONTRACT_ALREADY_EXISTS':
+        setToast({ tone: 'warning', message: t('newContract.alreadyExists') });
+        if (onAlreadyExists) onAlreadyExists();
+        else window.setTimeout(() => navigate(`/project-contract?projectId=${encodeURIComponent(projectId.trim())}`), 1200);
+        return;
+      case 'CONTRACT_NO_GENERATION_FAILED': setToast({ tone: 'error', message: t('newContract.numberFailed') }); return;
+      case 'INVALID_MILESTONES': setError(err.messages[0] ?? err.message); return;
+      case 'MILESTONE_TOTAL_MISMATCH':
+        setError(t('newContract.mismatch', {
+          sum: vnd.format(Number(err.details.milestonesTotal ?? milestonesTotal)),
+          total: vnd.format(Number(err.details.totalDesignFee ?? feeNumber)),
+        }));
+        return;
+      case 'INVALID_PROJECT_STATUS_TRANSITION': setToast({ tone: 'error', message: t('newContract.wrongStatus') }); return;
+      default: setError(err.message || t('errors.unknownNoCode'));
+    }
+  };
+
+  const fieldError = (key: string) => (fieldErrors[key]
+    ? <p role="alert" className="mt-1 text-[11px] font-semibold text-red-600">{fieldErrors[key]}</p>
+    : null);
 
   const handleSubmit = async () => {
     setError(null);
     setSuccess(null);
+    setFieldErrors({});
+    setToast(null);
     setSubmitting(true);
     try {
+      if (editing) {
+        // Always send the fee and the whole schedule together so the backend compares matching values.
+        const { totalDesignFee: fee, maxRevisionsPerStage: revisions, reviewWindowDays: days, milestones: rows } = buildPayload();
+        await updateContract(contractId, {
+          totalDesignFee: fee,
+          maxRevisionsPerStage: revisions,
+          reviewWindowDays: days,
+          note: note.trim() ? note.trim() : null,
+          milestones: rows,
+        });
+        setSuccess(t('editContract.success'));
+        window.setTimeout(() => navigate(`/project-contract?projectId=${encodeURIComponent(projectId.trim())}`), 1000);
+        return;
+      }
       const contract = await createProjectContract(projectId.trim(), buildPayload());
       setSuccess(`Đã tạo hợp đồng ${contract.contractNo}. Dự án chuyển sang trạng thái CONTRACT_PENDING.`);
       // Return to the project detail view after a brief confirmation.
       window.setTimeout(() => navigate(`/staff/projects/${encodeURIComponent(projectId.trim())}`), 1200);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Có lỗi xảy ra. Vui lòng thử lại.');
+      handleError(err);
     } finally {
       setSubmitting(false);
     }
@@ -141,11 +252,22 @@ export const CreateContract: React.FC = () => {
 
       <main className="w-full max-w-[1100px] mx-auto px-6 lg:px-12 py-10 flex-1">
         <div className="mb-8">
-          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Tạo hợp đồng</h1>
+          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">{editing ? t('editContract.title') : 'Tạo hợp đồng'}</h1>
           <p className="text-sm text-slate-500 mt-1">
             Nhập điều khoản và lịch thanh toán, tổng các đợt phải bằng đúng phí thiết kế.
           </p>
         </div>
+
+        {toast && (
+          <div
+            role="alert"
+            className={`fixed right-4 top-4 z-[80] max-w-sm rounded-xl border px-4 py-3 text-sm font-medium shadow-lg ${
+              toast.tone === 'warning' ? 'border-amber-200 bg-amber-50 text-amber-800' : 'border-red-100 bg-red-50 text-red-700'
+            }`}
+          >
+            {toast.message}
+          </div>
+        )}
 
         {/* Success / error banners */}
         {success && (
@@ -172,6 +294,7 @@ export const CreateContract: React.FC = () => {
                 type="text"
                 value={projectId}
                 onChange={(e) => setProjectId(e.target.value)}
+                disabled={editing}
                 placeholder="vd: 123e4567-e89b-12d3-a456-426614174000"
                 className={`${inputClass} ${projectId && !projectIdValid ? 'border-red-300 focus:ring-red-500' : ''}`}
               />
@@ -190,6 +313,7 @@ export const CreateContract: React.FC = () => {
                   placeholder="50000000"
                   className={inputClass}
                 />
+                {fieldError('totalDesignFee')}
               </div>
               <div>
                 <label className={labelClass}>Số lần sửa tối đa / giai đoạn (0–20)</label>
@@ -199,6 +323,7 @@ export const CreateContract: React.FC = () => {
                   onChange={(e) => setMaxRevisionsPerStage(e.target.value)}
                   className={inputClass}
                 />
+                {fieldError('maxRevisionsPerStage')}
               </div>
               <div>
                 <label className={labelClass}>Số ngày xem xét (1–60)</label>
@@ -208,6 +333,7 @@ export const CreateContract: React.FC = () => {
                   onChange={(e) => setReviewWindowDays(e.target.value)}
                   className={inputClass}
                 />
+                {fieldError('reviewWindowDays')}
               </div>
             </div>
 
@@ -221,6 +347,7 @@ export const CreateContract: React.FC = () => {
                 placeholder="Điều khoản bổ sung, phạm vi công việc…"
                 className={`${inputClass} resize-y`}
               />
+              {fieldError('note')}
             </div>
           </section>
 
@@ -231,7 +358,8 @@ export const CreateContract: React.FC = () => {
               <button
                 type="button"
                 onClick={addMilestone}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+                disabled={milestones.length >= MAX_MILESTONES}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Plus size={14} /> Thêm đợt thanh toán
               </button>
@@ -250,16 +378,19 @@ export const CreateContract: React.FC = () => {
                       placeholder="Đặt cọc thiết kế"
                       className={inputClass}
                     />
+                    {fieldError(`milestones.${index}.name`)}
                   </div>
                   <div>
                     <label className={labelClass}>Giai đoạn</label>
                     <select
                       value={row.stageType}
+                      disabled={index === 0}
                       onChange={(e) => updateMilestone(index, { stageType: e.target.value as StageType })}
                       className={inputClass}
                     >
-                      {STAGE_TYPES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+                      {(index === 0 ? STAGE_TYPES : LATER_STAGE_TYPES).map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
                     </select>
+                    {fieldError(`milestones.${index}.stageType`)}
                   </div>
                   <div>
                     <label className={labelClass}>Số tiền (VND)</label>
@@ -270,16 +401,18 @@ export const CreateContract: React.FC = () => {
                       placeholder="15000000"
                       className={inputClass}
                     />
+                    {fieldError(`milestones.${index}.amount`)}
                   </div>
                   <div>
                     <label className={labelClass}>Điều kiện đến hạn</label>
                     <select
                       value={row.dueTrigger}
-                      onChange={(e) => updateMilestone(index, { dueTrigger: e.target.value as DueTrigger })}
+                      disabled
                       className={inputClass}
                     >
                       {DUE_TRIGGERS.map((d) => <option key={d.value} value={d.value}>{d.label}</option>)}
                     </select>
+                    {fieldError(`milestones.${index}.dueTrigger`)}
                   </div>
                   <button
                     type="button"
@@ -307,7 +440,7 @@ export const CreateContract: React.FC = () => {
               {feeValid && !totalsMatch && (
                 <p className="mt-2.5 flex items-center gap-1.5 text-[11px] font-semibold text-red-600">
                   <AlertCircle size={13} />
-                  Tổng các đợt ({vnd.format(milestonesTotal)}) chưa bằng phí thiết kế ({vnd.format(feeNumber)}).
+                  {t('newContract.mismatch', { sum: vnd.format(milestonesTotal), total: vnd.format(feeNumber) })}
                 </p>
               )}
               {totalsMatch && (
@@ -328,12 +461,12 @@ export const CreateContract: React.FC = () => {
             </button>
             <button
               type="button"
-              disabled={submitting || !projectIdValid || !totalsMatch}
+              disabled={submitting || loadingContract || !projectIdValid || !totalsMatch}
               onClick={() => void handleSubmit()}
               className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-xs font-bold text-white shadow-md transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Send size={14} />
-              {submitting ? 'Đang tạo…' : 'Tạo hợp đồng'}
+              {editing ? (submitting ? t('editContract.saving') : t('editContract.save')) : (submitting ? 'Đang tạo…' : 'Tạo hợp đồng')}
             </button>
           </div>
         </div>

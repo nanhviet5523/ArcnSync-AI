@@ -16,7 +16,7 @@ import {
   type MyProjectRole,
   type ProjectListItem,
   type ProjectStatus,
-} from '@/features/projects/services/projectsApi';
+} from '@/features/projects/projectApi';
 
 const STATUS_LABEL: Record<ProjectStatus, string> = {
   DRAFT: 'Draft',
@@ -182,7 +182,7 @@ export const StaffProjects: React.FC = () => {
         const details = err.details as unknown as ApartmentHasActiveProjectDetails | undefined;
         setToast({
           type: 'error',
-          message: err.message || 'Căn hộ đang có dự án chưa kết thúc.',
+          message: 'Căn hộ đã có dự án đang hoạt động.',
           action: details?.projectId
             ? {
                 label: 'Xem dự án hiện tại',
@@ -192,7 +192,7 @@ export const StaffProjects: React.FC = () => {
             : undefined,
         });
       } else if (err instanceof ApiError && err.status === 422 && err.code === 'USER_NOT_ACTIVE') {
-        setToast({ type: 'error', message: 'Tài khoản chủ căn hộ chưa active, không thể tạo dự án.' });
+        setToast({ type: 'error', message: 'Tài khoản không ở trạng thái hoạt động.' });
       } else {
         setToast({
           type: 'error',

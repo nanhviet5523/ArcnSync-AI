@@ -138,6 +138,7 @@ function App() {
             <Route path="/staff-contract-detail" element={<SampleData><StaffContractDetail /></SampleData>} />
             <Route path="/create-contract" element={<RedirectKeepSearch to="/staff-create-contract" />} />
             <Route path="/staff-create-contract" element={<CreateContract />} />
+            <Route path="/staff-edit-contract" element={<CreateContract />} />
           </Route>
           <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
             <Route path="/admin-apartments" element={<ApartmentManagement />} />

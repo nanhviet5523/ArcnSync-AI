@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { AppShell, Banner, Button, Card, DetailList, ErrorState, PageHeader, Skeleton, StatusChip, Stepper } from '@/components/ui';
 import { errorText, formatDate, formatMoney, formatNumber, t, tList } from '@/i18n';
 import { getCurrentUser } from '@/services/authService';
-import { canOpenWorkspace, isPreparing, projectApi, stepIndex } from './projectApi';
+import { canOpenWorkspace, projectApi, stepIndex } from './projectApi';
 import type { DesignerOption, Project } from './projectApi';
 import { TeamCard } from '@/features/design-workspace/TeamCard';
 import { isOffTeam } from '@/features/design-workspace/logic';
@@ -13,6 +13,10 @@ import { NotOnTeam } from './NotOnTeam';
 import { HomeownerProjectView } from './HomeownerProjectView';
 import { RoomAssignmentsTab } from './RoomAssignmentsTab';
 import { conceptStep, nextFor, useLatestVersions } from './projectView';
+import { CreateContractModal } from './CreateContractModal';
+import type { ContractToast } from './CreateContractModal';
+import { getProjectContract } from './services/contractsApi';
+import type { ContractResponse } from './services/contractsApi';
 
 /** Project overview for Staff (/staff/projects/:id), Designer (/designer/projects/:id) and Homeowner (/homeowner/projects/:id). */
 export function ProjectDetail() {
@@ -30,6 +34,11 @@ export function ProjectDetail() {
   const [offTeam, setOffTeam] = useState(false);
   const [actionError, setActionError] = useState('');
   const [busy, setBusy] = useState<'' | 'kickoff'>('');
+  /** Staff only. undefined = not checked yet (or the check failed), null = the project has no contract. */
+  const [contract, setContract] = useState<ContractResponse | null | undefined>(undefined);
+  const [contractOpen, setContractOpen] = useState(false);
+  const [contractCheckFailed, setContractCheckFailed] = useState(false);
+  const [toast, setToast] = useState<ContractToast | null>(null);
 
   const load = useCallback(async () => {
     setError('');
@@ -45,6 +54,25 @@ export function ProjectDetail() {
   }, [id, staff, designer, userId, viewerRole]);
   useEffect(() => { Promise.resolve().then(load); }, [load]);
 
+  const loadContract = useCallback(async () => {
+    if (!staff || !id) return;
+    try {
+      setContract(await getProjectContract(id));
+      setContractCheckFailed(false);
+    } catch {
+      // Not "no contract": offer a retry instead of the Create contract button.
+      setContract(undefined);
+      setContractCheckFailed(true);
+    }
+  }, [id, staff]);
+  useEffect(() => { Promise.resolve().then(loadContract); }, [loadContract]);
+
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => setToast(null), 3500);
+    return () => clearTimeout(timer);
+  }, [toast]);
+
   const forVersions = useMemo(() => (designer && project ? [project] : null), [designer, project]);
   const { latest, ready } = useLatestVersions(forVersions, 'designer');
 
@@ -52,6 +80,7 @@ export function ProjectDetail() {
     setBusy(kind); setActionError('');
     try { await fn(); await load(); } catch (e) { setActionError(errorText(e)); } finally { setBusy(''); }
   };
+  const contractPage = `/project-contract?projectId=${encodeURIComponent(id)}`;
   const back = { to: staff ? '/staff/projects' : designer ? '/designer/projects' : '/homeowner/projects', label: t('projectDetail.back') };
 
   if (offTeam) return <AppShell><NotOnTeam /></AppShell>;
@@ -69,7 +98,10 @@ export function ProjectDetail() {
 
   const a = project.apartment;
   const floors = [...(a.floors ?? [])].sort((x, y) => x.level - y.level);
-  const preparing = isPreparing(project.status);
+  // The kickoff API only accepts REQUIREMENT_ANALYSIS (it answers 422 INVALID_PROJECT_STATUS_TRANSITION before the deposit is paid).
+  const kickoffReady = project.status === 'REQUIREMENT_ANALYSIS';
+  // The contract is signed (ACTIVE) but the deposit is not paid: the project is still CONTRACT_PENDING until it is.
+  const waitingDeposit = project.status === 'CONTRACT_PENDING' && contract?.status === 'ACTIVE';
   const workspace = canOpenWorkspace(project.status);
   const open = () => navigate(`/projects/${project.id}/workspace`);
   // one sentence for this page and the project's card; a designer waits for the version check
@@ -78,7 +110,7 @@ export function ProjectDetail() {
   // exactly one primary action, following the next step
   const primary = workspace
     ? <Button variant="primary" onClick={open}>{t(staff ? 'projectDetail.openViewOnly' : 'projectDetail.openWorkspace')}</Button>
-    : staff && preparing
+    : staff && kickoffReady
       ? <Button variant="primary" loading={busy === 'kickoff'} disabled={!project.designer} title={project.designer ? undefined : t('projectDetail.startDesignHint')}
           onClick={() => act('kickoff', () => projectApi.kickoff(project.id))}>{t('projectDetail.startDesign')}</Button>
       : null;
@@ -88,12 +120,17 @@ export function ProjectDetail() {
       <PageHeader
         back={back}
         title={project.title}
-        chip={<StatusChip kind="project" value={project.status} />}
+        chip={waitingDeposit ? <StatusChip label={t('projectDetail.waitingDeposit')} tone="yellow" /> : <StatusChip kind="project" value={project.status} />}
         description={<>{project.code}<span className="mx-2 text-slate-300">|</span>{t('projectDetail.created', { date: formatDate(project.createdAt) })}</>}
         primary={primary}
-        secondary={<Button onClick={() => navigate(`/project-contract?projectId=${encodeURIComponent(project.id)}`)}>{t('projectDetail.contract')}</Button>}
+        secondary={<>
+          {staff && project.status === 'DRAFT' && contract === null && <Button onClick={() => setContractOpen(true)}>{t('projectDetail.createContract')}</Button>}
+          {staff && contractCheckFailed && <Button title={t('contractPage.contractStatusFailed')} onClick={() => void loadContract()}>{t('contractPage.retryCheck')}</Button>}
+          {/* A staff member with no contract yet creates it with the button above; "Contract" has nothing to show until then. */}
+          {!(staff && contract === null) && <Button onClick={() => navigate(contractPage)}>{t('projectDetail.contract')}</Button>}
+        </>}
       />
-      {staff && preparing && !project.designer && <p className="-mt-4 mb-5 text-right text-xs text-amber-700">{t('projectDetail.startDesignHint')}</p>}
+      {staff && kickoffReady && !project.designer && <p className="-mt-4 mb-5 text-right text-xs text-amber-700">{t('projectDetail.startDesignHint')}</p>}
 
       {project.status !== 'CANCELLED' && (
         <Card className="mb-5" bodyClassName="px-4 py-4 sm:px-6">
@@ -158,7 +195,7 @@ export function ProjectDetail() {
           {staff && (
             <div className="mt-5 border-t border-slate-100 pt-4">
               <DesignTeamCard project={project} role={viewerRole} designers={designers} onSaved={load} />
-              {preparing && <p className="mt-3 text-xs text-slate-500">{t('projectDetail.kickoffNote')}</p>}
+              {kickoffReady && <p className="mt-3 text-xs text-slate-500">{t('projectDetail.kickoffNote')}</p>}
             </div>
           )}
         </Card>
@@ -166,6 +203,25 @@ export function ProjectDetail() {
       <div className="mt-5">
         <RoomAssignmentsTab projectId={project.id} leadDesignerId={project.designer?.id ?? null} />
       </div>
+
+      {contractOpen && (
+        <CreateContractModal
+          projectId={project.id}
+          onClose={() => setContractOpen(false)}
+          onToast={setToast}
+          onCreated={() => { setContractOpen(false); void load(); void loadContract(); }}
+          onAlreadyExists={() => { setContractOpen(false); void loadContract(); setTimeout(() => navigate(contractPage), 1200); }}
+        />
+      )}
+      {toast && (
+        <div role={toast.tone === 'success' ? 'status' : 'alert'}
+          className={`fixed right-4 top-4 z-[80] max-w-sm rounded-xl border px-4 py-3 text-sm font-medium shadow-lg ${
+            toast.tone === 'success' ? 'border-emerald-100 bg-emerald-50 text-emerald-800'
+              : toast.tone === 'warning' ? 'border-amber-200 bg-amber-50 text-amber-800'
+                : 'border-red-100 bg-red-50 text-red-700'}`}>
+          {toast.message}
+        </div>
+      )}
     </AppShell>
   );
 }

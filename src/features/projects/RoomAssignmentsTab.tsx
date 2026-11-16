@@ -6,7 +6,7 @@ import {
   getRoomAssignments,
   updateRoomAssignments,
   type RoomAssignment,
-} from '@/features/projects/services/projectsApi';
+} from '@/features/projects/projectApi';
 
 interface RoomAssignmentsTabProps {
   projectId: string;

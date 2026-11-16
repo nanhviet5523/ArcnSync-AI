@@ -29,10 +29,10 @@ export interface Apartment {
   propertyType: PropertyType;
   buildingName: string;
   address: string;
-  tower: string;
+  tower: string | null;
   unitNo: string;
-  floorNo: number;
-  layoutCode: string;
+  floorNo: number | null;
+  layoutCode: string | null;
   netArea: string | number;
   bedroomCount: number;
   bathroomCount: number;
@@ -53,14 +53,21 @@ export interface ApartmentPayload {
   propertyType: PropertyType;
   buildingName: string;
   address: string;
-  tower: string;
+  tower?: string;
   unitNo: string;
-  floorNo: number;
-  layoutCode: string;
+  floorNo?: number;
+  layoutCode?: string;
   netArea: number;
   bedroomCount: number;
   bathroomCount: number;
 }
+
+/** PATCH /apartments/{id}: leave a field out to keep it; null clears tower, floorNo or layoutCode; never send "". */
+export type ApartmentPatch = Partial<Omit<ApartmentPayload, 'tower' | 'floorNo' | 'layoutCode'>> & {
+  tower?: string | null;
+  floorNo?: number | null;
+  layoutCode?: string | null;
+};
 
 export interface CreateApartmentPayload extends ApartmentPayload {
   ownerEmail?: string;
@@ -69,9 +76,10 @@ export interface CreateApartmentPayload extends ApartmentPayload {
 export interface CreateRoomPayload {
   name: string;
   roomType: string;
-  floorId: string;
-  area: number;
-  purpose: string;
+  /** Omitted: the backend uses the lowest floor of the property. */
+  floorId?: string;
+  area?: number;
+  purpose?: string;
 }
 
 const queryString = (values: Record<string, string | number | undefined>) => {
@@ -96,7 +104,7 @@ export const apartmentService = {
       body: JSON.stringify(payload),
     });
   },
-  update(id: string, payload: Partial<ApartmentPayload>) {
+  update(id: string, payload: ApartmentPatch) {
     return apiRequest<Apartment>(`/apartments/${encodeURIComponent(id)}`, {
       method: 'PATCH',
       body: JSON.stringify(payload),

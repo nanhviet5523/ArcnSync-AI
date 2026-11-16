@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
   AlertCircle,
@@ -9,22 +9,25 @@ import {
   Send,
   ShieldCheck,
   Undo2,
+  Upload,
 } from 'lucide-react';
+import { t } from '@/i18n';
 import { Header } from '@/components/layout';
 import { Footer } from '@/components/layout';
-import { ApiError, getCurrentUser } from '@/services/authService';
+import { ApiError, getCurrentUser, logout } from '@/services/authService';
 import type { UserRole } from '@/types/role';
-import { CreateContract } from '@/features/staff/CreateContract';
+import { Button, Modal } from '@/components/ui';
 import {
-  activateContract,
+  CONTRACT_FILE_MAX_BYTES,
   downloadContractFile,
   formatVnd,
   getProjectContract,
   isUuid,
-  requestContractSigning,
   saveBlobAs,
-  sendContractSignatureOtp,
+  requestSignatureOtp,
+  sendSigningRequest,
   signContract,
+  uploadContractFile,
   withdrawContractSigning,
   type ContractResponse,
   type ContractStatus,
@@ -68,6 +71,23 @@ const MILESTONE_STATUS_BADGE: Record<MilestoneStatus, string> = {
   CANCELLED: 'bg-slate-100 text-slate-500',
 };
 
+/** Seconds before the customer may ask for another OTP (backend OTP_RESEND_TOO_SOON window). */
+const OTP_RESEND_COOLDOWN_SECONDS = 60;
+
+/** 125 → "2:05". */
+function formatCountdown(totalSeconds: number): string {
+  const s = Math.max(0, totalSeconds);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
+
+const AMOUNT_FORMATTER = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
+
+/** Format a backend amount from error details (string or number) for the mismatch toast. */
+function formatAmount(value: unknown): string {
+  const n = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(n) ? AMOUNT_FORMATTER.format(n) : String(value ?? '?');
+}
+
 /** Shared page chrome for every branch below (loading / empty / error / loaded). */
 const Shell: React.FC<{ role?: UserRole; children: React.ReactNode }> = ({ role, children }) => (
   <div className="min-h-screen bg-slate-50/60 font-sans flex flex-col justify-between">
@@ -95,8 +115,40 @@ export const ContractDetail: React.FC = () => {
   const [actionBusy, setActionBusy] = useState(false);
 
   // OTP ký hợp đồng (customer).
-  const [otpExpiresIn, setOtpExpiresIn] = useState<number | null>(null);
+  /** Epoch ms when the latest OTP stops being valid; null = no OTP requested yet. */
+  const [otpExpiresAt, setOtpExpiresAt] = useState<number | null>(null);
+  /** Epoch ms until which "Resend" stays locked. */
+  const [otpCooldownUntil, setOtpCooldownUntil] = useState(0);
   const [otpValue, setOtpValue] = useState('');
+  const [otpRequesting, setOtpRequesting] = useState(false);
+  const otpInFlight = useRef(false);
+  const [now, setNow] = useState(() => Date.now());
+
+  // Tick once a second only while a countdown is running.
+  const timersRunning = otpCooldownUntil > now || (otpExpiresAt !== null && otpExpiresAt > now);
+  useEffect(() => {
+    if (!timersRunning) return;
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [timersRunning]);
+
+  // Contract PDF upload (Staff, DRAFT + NOT_SENT).
+  const fileInput = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [fileError, setFileError] = useState('');
+  const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  // Send signing request (Staff, DRAFT + NOT_SENT + PDF uploaded).
+  const [confirmSigning, setConfirmSigning] = useState(false);
+  const [sendingSigning, setSendingSigning] = useState(false);
+  /** Synchronous guard: state updates are async, so a fast double click could fire two POSTs. */
+  const signingInFlight = useRef(false);
+
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => setToast(null), 3500);
+    return () => clearTimeout(timer);
+  }, [toast]);
 
   const loadContract = useCallback(async () => {
     setLoading(true);
@@ -140,30 +192,139 @@ export const ContractDetail: React.FC = () => {
     setActionMessage(null); // save dialog is the feedback; no banner needed
   });
 
-  const handleRequestSigning = (contractId: string) => runAction('Đã gửi yêu cầu ký tới khách hàng.', async () => {
-    const updated = await requestContractSigning(contractId);
-    setContract(updated);
-  });
+  const handleSendSigningRequest = async (contractId: string) => {
+    if (signingInFlight.current) return;
+    signingInFlight.current = true;
+    setSendingSigning(true);
+    setActionError(null);
+    setActionMessage(null);
+    try {
+      const updated = await sendSigningRequest(contractId);
+      setContract(updated);
+      setConfirmSigning(false);
+      setToast({ type: 'success', message: t('contractSigning.success') });
+      await loadContract();
+    } catch (err) {
+      setConfirmSigning(false);
+      const apiErr = err instanceof ApiError ? err : null;
+      const code = apiErr?.code ?? '';
+      const fail = (message: string) => setToast({ type: 'error', message });
+      if (code === 'INVALID_ESIGN_STATUS_TRANSITION') {
+        // Usually a double submit or a stale page: the request is already out, so just sync the UI.
+        setToast({ type: 'success', message: t('contractSigning.alreadySent') });
+        await loadContract();
+      } else if (code === 'NOT_PROJECT_STAFF') fail(t('contractSigning.notProjectStaff'));
+      else if (code === 'CONTRACT_NOT_FOUND') fail(t('contractSigning.notFound'));
+      else if (code === 'CONTRACT_FILE_MISSING') fail(t('contractSigning.fileMissing'));
+      else if (code === 'INVALID_MILESTONES') {
+        const message = apiErr?.messages[0] ?? apiErr?.message ?? t('errors.unknownNoCode');
+        setActionError(message);
+        fail(message);
+      } else if (code === 'MILESTONE_TOTAL_MISMATCH') {
+        const details = apiErr?.details ?? {};
+        fail(t('contractSigning.totalMismatch', {
+          milestonesTotal: formatAmount(details.milestonesTotal),
+          totalDesignFee: formatAmount(details.totalDesignFee),
+        }));
+      } else if (code === 'CONTRACT_NOT_DRAFT') {
+        fail(t('contractSigning.notDraft'));
+        await loadContract();
+      } else fail(apiErr?.message ?? t('errors.unknownNoCode'));
+    } finally {
+      signingInFlight.current = false;
+      setSendingSigning(false);
+    }
+  };
 
   const handleWithdrawSigning = (contractId: string) => runAction('Đã rút lại yêu cầu ký.', async () => {
     await withdrawContractSigning(contractId);
     await loadContract();
   });
 
-  const handleActivate = (contractId: string) => runAction('Đã kích hoạt hợp đồng.', async () => {
-    const updated = await activateContract(contractId);
-    setContract(updated);
-  });
+  const handleUpload = async (contractId: string, file: File) => {
+    setFileError('');
+    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+    if (!isPdf) { setFileError(t('contractFile.onlyPdf')); return; }
+    if (file.size > CONTRACT_FILE_MAX_BYTES) { setFileError(t('contractFile.tooLarge')); return; }
 
-  const handleSendOtp = (contractId: string) => runAction('Đã gửi mã OTP tới email của bạn.', async () => {
-    const { expiresInMinutes } = await sendContractSignatureOtp(contractId);
-    setOtpExpiresIn(expiresInMinutes);
-  });
+    setUploading(true);
+    try {
+      const updated = await uploadContractFile(contractId, file);
+      setContract(updated);
+      setToast({ type: 'success', message: t('contractFile.success') });
+      await loadContract();
+    } catch (err) {
+      const code = err instanceof ApiError ? err.code : '';
+      if (code === 'VALIDATION_ERROR') setFileError(t('contractFile.invalidSelection'));
+      else if (code === 'INVALID_PDF_FILE') {
+        const message = (err as ApiError).messages[0] ?? t('contractFile.invalidPdf');
+        setFileError(message);
+        setToast({ type: 'error', message });
+      } else if (code === 'NOT_PROJECT_STAFF') setToast({ type: 'error', message: t('contractFile.notProjectStaff') });
+      else if (code === 'CONTRACT_NOT_FOUND') setToast({ type: 'error', message: t('contractFile.notFound') });
+      else if (code === 'CONTRACT_NOT_EDITABLE') {
+        setToast({ type: 'error', message: t('contractFile.notEditable') });
+        await loadContract();
+      } else setToast({ type: 'error', message: err instanceof ApiError ? err.message : t('errors.unknownNoCode') });
+    } finally {
+      setUploading(false);
+      if (fileInput.current) fileInput.current.value = '';
+    }
+  };
+
+  const startCooldown = (seconds: number) => {
+    const start = Date.now();
+    setNow(start);
+    setOtpCooldownUntil(start + seconds * 1000);
+  };
+
+  const handleSendOtp = async (contractId: string) => {
+    if (otpInFlight.current) return;
+    otpInFlight.current = true;
+    setOtpRequesting(true);
+    setActionError(null);
+    setActionMessage(null);
+    const fail = (message: string) => setToast({ type: 'error', message });
+    try {
+      const { expiresInMinutes } = await requestSignatureOtp(contractId);
+      const start = Date.now();
+      setNow(start);
+      setOtpExpiresAt(start + expiresInMinutes * 60_000);
+      setOtpCooldownUntil(start + OTP_RESEND_COOLDOWN_SECONDS * 1000);
+      setOtpValue('');
+      setToast({ type: 'success', message: t('signatureOtp.success', { minutes: expiresInMinutes }) });
+    } catch (err) {
+      const apiErr = err instanceof ApiError ? err : null;
+      const code = apiErr?.code ?? '';
+      const status = apiErr?.status ?? 0;
+      if (code === 'OTP_RESEND_TOO_SOON' || status === 429) {
+        const retry = Number(apiErr?.details.retryAfterSeconds);
+        startCooldown(Number.isFinite(retry) && retry > 0 ? Math.ceil(retry) : OTP_RESEND_COOLDOWN_SECONDS);
+        fail(t('signatureOtp.tooSoon'));
+      } else if (code === 'CONTRACT_NOT_AWAITING_SIGNATURE' && status === 422) {
+        fail(t('signatureOtp.noLongerAwaiting'));
+        setOtpExpiresAt(null);
+        await loadContract();
+      } else if (code === 'CONTRACT_NOT_AWAITING_SIGNATURE') fail(t('signatureOtp.notAwaitingState'));
+      else if (code === 'USER_NOT_FOUND') {
+        fail(t('signatureOtp.userNotFound'));
+        window.setTimeout(() => { void logout().finally(() => window.location.replace('/login')); }, 2000);
+      } else if (code === 'CONTRACT_NOT_FOUND' || status === 404) fail(t('signatureOtp.contractNotFound'));
+      else if (status === 403) fail(t('signatureOtp.forbidden'));
+      else if (status >= 500) {
+        fail(t('signatureOtp.emailFailed'));
+        startCooldown(OTP_RESEND_COOLDOWN_SECONDS);
+      } else fail(apiErr?.message || t('errors.unknownNoCode'));
+    } finally {
+      otpInFlight.current = false;
+      setOtpRequesting(false);
+    }
+  };
 
   const handleSign = (contractId: string) => runAction('Ký hợp đồng thành công.', async () => {
     const updated = await signContract(contractId, otpValue.trim());
     setContract(updated);
-    setOtpExpiresIn(null);
+    setOtpExpiresAt(null);
     setOtpValue('');
   });
 
@@ -207,8 +368,23 @@ export const ContractDetail: React.FC = () => {
 
   if (!contract) {
     if (isStaff) {
-      // Staff: hiển thị thẳng form tạo hợp đồng (POST), projectId đã có sẵn trên URL.
-      return <CreateContract />;
+      // Staff create the contract from the project page (modal), so there is one creation form only.
+      return (
+        <Shell role={role}>
+          <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-slate-200 bg-white py-20 text-center">
+            <FileText size={32} className="text-slate-300" />
+            <p className="text-sm font-bold text-slate-700">{t('contractPage.noContractTitle')}</p>
+            <p className="max-w-sm text-xs text-slate-500">{t('contractPage.noContractStaff')}</p>
+            <button
+              type="button"
+              onClick={() => navigate(`/staff/projects/${encodeURIComponent(projectId)}`)}
+              className="mt-2 inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-blue-700"
+            >
+              {t('contractPage.goToProject')}
+            </button>
+          </div>
+        </Shell>
+      );
     }
 
     return (
@@ -231,7 +407,14 @@ export const ContractDetail: React.FC = () => {
   const { status, esignStatus } = contract;
   const showMilestones = status === 'ACTIVE' && esignStatus === 'SIGNED';
   const canDownloadSignedFile = esignStatus === 'SIGNED' || contract.signedFile !== null;
+  const cooldownLeft = Math.max(0, Math.ceil((otpCooldownUntil - now) / 1000));
+  const otpSecondsLeft = otpExpiresAt === null ? null : Math.max(0, Math.ceil((otpExpiresAt - now) / 1000));
+  const otpExpired = otpSecondsLeft === 0;
+  const otpButtonLabel = otpRequesting
+    ? t('signatureOtp.sending')
+    : cooldownLeft > 0 ? t('signatureOtp.resendIn', { seconds: cooldownLeft }) : null;
   const depositMilestone = contract.milestones.find((m) => m.stageType === 'DEPOSIT');
+  const canSendSigning = status === 'DRAFT' && esignStatus === 'NOT_SENT' && contract.unsignedFile !== null;
 
   return (
     <Shell role={role}>
@@ -247,6 +430,36 @@ export const ContractDetail: React.FC = () => {
           <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">{ESIGN_LABEL[esignStatus]}</span>
         </div>
       </div>
+
+      {confirmSigning && (
+        <Modal
+          title={t('contractSigning.confirmTitle')}
+          onClose={() => { if (!sendingSigning) setConfirmSigning(false); }}
+          footer={(
+            <>
+              <Button variant="secondary" disabled={sendingSigning} onClick={() => setConfirmSigning(false)}>
+                {t('contractSigning.cancel')}
+              </Button>
+              <Button variant="primary" loading={sendingSigning} onClick={() => void handleSendSigningRequest(contract.id)}>
+                {sendingSigning ? t('contractSigning.sending') : t('contractSigning.confirm')}
+              </Button>
+            </>
+          )}
+        >
+          <p className="text-sm text-slate-600">{t('contractSigning.confirmBody')}</p>
+        </Modal>
+      )}
+
+      {toast && (
+        <div
+          role={toast.type === 'error' ? 'alert' : 'status'}
+          className={`fixed right-4 top-4 z-[80] max-w-sm rounded-xl border px-4 py-3 text-sm font-medium shadow-lg ${
+            toast.type === 'success' ? 'border-emerald-100 bg-emerald-50 text-emerald-800' : 'border-red-100 bg-red-50 text-red-700'
+          }`}
+        >
+          {toast.message}
+        </div>
+      )}
 
       {actionMessage && (
         <div className="mb-6 flex items-start gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 p-3.5 text-sm text-emerald-800">
@@ -274,27 +487,63 @@ export const ContractDetail: React.FC = () => {
           <div className="flex flex-wrap gap-3">
             <button
               type="button"
-              onClick={() => navigate(`/staff-create-contract?projectId=${encodeURIComponent(projectId)}`)}
+              onClick={() => navigate(`/staff-edit-contract?contractId=${encodeURIComponent(contract.id)}`)}
               className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50"
             >
               Chỉnh sửa hợp đồng
             </button>
             <button
               type="button"
-              disabled
-              title="Tính năng upload PDF sẽ được bổ sung sau"
-              className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-400 cursor-not-allowed"
+              disabled={uploading}
+              onClick={() => fileInput.current?.click()}
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
             >
-              Upload PDF
+              {uploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+              {uploading ? t('contractFile.uploading') : contract.unsignedFile ? t('contractFile.replace') : t('contractFile.upload')}
             </button>
-            <button
-              type="button"
-              disabled={actionBusy}
-              onClick={() => void handleRequestSigning(contract.id)}
-              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-blue-700 disabled:opacity-50"
-            >
-              <Send size={14} /> Gửi yêu cầu ký
-            </button>
+            <input
+              ref={fileInput}
+              type="file"
+              accept="application/pdf,.pdf"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) void handleUpload(contract.id, file);
+              }}
+            />
+            {/* Wrapper carries the tooltip: disabled buttons don't fire hover events in every browser. */}
+            <span title={contract.unsignedFile ? undefined : t('contractSigning.needFile')} className="inline-flex">
+              <button
+                type="button"
+                disabled={!canSendSigning || actionBusy || uploading || sendingSigning}
+                onClick={() => setConfirmSigning(true)}
+                className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-blue-700 disabled:opacity-50"
+              >
+                {sendingSigning ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                {sendingSigning ? t('contractSigning.sending') : t('contractSigning.send')}
+              </button>
+            </span>
+          </div>
+
+          <div className="mt-4">
+            <h3 className="mb-2 text-xs font-bold text-slate-900">{t('contractFile.title')}</h3>
+            {contract.unsignedFile ? (
+              <div className="flex flex-wrap items-center gap-3 text-sm text-slate-600">
+                <span className="inline-flex items-center gap-2"><FileText size={14} className="text-slate-400" />{t('contractFile.current', { name: contract.unsignedFile.fileName })}</span>
+                <button
+                  type="button"
+                  disabled={actionBusy}
+                  onClick={() => void handleDownload(contract.id)}
+                  className="text-xs font-semibold text-blue-600 hover:underline"
+                >
+                  {t('contractFile.view')}
+                </button>
+              </div>
+            ) : (
+              <p className="text-sm text-slate-500">{t('contractFile.none')}</p>
+            )}
+            {fileError && <p role="alert" className="mt-2 text-xs font-semibold text-red-700">{fileError}</p>}
+            <p className="mt-2 text-[11px] text-slate-400">{t('contractFile.helper')}</p>
           </div>
         </section>
       )}
@@ -329,34 +578,44 @@ export const ContractDetail: React.FC = () => {
             </button>
           )}
 
-          {otpExpiresIn === null ? (
-            <button
-              type="button"
-              disabled={actionBusy}
-              onClick={() => void handleSendOtp(contract.id)}
-              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-blue-700 disabled:opacity-50"
-            >
-              <ShieldCheck size={14} /> Ký hợp đồng (gửi mã OTP)
-            </button>
+          {otpExpiresAt === null ? (
+            <>
+              <button
+                type="button"
+                disabled={actionBusy || otpRequesting || cooldownLeft > 0}
+                onClick={() => void handleSendOtp(contract.id)}
+                className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-blue-700 disabled:opacity-50"
+              >
+                {otpRequesting ? <Loader2 size={14} className="animate-spin" /> : <ShieldCheck size={14} />}
+                {otpButtonLabel ?? t('signatureOtp.request')}
+              </button>
+              {contract.unsignedFile && <p className="mt-2 text-[11px] text-slate-400">{t('signatureOtp.previewFirst')}</p>}
+            </>
           ) : (
+            <>
+            <p className="mb-1 text-[11px] text-slate-500">{t('signatureOtp.sentNotice')}</p>
+            <p className="mb-3 text-[11px] text-slate-500">{t('signatureOtp.attemptsNotice')}</p>
+            {otpExpired && <p role="alert" className="mb-3 text-xs font-semibold text-red-700">{t('signatureOtp.expired')}</p>}
             <div className="flex flex-wrap items-end gap-3">
               <div>
                 <label className="mb-1.5 block text-[11px] font-bold text-slate-500">
-                  Mã OTP (hiệu lực {otpExpiresIn} phút)
+                  {t('signatureOtp.validFor', { time: formatCountdown(otpSecondsLeft ?? 0) })}
                 </label>
                 <input
                   type="text"
                   inputMode="numeric"
                   maxLength={6}
                   value={otpValue}
-                  onChange={(e) => setOtpValue(e.target.value)}
+                  onChange={(e) => setOtpValue(e.target.value.replace(/\D/g, ''))}
+                  disabled={otpExpired}
+                  autoComplete="one-time-code"
                   placeholder="123456"
                   className="w-32 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold tracking-widest text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600"
                 />
               </div>
               <button
                 type="button"
-                disabled={actionBusy || otpValue.trim().length !== 6}
+                disabled={actionBusy || otpExpired || otpValue.trim().length !== 6}
                 onClick={() => void handleSign(contract.id)}
                 className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
@@ -364,29 +623,16 @@ export const ContractDetail: React.FC = () => {
               </button>
               <button
                 type="button"
-                disabled={actionBusy}
+                disabled={actionBusy || otpRequesting || cooldownLeft > 0}
                 onClick={() => void handleSendOtp(contract.id)}
-                className="text-xs font-semibold text-blue-600 hover:underline"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:underline disabled:cursor-not-allowed disabled:opacity-50 disabled:no-underline"
               >
-                Gửi lại mã
+                {otpRequesting && <Loader2 size={12} className="animate-spin" />}
+                {otpButtonLabel ?? t('signatureOtp.resend')}
               </button>
             </div>
+            </>
           )}
-        </section>
-      )}
-
-      {/* ---- Đã ký nhưng Staff chưa kích hoạt (ngoài 3 trạng thái liệt kê, suy ra từ quy trình BE) ---- */}
-      {status === 'DRAFT' && esignStatus === 'SIGNED' && isStaff && (
-        <section className="mb-6 rounded-2xl border border-slate-100 bg-white p-6">
-          <h2 className="mb-4 text-sm font-bold text-slate-900">Khách hàng đã ký</h2>
-          <button
-            type="button"
-            disabled={actionBusy}
-            onClick={() => void handleActivate(contract.id)}
-            className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-blue-700 disabled:opacity-50"
-          >
-            <CheckCircle2 size={14} /> Kích hoạt hợp đồng
-          </button>
         </section>
       )}
 

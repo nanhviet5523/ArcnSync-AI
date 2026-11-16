@@ -5,7 +5,7 @@ import { AppShell, Button, DataTable, EmptyState, FilterBar, Input, PageHeader, 
 import type { Column } from '@/components/ui';
 import { errorText, formatDate, t } from '@/i18n';
 import { getCurrentUser } from '@/services/authService';
-import { canOpenWorkspace, isPreparing, projectApi } from './projectApi';
+import { canOpenWorkspace, getProjects, isPreparing, projectApi } from './projectApi';
 import type { Project, ProjectStatus } from './projectApi';
 import { GreetingLine, ProjectCards } from './ProjectCards';
 import { awaitingCount, draftNote, isClosed, knownVersion, needsAction, useFloorCounts, useLatestVersions, versionUnknown } from './projectView';
@@ -22,12 +22,18 @@ export function ProjectList() {
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<ProjectStatus | ''>('');
+  /** Total from GET /projects without filters; search and the status filter run on the client, so it never shrinks with them. */
+  const [overallTotal, setOverallTotal] = useState<number | null>(null);
   /** floor count per project id; the list endpoint doesn't return it (see docs: floorCount) */
   const [floors, setFloors] = useState<Record<string, number | null>>({});
 
   const load = useCallback(async () => {
     setError('');
-    try { setItems((await projectApi.list()).items); } catch (e) { setError(errorText(e)); }
+    try {
+      const res = await getProjects({ limit: 100 });
+      setItems(res.items);
+      setOverallTotal(res.total);
+    } catch (e) { setError(errorText(e)); }
   }, []);
   useEffect(() => { Promise.resolve().then(load); }, [load]);
 
@@ -65,7 +71,7 @@ export function ProjectList() {
   const count = (f: (p: Project) => boolean) => all.filter(f).length;
   const stats = {
     staff: [
-      { label: t('projects.stat.total'), value: all.length },
+      { label: t('projects.stat.total'), value: overallTotal ?? all.length },
       { label: t('projects.stat.inDesign'), value: count(inDesign), hint: t('projects.statHint.inDesign') },
       { label: t('projects.stat.quoteHandover'), value: count((p) => p.status === 'QUOTING' || p.status === 'COMPLETED') },
       { label: t('projects.stat.noDesigner'), value: count((p) => !p.designer && isPreparing(p.status)), hint: t('projects.statHint.noDesigner') },

@@ -20,6 +20,9 @@ export interface PaymentMilestoneInput {
   dueTrigger: DueTrigger;
 }
 
+/** Name used by the backend DTO for one payment milestone of POST /projects/{projectId}/contract. */
+export type CreateContractMilestonePayload = PaymentMilestoneInput;
+
 export interface CreateContractPayload {
   /** VND as a decimal string; must equal the sum of all milestone amounts. */
   totalDesignFee: string;
@@ -27,8 +30,10 @@ export interface CreateContractPayload {
   maxRevisionsPerStage: number;
   /** Days the customer has to review each submission, 1..60. */
   reviewWindowDays: number;
+  /** Max 5000 characters. */
   note?: string;
-  milestones: PaymentMilestoneInput[];
+  /** 1..4 milestones, seqNo consecutive from 1. */
+  milestones: CreateContractMilestonePayload[];
 }
 
 export type ContractStatus = 'DRAFT' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
@@ -222,6 +227,16 @@ export function createProjectContract(
     return Promise.reject(new ApiError(problem.message, status, [problem.message], {}, problem.code));
   }
 
+  return createContract(projectId, payload);
+}
+
+/**
+ * POST /projects/{projectId}/contract without client-side checks: the caller validates.
+ * Errors: 400 VALIDATION_ERROR (details.fields), 403 NOT_PROJECT_STAFF, 404 PROJECT_NOT_FOUND,
+ * 409 CONTRACT_ALREADY_EXISTS / CONTRACT_NO_GENERATION_FAILED, 422 INVALID_MILESTONES /
+ * MILESTONE_TOTAL_MISMATCH (details.milestonesTotal, details.totalDesignFee) / INVALID_PROJECT_STATUS_TRANSITION.
+ */
+export function createContract(projectId: string, payload: CreateContractPayload): Promise<ContractResponse> {
   return apiRequest<ContractResponse>(`/projects/${encodeURIComponent(projectId)}/contract`, {
     method: 'POST',
     body: JSON.stringify(payload),
@@ -240,17 +255,63 @@ export async function getProjectContract(projectId: string): Promise<ContractRes
   try {
     return await apiRequest<ContractResponse>(`/projects/${encodeURIComponent(projectId)}/contract`);
   } catch (err) {
-    if (err instanceof ApiError && err.status === 404) return null;
+    // Only CONTRACT_NOT_FOUND means "no contract yet"; PROJECT_NOT_FOUND and other failures must surface.
+    if (err instanceof ApiError && err.status === 404 && err.code === 'CONTRACT_NOT_FOUND') return null;
     throw err;
   }
 }
 
+/** GET /contracts/{id}. Each milestone also carries id/status/dates: strip them before sending an update. */
+export function getContract(contractId: string): Promise<ContractResponse> {
+  return apiRequest<ContractResponse>(`/contracts/${encodeURIComponent(contractId)}`);
+}
+
+/** Every field is optional: what is left out stays unchanged. `milestones` present replaces the whole schedule. */
+export interface UpdateContractPayload {
+  /** VND string, > 0. Never null. */
+  totalDesignFee?: string;
+  /** 0..20. Never null. */
+  maxRevisionsPerStage?: number;
+  /** 1..60. Never null. */
+  reviewWindowDays?: number;
+  /** Max 5000 chars; null clears the note. */
+  note?: string | null;
+  /** 1..4 items with exactly the five whitelisted fields. */
+  milestones?: PaymentMilestoneInput[];
+}
+
 /**
- * Staff gửi yêu cầu ký cho customer. POST /contracts/{id}/signing-request.
- * NOT_SENT → AWAITING_CUSTOMER. 422 nếu chưa upload PDF hoặc tổng các đợt
- * chưa khớp phí thiết kế (CONTRACT_FILE_MISSING / MILESTONE_TOTAL_MISMATCH).
+ * Staff edits the contract. PATCH /contracts/{id}. Only while status DRAFT and esignStatus NOT_SENT.
+ * The body is rebuilt from the whitelisted fields (the backend rejects unknown ones, e.g. a milestone's id/status).
+ * Errors: 400 VALIDATION_ERROR, 403 NOT_PROJECT_STAFF, 404 CONTRACT_NOT_FOUND, 422 CONTRACT_NOT_EDITABLE /
+ * INVALID_MILESTONES / MILESTONE_TOTAL_MISMATCH (details.milestonesTotal, details.totalDesignFee).
  */
-export function requestContractSigning(contractId: string): Promise<ContractResponse> {
+export function updateContract(contractId: string, payload: UpdateContractPayload): Promise<ContractResponse> {
+  const body: UpdateContractPayload = {
+    ...(payload.totalDesignFee !== undefined ? { totalDesignFee: payload.totalDesignFee } : {}),
+    ...(payload.maxRevisionsPerStage !== undefined ? { maxRevisionsPerStage: payload.maxRevisionsPerStage } : {}),
+    ...(payload.reviewWindowDays !== undefined ? { reviewWindowDays: payload.reviewWindowDays } : {}),
+    ...(payload.note !== undefined ? { note: payload.note } : {}),
+    ...(payload.milestones ? {
+      milestones: payload.milestones.map((m): PaymentMilestoneInput => ({
+        seqNo: m.seqNo, name: m.name, stageType: m.stageType, amount: m.amount, dueTrigger: m.dueTrigger,
+      })),
+    } : {}),
+  };
+  return apiRequest<ContractResponse>(`/contracts/${encodeURIComponent(contractId)}`, {
+    method: 'PATCH',
+    body: JSON.stringify(body),
+  });
+}
+
+/**
+ * Staff sends the signing request to the customer. POST /contracts/{id}/signing-request, no body.
+ * NOT_SENT → AWAITING_CUSTOMER (response carries esignSentAt).
+ * Errors: 403 NOT_PROJECT_STAFF, 404 CONTRACT_NOT_FOUND, 422 CONTRACT_FILE_MISSING / INVALID_MILESTONES /
+ * MILESTONE_TOTAL_MISMATCH (details.milestonesTotal, details.totalDesignFee) / CONTRACT_NOT_DRAFT /
+ * INVALID_ESIGN_STATUS_TRANSITION.
+ */
+export function sendSigningRequest(contractId: string): Promise<ContractResponse> {
   return apiRequest<ContractResponse>(`/contracts/${encodeURIComponent(contractId)}/signing-request`, {
     method: 'POST',
   });
@@ -266,12 +327,18 @@ export async function withdrawContractSigning(contractId: string): Promise<void>
   });
 }
 
+export interface RequestSignatureOtpResponse {
+  /** How long the emailed OTP stays valid (backend default 15). */
+  expiresInMinutes: number;
+}
+
 /**
- * Customer yêu cầu gửi OTP ký qua email. POST /contracts/{id}/signature-otps.
- * 429 nếu gửi lại quá sớm (OTP_RESEND_TOO_SOON).
+ * Customer asks for a signing OTP by email. POST /contracts/{id}/signature-otps, no body.
+ * Errors: 400/422 CONTRACT_NOT_AWAITING_SIGNATURE, 403 (not the project's customer), 404 CONTRACT_NOT_FOUND /
+ * USER_NOT_FOUND, 429 OTP_RESEND_TOO_SOON (details.retryAfterSeconds), 500 when the email can't be sent.
  */
-export function sendContractSignatureOtp(contractId: string): Promise<{ expiresInMinutes: number }> {
-  return apiRequest<{ expiresInMinutes: number }>(`/contracts/${encodeURIComponent(contractId)}/signature-otps`, {
+export function requestSignatureOtp(contractId: string): Promise<RequestSignatureOtpResponse> {
+  return apiRequest<RequestSignatureOtpResponse>(`/contracts/${encodeURIComponent(contractId)}/signature-otps`, {
     method: 'POST',
   });
 }
@@ -288,14 +355,21 @@ export function signContract(contractId: string, otp: string): Promise<ContractR
   });
 }
 
+/** Largest PDF the backend accepts for PUT /contracts/{id}/file. */
+export const CONTRACT_FILE_MAX_BYTES = 20 * 1024 * 1024;
+
 /**
- * Staff kích hoạt hợp đồng đã ký. POST /contracts/{id}/activation.
- * DRAFT → ACTIVE, đợt DEPOSIT chuyển sang INVOICED. 422 nếu chưa ký
- * (CONTRACT_NOT_SIGNED).
+ * Staff uploads the unsigned contract PDF (already signed by the company). PUT /contracts/{id}/file.
+ * Only while status DRAFT and esignStatus NOT_SENT. Multipart with the single key `file`; no Content-Type
+ * is set here so the browser adds the multipart boundary (apiRequest skips JSON headers for FormData).
+ * Errors: 400 VALIDATION_ERROR, 403 NOT_PROJECT_STAFF, 404 CONTRACT_NOT_FOUND, 422 CONTRACT_NOT_EDITABLE, 422 INVALID_PDF_FILE.
  */
-export function activateContract(contractId: string): Promise<ContractResponse> {
-  return apiRequest<ContractResponse>(`/contracts/${encodeURIComponent(contractId)}/activation`, {
-    method: 'POST',
+export function uploadContractFile(contractId: string, file: File): Promise<ContractResponse> {
+  const form = new FormData();
+  form.append('file', file);
+  return apiRequest<ContractResponse>(`/contracts/${encodeURIComponent(contractId)}/file`, {
+    method: 'PUT',
+    body: form,
   });
 }
 
