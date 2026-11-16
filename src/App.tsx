@@ -13,9 +13,6 @@ import { AcceptProjectInvitation } from '@/features/auth/AcceptProjectInvitation
 import { ProjectRequirementsForm } from '@/features/homeowner/ProjectRequirementsForm';
 import { HomeownerConceptGallery } from '@/features/homeowner/HomeownerConceptGallery';
 import { HomeownerPayments } from '@/features/homeowner/HomeownerPayments';
-import { ForgotPasswordPage } from '@/features/auth/ForgotPasswordPage';
-import { ResetPasswordPage } from '@/features/auth/ResetPasswordPage';
-import { AcceptInvitation } from '@/features/auth/AcceptInvitation';
 import { ProfileSettings } from '@/features/shared/ProfileSettings';
 import { CustomerDirectory } from '@/features/shared/CustomerDirectory';
 import { ApartmentManagement } from '@/features/shared/ApartmentManagement';
