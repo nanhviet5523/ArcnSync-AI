@@ -1,12 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { AppShell, Banner, Button, Card, DetailList, ErrorState, Field, PageHeader, Select, Skeleton, StatusChip, Stepper } from '@/components/ui';
+import { AppShell, Banner, Button, Card, DetailList, ErrorState, PageHeader, Skeleton, StatusChip, Stepper } from '@/components/ui';
 import { errorText, formatDate, formatMoney, formatNumber, t, tList } from '@/i18n';
 import { getCurrentUser } from '@/services/authService';
 import { canOpenWorkspace, isPreparing, projectApi, stepIndex } from './projectApi';
-import type { Project } from './projectApi';
+import type { DesignerOption, Project } from './projectApi';
 import { TeamCard } from '@/features/design-workspace/TeamCard';
-import { can, resolveProjectRole } from '@/features/design-workspace/logic';
+import { isOffTeam } from '@/features/design-workspace/logic';
+import type { Role } from '@/features/design-workspace/types';
+import { DesignTeamCard } from './DesignTeamCard';
+import { NotOnTeam } from './NotOnTeam';
 import { HomeownerProjectView } from './HomeownerProjectView';
 import { conceptStep, nextFor, useLatestVersions } from './projectView';
 
@@ -18,12 +21,14 @@ export function ProjectDetail() {
   const userId = getCurrentUser()?.id ?? '';
   const staff = role === 'staff' || role === 'admin';
   const designer = role === 'designer';
+  // the workspace's roles: a supplier never reaches a project page
+  const viewerRole: Role = role === 'staff' || role === 'admin' || role === 'designer' ? role : 'homeowner';
   const [project, setProject] = useState<Project | null>(null);
-  const [designers, setDesigners] = useState<{ id: string; fullName: string; email: string }[]>([]);
-  const [designerId, setDesignerId] = useState('');
+  const [designers, setDesigners] = useState<DesignerOption[] | null>(null);
   const [error, setError] = useState('');
+  const [offTeam, setOffTeam] = useState(false);
   const [actionError, setActionError] = useState('');
-  const [busy, setBusy] = useState<'' | 'assign' | 'kickoff'>('');
+  const [busy, setBusy] = useState<'' | 'kickoff'>('');
 
   const load = useCallback(async () => {
     setError('');
@@ -32,19 +37,23 @@ export function ProjectDetail() {
       // same fields as a row of the project list, so the next step reads the same on both
       setProject({ ...p, myRooms: rooms.filter((a) => a.designerId === userId).map((a) => ({ id: a.roomId, name: a.roomName, floorId: a.floorId })) });
       if (d) setDesigners(d.items);
-    } catch (e) { setError(errorText(e)); }
-  }, [id, staff, designer, userId]);
+    } catch (e) {
+      if (isOffTeam(e, viewerRole)) setOffTeam(true);
+      else setError(errorText(e));
+    }
+  }, [id, staff, designer, userId, viewerRole]);
   useEffect(() => { Promise.resolve().then(load); }, [load]);
 
   const forVersions = useMemo(() => (designer && project ? [project] : null), [designer, project]);
   const { latest, ready } = useLatestVersions(forVersions, 'designer');
 
-  const act = async (kind: 'assign' | 'kickoff', fn: () => Promise<Project>) => {
+  const act = async (kind: 'kickoff', fn: () => Promise<Project>) => {
     setBusy(kind); setActionError('');
     try { await fn(); await load(); } catch (e) { setActionError(errorText(e)); } finally { setBusy(''); }
   };
   const back = { to: staff ? '/staff/projects' : designer ? '/designer/projects' : '/homeowner/projects', label: t('projectDetail.back') };
 
+  if (offTeam) return <AppShell><NotOnTeam /></AppShell>;
   if (error) return <AppShell><PageHeader back={back} title={t('projectDetail.back')} /><ErrorState message={error} onRetry={load} /></AppShell>;
   if (!project) {
     return (
@@ -62,8 +71,6 @@ export function ProjectDetail() {
   const preparing = isPreparing(project.status);
   const workspace = canOpenWorkspace(project.status);
   const open = () => navigate(`/projects/${project.id}/workspace`);
-  const projectRole = resolveProjectRole(project, userId);
-  const canManageTeam = designer && can('manageTeam', { role: 'designer', version: null, project, projectRole }).ok;
   // one sentence for this page and the project's card; a designer waits for the version check
   const next = designer && !ready ? '' : nextFor(role, project, designer ? latest(project.id) : undefined);
 
@@ -140,29 +147,16 @@ export function ProjectDetail() {
             ...(staff ? [{ label: t('projectDetail.budget'), value: <span className="tabular-nums">{t('projectDetail.budgetValue', { min: formatMoney(project.budgetMin), max: formatMoney(project.budgetMax) })}</span> }] : []),
           ]} />
 
-          {project.designer && (
+          {designer && project.designer && (
             <div className="mt-5 border-t border-slate-100 pt-4">
-              <TeamCard bare project={project} canManage={canManageTeam} onChanged={load} />
+              <TeamCard bare project={project} role={viewerRole} />
             </div>
           )}
 
-          {staff && preparing && (
+          {staff && (
             <div className="mt-5 border-t border-slate-100 pt-4">
-              <h3 className="mb-2 text-[13px] font-medium text-slate-700">{t('projectDetail.assignTitle')}</h3>
-              <div className="flex flex-wrap items-end gap-2">
-                <Field label={t('projectDetail.chooseDesigner')} className="min-w-0 flex-1 basis-56">
-                  {(f) => (
-                    <Select {...f} value={designerId} onChange={(e) => setDesignerId(e.target.value)}>
-                      <option value="">{designers.length ? t('projectDetail.chooseDesigner') : t('projectDetail.noDesigners')}</option>
-                      {designers.map((d) => <option key={d.id} value={d.id}>{d.fullName} ({d.email})</option>)}
-                    </Select>
-                  )}
-                </Field>
-                <Button disabled={!designerId} loading={busy === 'assign'} onClick={() => act('assign', () => projectApi.assignDesigner(project.id, designerId))}>
-                  {t('projectDetail.assign')}
-                </Button>
-              </div>
-              <p className="mt-3 text-xs text-slate-500">{t('projectDetail.kickoffNote')}</p>
+              <DesignTeamCard project={project} role={viewerRole} designers={designers} onSaved={load} />
+              {preparing && <p className="mt-3 text-xs text-slate-500">{t('projectDetail.kickoffNote')}</p>}
             </div>
           )}
         </Card>

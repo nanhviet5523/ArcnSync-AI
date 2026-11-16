@@ -9,13 +9,11 @@ import type { Project, Role } from './types';
 interface Props {
   project: Project;
   role: Role;
-  /** Lead: the list links to the project page, where the team is managed. */
-  canManageTeam: boolean;
   onClose: () => void;
 }
 
 /** "Project info" drawer in the workspace: Home, People, Team, Budget, without leaving the drawing. */
-export function ProjectInfoDrawer({ project, role, canManageTeam, onClose }: Props) {
+export function ProjectInfoDrawer({ project, role, onClose }: Props) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       // Esc closes a dialog opened from this drawer first
@@ -43,7 +41,7 @@ export function ProjectInfoDrawer({ project, role, canManageTeam, onClose }: Pro
           <HomeCard project={project} />
           {!designer && <PeopleCard project={project} />}
           {/* for homeowner and staff a team of one only repeats People */}
-          {(designer || !!project.members?.length) && <TeamCard project={project} manageHref={canManageTeam ? `/designer/projects/${project.id}` : undefined} />}
+          {(designer || !!project.members?.length) && <TeamCard project={project} role={role} />}
           {!designer && <BudgetCard project={project} />}
         </div>
       </aside>

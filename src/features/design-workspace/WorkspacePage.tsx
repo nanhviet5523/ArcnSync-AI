@@ -7,8 +7,9 @@ import { downloadFile, revokeBlobUrls } from '@/services/authService';
 import { errorText, isNetworkError, t } from '@/i18n';
 import { projectApi } from '@/features/projects/projectApi';
 import { designApi } from './designApi';
-import { approveBlockers, can, CLEAR_CANVAS, commentPlaceholder, commentThreads, compareCandidates, newUploadRow, pickCompareTarget, resolveProjectRole, uploadRowErrors, elementName, formatTime, latestVersion, targetInVersion, versionLabel, isNotChosenItem, isUnknownItem, pinPoint, pinsToShow } from './logic';
+import { approveBlockers, can, CLEAR_CANVAS, commentPlaceholder, commentThreads, compareCandidates, newUploadRow, pickCompareTarget, resolveProjectRole, isOffTeam, uploadRowErrors, elementName, formatTime, latestVersion, targetInVersion, versionLabel, isNotChosenItem, isUnknownItem, pinPoint, pinsToShow } from './logic';
 import type { Action, CanvasUi, CommentThread, UploadRow } from './logic';
+import { NotOnTeam } from '@/features/projects/NotOnTeam';
 import { CommentPanel } from './CommentPanel';
 import { ComparePanel } from './ComparePanel';
 import { FloorRoomTree } from './FloorRoomTree';
@@ -227,6 +228,8 @@ export function WorkspacePage() {
   const [version, setVersion] = useState<DesignVersion | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
   const [error, setError] = useState('');
+  /** A designer taken off the team: the project now answers 404. */
+  const [offTeam, setOffTeam] = useState(false);
   const [loaded, setLoaded] = useState(false);
   /** A full load has succeeded: later failures keep the screen and show a banner. */
   const [ready, setReady] = useState(false);
@@ -417,7 +420,11 @@ export function WorkspacePage() {
       setVersion(v);
       setError('');
       setReady(true);
-    } catch (e) { if (!stale()) setError(errorText(e)); } finally { if (!stale()) setLoaded(true); }
+    } catch (e) {
+      if (stale()) return;
+      if (isOffTeam(e, viewer.role)) setOffTeam(true);
+      else setError(errorText(e));
+    } finally { if (!stale()) setLoaded(true); }
   }, [projectId, versionId, viewer.role, viewer.id, setAssignments, setDrafts, setLatestDrafts, resetForVersion]);
   const loadRef = useRef(load);
   useEffect(() => { loadRef.current = load; }, [load]);
@@ -447,6 +454,7 @@ export function WorkspacePage() {
   const rooms = useMemo(() => (floor ? floorRooms(floor.scene_json) : []), [floor]);
   const room = rooms.find((r) => r.key === roomKey) ?? null;
 
+  if (offTeam) return <div className="min-h-dvh bg-canvas p-6"><NotOnTeam /></div>;
   if (error && !ready) {
     return (
       <div className="flex min-h-dvh items-center justify-center bg-canvas p-6">
@@ -1157,7 +1165,7 @@ export function WorkspacePage() {
         </aside>
       </div>
 
-      {infoOpen && <ProjectInfoDrawer project={project} role={viewer.role} canManageTeam={allow('manageTeam').ok} onClose={() => setInfoOpen(false)} />}
+      {infoOpen && <ProjectInfoDrawer project={project} role={viewer.role} onClose={() => setInfoOpen(false)} />}
       {catalogOpen && selElement?.category && (
         <CatalogDrawer element={{ ...selElement, category: selElement.category }} editable={editable}
           onPick={(p) => patchSelected({ product: p, choice: 'CHOSEN' })} onClose={() => setCatalogOpen(false)} />

@@ -1,4 +1,5 @@
-import { formatDateTime, formatMoney, t } from '../../i18n/index.ts';
+import { errorText, formatDateTime, formatMoney, t } from '../../i18n/index.ts';
+import type { DesignerOption, ProjectTeam } from '../projects/projectApi';
 import type { Comment, CommentReply, CommentTarget, DesignElement, DesignVersion, Product, Project, ProjectRole, Role, VersionSummary } from './types';
 
 /** Money and time formatting live in src/i18n; re-exported for the workspace components. */
@@ -158,6 +159,39 @@ export function awaitingInScope(comments: Comment[], me: Role, project: Pick<Pro
 export const resolveProjectRole = (project: Pick<Project, 'myProjectRole' | 'designer'>, viewerId: string): ProjectRole | null =>
   project.myProjectRole !== undefined ? project.myProjectRole : !!viewerId && project.designer?.id === viewerId ? 'LEAD' : null;
 
+/**
+ * People Staff can pick for the team: the available designers, plus whoever is on the team now
+ * (they may have stopped taking projects, but they stay listed so they can be kept or removed).
+ */
+export function teamOptions(available: readonly DesignerOption[], team: ProjectTeam | null): DesignerOption[] {
+  const seen = new Set(available.map((d) => d.id));
+  const current = team ? [...(team.lead ? [team.lead] : []), ...team.members] : [];
+  const extra = current.filter((p) => !seen.has(p.userId))
+    .map((p): DesignerOption => ({ id: p.userId, fullName: p.name, email: p.email, isAvailable: false, activeProjectCount: 0 }));
+  return [...available, ...extra];
+}
+
+/** People on the team now who hold rooms and are not in the new team: their rooms and drafts go to the new Lead. */
+export function leavingWithRooms(team: ProjectTeam | null, leadId: string, memberIds: readonly string[]): { name: string; rooms: string[] }[] {
+  if (!team) return [];
+  const stays = new Set([leadId, ...memberIds]);
+  return [...(team.lead ? [team.lead] : []), ...team.members]
+    .filter((p) => !stays.has(p.userId) && p.assignedRooms.length)
+    .map((p) => ({ name: p.name, rooms: p.assignedRooms.map((r) => r.name) }));
+}
+
+/** Errors of PUT /projects/:id/team, worded for Staff. */
+export function teamErrorText(e: unknown): string {
+  const { code, status } = (e ?? {}) as { code?: string; status?: number };
+  if (code === 'INVALID_PROJECT_STATUS') return t('team.closed');
+  if (code === 'LEAD_REPLACEMENT_REQUIRED') return t('team.leadFirst');
+  if (status === 400) return t('team.bothRoles');
+  return errorText(e);
+}
+
+/** A designer opening a project they are not on (any more) gets 404: they were taken off the team. */
+export const isOffTeam = (e: unknown, role: Role) => role === 'designer' && (e as { status?: number } | null)?.status === 404;
+
 export type StatusFilter = 'UNRESOLVED' | 'ALL';
 export const statusMatches = (c: Comment, f: StatusFilter) => f === 'ALL' || c.status !== 'RESOLVED';
 
@@ -185,8 +219,10 @@ export type Action =
   | 'reviewDrafts'
   /** Lead takes a room from another designer, with their unmerged changes. */
   | 'takeOverRoom'
-  /** Lead adds or removes Members, and gives rooms to designers. Work with no version yet. */
-  | 'manageTeam' | 'assignRooms'
+  /** Staff/Admin choose the Lead and the Members (PUT /projects/:id/team). Designers, even the Lead, only see the team. */
+  | 'manageTeam'
+  /** Lead gives rooms to people on the team. Work with no version yet. */
+  | 'assignRooms'
   /** Lead uploads the first drawing: no version exists yet. */
   | 'uploadFirst'
   /** Lead closes a comment that needed no drawing change. */
@@ -257,7 +293,8 @@ export function can(action: Action, { role, version, project, projectRole = null
   const customer = role === 'homeowner';
   const lead = role === 'designer' && projectRole === 'LEAD', member = role === 'designer' && projectRole === 'MEMBER';
   const closed = project.status === 'COMPLETED' || project.status === 'CANCELLED';
-  if (action === 'manageTeam' || action === 'assignRooms') return lead && !closed ? yes : no;
+  if (action === 'manageTeam') return (role === 'staff' || role === 'admin') && !closed ? yes : no;
+  if (action === 'assignRooms') return lead && !closed ? yes : no;
   if (action === 'uploadFirst') return lead && project.status === 'IN_DESIGN' ? yes : no;
   if (action === 'download' || action === 'exportFiles') return lead || member ? yes : no;
   if (action === 'majorRevision') return !lead ? no : revisionsLeft === 0 ? { ok: false, reason: t('reasons.noMajorLeft') } : yes;
