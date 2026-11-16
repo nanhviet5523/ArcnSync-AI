@@ -8,6 +8,20 @@ import { LoginPage } from '@/features/auth/LoginPage';
 import { ResetPasswordPage } from '@/features/auth/ResetPasswordPage';
 import { SignUpPage } from '@/features/auth/SignUpPage';
 import { VerifyOtpPage } from '@/features/auth/VerifyOtpPage';
+<<<<<<< Updated upstream
+=======
+import { ForgotPasswordPage } from '@/features/auth/ForgotPasswordPage';
+import { ResetPasswordPage } from '@/features/auth/ResetPasswordPage';
+import { AcceptInvitation } from '@/features/auth/AcceptInvitation';
+import { AcceptProjectInvitation } from '@/features/auth/AcceptProjectInvitation';
+import { ProjectRequirementsForm } from '@/features/homeowner/ProjectRequirementsForm';
+import { HomeownerConceptGallery } from '@/features/homeowner/HomeownerConceptGallery';
+import { HomeownerPayments } from '@/features/homeowner/HomeownerPayments';
+import { ProfileSettings } from '@/features/shared/ProfileSettings';
+import { CustomerDirectory } from '@/features/shared/CustomerDirectory';
+import { ApartmentManagement } from '@/features/shared/ApartmentManagement';
+import { AdminUsersPage } from '@/features/admin/users/AdminUsersPage';
+>>>>>>> Stashed changes
 import { AdminMasterData } from '@/features/admin/AdminMasterData';
 import { AdminProducts } from '@/features/admin/AdminProducts';
 import { AdminUsersPage } from '@/features/admin/users/AdminUsersPage';
@@ -126,6 +140,15 @@ function App() {
 
           <Route element={<ProtectedRoute allowedRoles={['homeowner']} />}>
             <Route path="/homeowner-apartments" element={<ApartmentManagement />} />
+<<<<<<< Updated upstream
+=======
+            <Route path="/homeowner/projects" element={<ProjectList />} />
+            <Route path="/homeowner/projects/:id" element={<ProjectDetail />} />
+            <Route path="/homeowner/payments" element={<HomeownerPayments />} />
+          </Route>
+          <Route element={<ProtectedRoute allowedRoles={['homeowner', 'designer', 'staff', 'admin']} />}>
+            <Route path="/projects/:projectId/workspace" element={<WorkspacePage />} />
+>>>>>>> Stashed changes
           </Route>
 
           <Route element={<ProtectedRoute allowedRoles={ALL_ROLES} />}>
@@ -167,6 +190,11 @@ function App() {
           <Route path="/verify-otp" element={<VerifyOtpPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/accept-project-invitation" element={<AcceptProjectInvitation />} />
+          <Route path="/projects/invitation" element={<AcceptProjectInvitation />} />
+          <Route path="/homeowner/project-requirements" element={<ProjectRequirementsForm />} />
+          <Route path="/project-requirements" element={<ProjectRequirementsForm />} />
+          <Route path="/homeowner/concepts" element={<HomeownerConceptGallery />} />
           <Route path="/accept-invitation" element={<AcceptInvitation />} />
           <Route path="/auth/accept-invitation" element={<AcceptInvitation />} />
           <Route path="/accept-invite" element={<AcceptInvitation />} />
