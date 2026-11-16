@@ -1,6 +1,6 @@
 import React from 'react';
 
-export const CtaSection: React.FC<{ onFeatureClick: () => void }> = ({ onFeatureClick }) => {
+export const CtaSection: React.FC<{ onFeatureClick: () => void; onContactClick?: () => void }> = ({ onFeatureClick, onContactClick }) => {
   return (
     <section className="w-full bg-white py-16 px-6 lg:px-16">
       <div className="w-full max-w-[1440px] mx-auto bg-[#0B172A] rounded-3xl p-10 lg:p-14 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-8 shadow-xl">
@@ -28,7 +28,7 @@ export const CtaSection: React.FC<{ onFeatureClick: () => void }> = ({ onFeature
           {/* Button 2: Book a Consultation with a transparent background, subtle border, and white text */}
           <button
             type="button"
-            onClick={onFeatureClick}
+            onClick={onContactClick ?? onFeatureClick}
             className="px-6 py-3.5 bg-transparent hover:bg-white/10 text-white border border-slate-600 font-bold text-sm rounded-xl transition"
           >
             Book a Consultation

@@ -12,6 +12,7 @@ import { DesignTeamCard } from './DesignTeamCard';
 import { NotOnTeam } from './NotOnTeam';
 import { HomeownerProjectView } from './HomeownerProjectView';
 import { RoomAssignmentsTab } from './RoomAssignmentsTab';
+import { ReviewCard } from '@/features/reviews/ReviewCard';
 import { conceptStep, nextFor, useLatestVersions } from './projectView';
 import { CreateContractModal } from './CreateContractModal';
 import type { ContractToast } from './CreateContractModal';
@@ -107,9 +108,20 @@ export function ProjectDetail() {
   // one sentence for this page and the project's card; a designer waits for the version check
   const next = designer && !ready ? '' : nextFor(role, project, designer ? latest(project.id) : undefined);
 
+  // quotation stage: staff's next step is the quotation, the workspace stays one click away
+  const quoting = project.status === 'QUOTING' || project.status === 'COMPLETED';
+  const quotationFirst = staff && project.status === 'QUOTING';
+  const openQuotation = () => navigate(`/projects/${project.id}/quotation`);
+  const workspaceLabel = t(role === 'admin' ? 'projectDetail.openViewOnly' : 'projectDetail.openWorkspace');
+  const secondary = quotationFirst
+    ? (workspace ? <Button onClick={open}>{workspaceLabel}</Button> : undefined)
+    : quoting ? <Button onClick={openQuotation}>{t('projectDetail.openQuotation')}</Button> : undefined;
+
   // exactly one primary action, following the next step
-  const primary = workspace
-    ? <Button variant="primary" onClick={open}>{t(staff ? 'projectDetail.openViewOnly' : 'projectDetail.openWorkspace')}</Button>
+  const primary = quotationFirst
+    ? <Button variant="primary" onClick={openQuotation}>{t('projectDetail.openQuotation')}</Button>
+    : workspace
+    ? <Button variant="primary" onClick={open}>{workspaceLabel}</Button>
     : staff && kickoffReady
       ? <Button variant="primary" loading={busy === 'kickoff'} disabled={!project.designer} title={project.designer ? undefined : t('projectDetail.startDesignHint')}
           onClick={() => act('kickoff', () => projectApi.kickoff(project.id))}>{t('projectDetail.startDesign')}</Button>
@@ -124,6 +136,7 @@ export function ProjectDetail() {
         description={<>{project.code}<span className="mx-2 text-slate-300">|</span>{t('projectDetail.created', { date: formatDate(project.createdAt) })}</>}
         primary={primary}
         secondary={<>
+          {secondary}
           {staff && project.status === 'DRAFT' && contract === null && <Button onClick={() => setContractOpen(true)}>{t('projectDetail.createContract')}</Button>}
           {staff && contractCheckFailed && <Button title={t('contractPage.contractStatusFailed')} onClick={() => void loadContract()}>{t('contractPage.retryCheck')}</Button>}
           {/* A staff member with no contract yet creates it with the button above; "Contract" has nothing to show until then. */}
@@ -220,6 +233,12 @@ export function ProjectDetail() {
               : toast.tone === 'warning' ? 'border-amber-200 bg-amber-50 text-amber-800'
                 : 'border-red-100 bg-red-50 text-red-700'}`}>
           {toast.message}
+        </div>
+      )}
+
+      {project.status === 'COMPLETED' && (
+        <div className="mt-5 lg:w-1/2 lg:pr-2.5">
+          <ReviewCard projectId={project.id} completed homeowner={false} />
         </div>
       )}
     </AppShell>

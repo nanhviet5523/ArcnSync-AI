@@ -296,7 +296,9 @@ export function can(action: Action, { role, version, project, projectRole = null
   if (action === 'manageTeam') return (role === 'staff' || role === 'admin') && !closed ? yes : no;
   if (action === 'assignRooms') return lead && !closed ? yes : no;
   if (action === 'uploadFirst') return lead && project.status === 'IN_DESIGN' ? yes : no;
-  if (action === 'download' || action === 'exportFiles') return lead || member ? yes : no;
+  // Backend GET /design-versions/:id/file: assigned designers and Admin (Customer / Staff → 403 DOWNLOAD_FORBIDDEN).
+  if (action === 'download') return lead || member || role === 'admin' ? yes : no;
+  if (action === 'exportFiles') return lead || member ? yes : no;
   if (action === 'majorRevision') return !lead ? no : revisionsLeft === 0 ? { ok: false, reason: t('reasons.noMajorLeft') } : yes;
   if (!version) return no;
   const layout = version.version_type === 'LAYOUT_2D', render = version.version_type === 'RENDER_3D';
@@ -316,8 +318,9 @@ export function can(action: Action, { role, version, project, projectRole = null
   };
   switch (action) {
     case 'upload': return lead && layout && project.status === 'IN_DESIGN' ? yes : no;
+    // Backend POST /design-versions/:id/comments: Customer, Designer, Staff of the project (Admin views only).
     case 'comment':
-    case 'reply': return lead || member || customer ? yes : no;
+    case 'reply': return lead || member || customer || role === 'staff' ? yes : no;
     case 'respond': return customer ? yes : no;
     case 'editItems': return lead && choosing ? yes : no;
     case 'reviewDrafts': return lead && drafting ? yes : no;

@@ -894,7 +894,7 @@ export function WorkspacePage() {
     </Button>
   ) : null;
 
-  const downloadDxf = canExport && floor && version ? {
+  const downloadDxf = allow('download').ok && floor && version ? {
     label: version.floors.length > 1 ? t('workspace.downloadDxfFloor', { floor: floor.name }) : t('workspace.downloadDxf'),
     run: () => downloadFile(floor.file_url, `${version.label}-${floor.name}.dxf`).catch((e) => setDialog({ kind: 'notice', title: t('workspace.downloadError'), body: errorText(e) })),
   } : null;

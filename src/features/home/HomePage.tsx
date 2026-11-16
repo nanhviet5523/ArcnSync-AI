@@ -8,6 +8,7 @@ import { HowItWorksSection } from './components/HowItWorksSection';
 import { InspirationsSection } from './components/InspirationsSection';
 import { FeaturesSection } from './components/FeaturesSection';
 import { CtaSection } from './components/CtaSection';
+import { ContactSection } from './components/ContactSection';
 
 const GENERIC_LOGIN_PROMPT = 'Log in to access this feature';
 const CONSULTATION_LOGIN_PROMPT = 'Please log in to request a consultation';
@@ -24,6 +25,14 @@ export const HomePage: React.FC<HomePageProps> = ({
   const navigate = useNavigate();
   const [loginPromptOpen, setLoginPromptOpen] = useState(false);
   const [loginPromptTitle, setLoginPromptTitle] = useState(GENERIC_LOGIN_PROMPT);
+
+  // arriving with #contact (footer / header link from another page): scroll once the sections are rendered
+  useEffect(() => {
+    const target = decodeURIComponent(window.location.hash.slice(1));
+    if (!target) return;
+    const id = requestAnimationFrame(() => document.getElementById(target)?.scrollIntoView({ behavior: 'smooth' }));
+    return () => cancelAnimationFrame(id);
+  }, []);
 
   useEffect(() => {
     if (!loginPromptOpen) return;
@@ -60,7 +69,8 @@ export const HomePage: React.FC<HomePageProps> = ({
         <HowItWorksSection />
         <InspirationsSection onFeatureClick={promptLogin} />
         <FeaturesSection />
-        <CtaSection onFeatureClick={promptLogin} />
+        <CtaSection onFeatureClick={promptLogin} onContactClick={() => document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' })} />
+        <ContactSection />
       </main>
       <Footer />
       {loginPromptOpen && (
