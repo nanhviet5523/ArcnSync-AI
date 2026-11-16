@@ -9,6 +9,13 @@ import { VerifyOtpPage } from '@/features/auth/VerifyOtpPage';
 import { ForgotPasswordPage } from '@/features/auth/ForgotPasswordPage';
 import { ResetPasswordPage } from '@/features/auth/ResetPasswordPage';
 import { AcceptInvitation } from '@/features/auth/AcceptInvitation';
+import { AcceptProjectInvitation } from '@/features/auth/AcceptProjectInvitation';
+import { ProjectRequirementsForm } from '@/features/homeowner/ProjectRequirementsForm';
+import { HomeownerConceptGallery } from '@/features/homeowner/HomeownerConceptGallery';
+import { HomeownerPayments } from '@/features/homeowner/HomeownerPayments';
+import { ForgotPasswordPage } from '@/features/auth/ForgotPasswordPage';
+import { ResetPasswordPage } from '@/features/auth/ResetPasswordPage';
+import { AcceptInvitation } from '@/features/auth/AcceptInvitation';
 import { ProfileSettings } from '@/features/shared/ProfileSettings';
 import { CustomerDirectory } from '@/features/shared/CustomerDirectory';
 import { ApartmentManagement } from '@/features/shared/ApartmentManagement';
@@ -167,6 +174,12 @@ function App() {
             <Route path="/homeowner-apartments" element={<ApartmentManagement />} />
             <Route path="/homeowner/projects" element={<ProjectList />} />
             <Route path="/homeowner/projects/:id" element={<ProjectDetail />} />
+            <Route path="/homeowner/payments" element={<HomeownerPayments />} />
+          </Route>
+          <Route element={<ProtectedRoute allowedRoles={['homeowner', 'designer', 'staff', 'admin']} />}>
+            <Route path="/projects/:projectId/workspace" element={<WorkspacePage />} />
+            <Route path="/homeowner/projects" element={<ProjectList />} />
+            <Route path="/homeowner/projects/:id" element={<ProjectDetail />} />
           </Route>
           <Route element={<ProtectedRoute allowedRoles={['homeowner', 'designer', 'staff', 'admin']} />}>
             <Route path="/projects/:projectId/workspace" element={<WorkspacePage />} />
@@ -216,6 +229,11 @@ function App() {
           <Route path="/verify-otp" element={<VerifyOtpPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/accept-project-invitation" element={<AcceptProjectInvitation />} />
+          <Route path="/projects/invitation" element={<AcceptProjectInvitation />} />
+          <Route path="/homeowner/project-requirements" element={<ProjectRequirementsForm />} />
+          <Route path="/project-requirements" element={<ProjectRequirementsForm />} />
+          <Route path="/homeowner/concepts" element={<HomeownerConceptGallery />} />
           <Route path="/accept-invitation" element={<AcceptInvitation />} />
           <Route path="/auth/accept-invitation" element={<AcceptInvitation />} />
           <Route path="/accept-invite" element={<AcceptInvitation />} />
