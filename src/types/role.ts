@@ -1,3 +1,5 @@
+import { t } from '@/i18n';
+
 export type UserRole = 'homeowner' | 'staff' | 'supplier' | 'admin' | 'designer';
 
 export interface User {
@@ -10,50 +12,47 @@ export interface User {
   badgeTitle?: string; // For example: "Staff", "Supplier Partner", "Studio Designer", "Admin"
 }
 
-// Default routes and navbar navigation for each role.
+// Landing path after login / on logo click: the shared homepage for everyone, except admin who lands on the dashboard.
+// navItems drive the role-based Header menu (skill ui-nghiep-vu §2, only pages that exist).
 export const ROLE_CONFIG: Record<UserRole, { defaultPath: string; badge: string; navItems: { label: string; path: string }[] }> = {
   homeowner: {
-    defaultPath: '/homeowner-dashboard',
-    badge: 'Homeowner',
+    defaultPath: '/',
+    badge: t('role.homeowner'),
     navItems: [
-      { label: 'Dashboard', path: '/homeowner-dashboard' },
-      { label: 'My properties', path: '/homeowner-apartments' },
-      { label: 'My Projects', path: '/homeowner-projects' },
-      { label: 'AI Studio', path: '/homeowner-ai-studio' },
-      { label: 'Messages', path: '/messages' },
+      { label: t('nav.myProjects'), path: '/homeowner/projects' },
+      { label: t('nav.myProperties'), path: '/homeowner-apartments' },
+      { label: t('nav.account'), path: '/settings' },
     ],
   },
   staff: {
-    defaultPath: '/staff-dashboard',
+    defaultPath: '/',
     badge: 'Staff',
     navItems: [
-      { label: 'Dashboard', path: '/staff-dashboard' },
-      { label: 'Requests', path: '/staff-requests' },
-      { label: 'Apartments', path: '/staff-apartments' },
-      { label: 'Contracts', path: '/staff-contracts' },
-      { label: 'Projects', path: '/staff-projects' },
-      { label: 'Customers', path: '/customers' },
-      { label: 'Messages', path: '/messages' },
+      { label: t('nav.projects'), path: '/staff/projects' },
+      { label: t('nav.apartments'), path: '/staff-apartments' },
+      { label: t('nav.contracts'), path: '/staff-contracts' },
+      { label: t('nav.customers'), path: '/customers' },
+      { label: t('nav.account'), path: '/settings' },
     ],
   },
   designer: {
-    defaultPath: '/designer-projects',
-    badge: 'Studio Designer',
+    defaultPath: '/',
+    badge: t('role.designer'),
     navItems: [
-      { label: 'My Projects', path: '/designer-projects' },
-      { label: 'AI Studio', path: '/designer-ai-studio' },
-      { label: 'Catalog', path: '/designer-catalog' },
-      { label: 'Messages', path: '/messages' },
+      { label: t('nav.assignedProjects'), path: '/designer/projects' },
+      { label: t('nav.aiStudio'), path: '/designer-ai-studio' },
+      { label: t('nav.catalog'), path: '/designer-catalog' },
+      { label: t('nav.account'), path: '/settings' },
     ],
   },
   supplier: {
-    defaultPath: '/supplier-dashboard',
-    badge: 'Supplier Partner',
+    defaultPath: '/',
+    badge: t('role.supplier'),
     navItems: [
-      { label: 'Dashboard', path: '/supplier-dashboard' },
-      { label: 'Catalog', path: '/supplier-catalog' },
-      { label: 'Inquiries', path: '/supplier-inquiries' },
-      { label: 'Messages', path: '/messages' },
+      { label: t('nav.dashboard'), path: '/supplier-dashboard' },
+      { label: t('nav.products'), path: '/supplier-catalog' },
+      { label: t('nav.inquiries'), path: '/supplier-inquiries' },
+      { label: t('nav.account'), path: '/settings' },
     ],
   },
   admin: {
@@ -62,13 +61,13 @@ export const ROLE_CONFIG: Record<UserRole, { defaultPath: string; badge: string;
     navItems: [
       { label: 'Dashboard', path: '/admin-dashboard' },
       { label: 'Users & Roles', path: '/admin-users' },
-      { label: 'Apartments', path: '/admin-apartments' },
+      { label: t('nav.apartments'), path: '/admin-apartments' },
       { label: 'Products', path: '/admin-products' },
+      { label: 'Product categories', path: '/admin/categories' },
       { label: 'Master Data', path: '/admin-master-data' },
       { label: 'AI Settings', path: '/admin-ai-settings' },
       { label: 'Reports', path: '/admin-reports' },
       { label: 'Customers', path: '/customers' },
-      { label: 'Messages', path: '/messages' },
     ],
   },
 };

@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight, Ban, CircleCheck, Clock, CreditCard } from 'lucide-react';
+import { ArrowRight, Ban, CircleCheck, Clock } from 'lucide-react';
+
 import { AppShell, Button, Card, PageHeader, Skeleton, StatusChip, Stepper } from '@/components/ui';
 import { formatDate, formatDateTime, t, tList } from '@/i18n';
 import { canOpenWorkspace, stepIndex } from './projectApi';
@@ -48,6 +50,7 @@ export function HomeownerProjectView({ project }: { project: Project }) {
           <Stepper steps={tList('steps.project')} current={stepIndex(project.status)} emphasis optional={conceptStep(2)} />
         </Card>
       )}
+
 
       <section className="mb-5 flex flex-col gap-4 rounded-card border border-blue-100 bg-white p-5 shadow-card sm:flex-row sm:items-center sm:justify-between sm:p-6">
         <div className="flex items-start gap-3">

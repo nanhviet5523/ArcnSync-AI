@@ -24,7 +24,7 @@ export const Input = ({
       )}
       <input
         id={id}
-        className={`w-full px-3.5 py-2.5 rounded-lg border text-sm text-slate-900 bg-white placeholder:text-slate-400 outline-none transition-all duration-200 focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 disabled:bg-slate-50 disabled:text-slate-500 ${
+        className={`w-full px-3.5 py-2.5 rounded-lg border text-sm text-slate-900 bg-white placeholder:text-slate-500 outline-none transition-all duration-200 focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 disabled:bg-slate-50 disabled:text-slate-500 ${
           error ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : 'border-slate-300'
         } ${className}`}
         {...props}

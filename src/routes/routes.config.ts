@@ -11,19 +11,15 @@ export const ROUTES = {
   LOGIN: '/login',
   SIGNUP: '/signup',
 
-  // Role-based Protected Dashboards
-  HOMEOWNER_DASHBOARD: '/homeowner-dashboard',
-  STAFF_WORKSPACE: '/staff-dashboard',
-  DESIGNER_PROJECTS: '/designer-projects',
-  SUPPLIER_PORTAL: '/supplier-dashboard',
-  ADMIN_OVERVIEW: '/admin-dashboard',
+  // Admin is the only role with its own landing page
+  ADMIN_DASHBOARD: '/admin-dashboard',
 } as const;
 
-// Default destination after a successful login for each role.
+// Default destination after login: the shared homepage for everyone, except admin who goes to the dashboard.
 export const DEFAULT_ROLE_REDIRECT: Record<UserRole, string> = {
-  homeowner: ROUTES.HOMEOWNER_DASHBOARD,
-  staff: ROUTES.STAFF_WORKSPACE,
-  designer: ROUTES.DESIGNER_PROJECTS,
-  supplier: ROUTES.SUPPLIER_PORTAL,
-  admin: ROUTES.ADMIN_OVERVIEW,
+  homeowner: ROUTES.HOME,
+  staff: ROUTES.HOME,
+  designer: ROUTES.HOME,
+  supplier: ROUTES.HOME,
+  admin: ROUTES.ADMIN_DASHBOARD,
 };
