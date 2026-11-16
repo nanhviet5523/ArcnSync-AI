@@ -37,14 +37,14 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSignUpClick }) => {
     const errors: { email?: string; password?: string } = {};
 
     if (!normalizedEmail) {
-      errors.email = 'Vui lòng nhập email';
+      errors.email = 'Please enter your email address.';
     } else if (!EMAIL_REGEX.test(normalizedEmail)) {
       errors.email =
-        'Email không đúng định dạng (ví dụ: ten@example.com)';
+        'Enter a valid email address (e.g. name@example.com).';
     }
 
     if (!password) {
-      errors.password = 'Vui lòng nhập mật khẩu';
+      errors.password = 'Please enter your password.';
     }
 
     setFieldErrors(errors);

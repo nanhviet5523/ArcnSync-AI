@@ -1,17 +1,17 @@
 import { useState, useMemo } from 'react';
 import { adminService, INITIAL_ADMIN_USERS } from '@/features/admin/services/adminService';
-import type { AdminUser, AdminRole, UserFilterCategory, InviteUserPayload } from '@/types/admin';
+import type { AdminUser, AdminRole, UserFilterCategory } from '@/types/admin';
 
 export const useAdminUsers = () => {
   const [users, setUsers] = useState<AdminUser[]>(INITIAL_ADMIN_USERS);
   const [activeCategory, setActiveCategory] = useState<UserFilterCategory>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const isSubmitting = false;
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   // Form states matching Figma screenshot
-  const [fullName, setFullName] = useState('Le Trang');
-  const [workEmail, setWorkEmail] = useState('trang@archsync.vn');
+  const [fullName, setFullName] = useState('');
+  const [workEmail, setWorkEmail] = useState('');
   const [emailError, setEmailError] = useState<string | null>(null);
   const [role, setRole] = useState<AdminRole>('Designer');
   const [permissions, setPermissions] = useState<string[]>([
@@ -59,7 +59,7 @@ export const useAdminUsers = () => {
     if (e) e.preventDefault();
 
     if (!fullName.trim()) {
-      setNotification({ message: 'Please provide a full name.', type: 'error' });
+      setNotification({ message: 'Enter a full name.', type: 'error' });
       return;
     }
 
@@ -69,30 +69,10 @@ export const useAdminUsers = () => {
     }
 
     setEmailError(null);
-    setIsSubmitting(true);
-    try {
-      const payload: InviteUserPayload = {
-        fullName: fullName.trim(),
-        workEmail: workEmail.trim(),
-        role,
-        permissions,
-      };
-
-      const newUser = await adminService.inviteUser(payload);
-      setUsers((prev) => [newUser, ...prev]);
-      setNotification({
-        message: `Invitation successfully sent to ${payload.workEmail}!`,
-        type: 'success',
-      });
-
-      setTimeout(() => {
-        setNotification(null);
-      }, 4000);
-    } catch {
-      setNotification({ message: 'Failed to send invitation. Please try again.', type: 'error' });
-    } finally {
-      setIsSubmitting(false);
-    }
+    setNotification({
+      message: 'Invitation could not be sent. The available API only searches registered active customers; it cannot create an invitation or add a customer to a project.',
+      type: 'error',
+    });
   };
 
   // Open Edit Drawer

@@ -179,7 +179,7 @@ export const StaffProjects: React.FC = () => {
       setToast({ type: 'success', message: `Tạo dự án thành công (${project.code}).` });
     } catch (err) {
       if (err instanceof ApiError && err.status === 409 && err.code === 'APARTMENT_HAS_ACTIVE_PROJECT') {
-        const details = err.details as ApartmentHasActiveProjectDetails | undefined;
+        const details = err.details as unknown as ApartmentHasActiveProjectDetails | undefined;
         setToast({
           type: 'error',
           message: err.message || 'Căn hộ đang có dự án chưa kết thúc.',

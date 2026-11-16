@@ -9,7 +9,7 @@ export const StaffDashboard: React.FC = () => {
   const navigate = useNavigate();
   const workspace = useDemoWorkspace();
 
-  // Data giả lập cho 4 Stat Cards
+  // Sample data for the four stat cards.
   const stats = [
     {
       title: 'NEW REQUESTS',
@@ -42,7 +42,7 @@ export const StaffDashboard: React.FC = () => {
     const statusBg = request.status === 'Signed' ? 'bg-emerald-50 text-emerald-700' : request.status === 'AI brief ready' ? 'bg-blue-50 text-blue-600' : request.status === 'Designer assigned' ? 'bg-violet-50 text-violet-700' : 'bg-amber-50 text-amber-700';
     return project ? { projectId: project.id, homeowner: project.homeowner, project: project.name, type: project.buildingType, budget: `${Math.round(project.budgetMin / 1e6)}–${Math.round(project.budgetMax / 1e6)}M`, status: request.status, statusBg, designer: project.designer, action: 'Open', actionStyle: 'border border-slate-200 text-slate-700 hover:bg-slate-50', isCreateContract: false } : null;
   }).filter((item): item is NonNullable<typeof item> => item !== null).slice(0, 5);
-  // Data giả lập Today's consultations
+  // Sample data for today's consultations.
   const consultations = [
     {
       time: '09:30',
@@ -87,7 +87,7 @@ export const StaffDashboard: React.FC = () => {
             </p>
           </div>
 
-          {/* Nút + New contract kích hoạt điều hướng */}
+          {/* The New contract button navigates to the contract form. */}
           <button
             type="button"
             onClick={() => navigate('/create-contract')}

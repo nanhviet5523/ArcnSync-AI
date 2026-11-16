@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { DoorOpen } from 'lucide-react';
-import { ApiError, getCurrentUser } from '@/services/authService';
+import { getCurrentUser } from '@/services/authService';
+import { errorText, t } from '@/i18n';
 import {
   getRoomAssignments,
   updateRoomAssignments,
@@ -9,13 +10,13 @@ import {
 
 interface RoomAssignmentsTabProps {
   projectId: string;
-  /** user_id của Lead Designer hiện tại của dự án (ProjectResponse.designerId). */
+  /** user_id of the project's Lead Designer. */
   leadDesignerId: string | null;
 }
 
 /**
- * Khảo sát & phân công phòng cho một dự án (GET/PUT /projects/{id}/room-assignments).
- * Chỉ Lead Designer của dự án mới chỉnh sửa được; mọi role khác ở chế độ view-only.
+ * Room assignments of one project (GET/PUT /projects/{id}/room-assignments).
+ * Only the project's Lead Designer can edit; every other role sees it view-only.
  */
 export const RoomAssignmentsTab: React.FC<RoomAssignmentsTabProps> = ({ projectId, leadDesignerId }) => {
   const currentUser = getCurrentUser();
@@ -44,7 +45,7 @@ export const RoomAssignmentsTab: React.FC<RoomAssignmentsTabProps> = ({ projectI
       })
       .catch((err: unknown) => {
         if (cancelled) return;
-        setLoadError(err instanceof ApiError ? err.message : 'Không tải được danh sách phòng.');
+        setLoadError(errorText(err));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -71,21 +72,9 @@ export const RoomAssignmentsTab: React.FC<RoomAssignmentsTabProps> = ({ projectI
       });
       setRooms(res.items);
       setDraft(Object.fromEntries(res.items.map((item) => [item.roomId, item.designerId])));
-      setToast({ type: 'success', message: 'Cập nhật phân công phòng thành công!' });
+      setToast({ type: 'success', message: 'Room assignments updated.' });
     } catch (err) {
-      let message = 'Có lỗi xảy ra. Vui lòng thử lại.';
-      if (err instanceof ApiError) {
-        if (err.status === 403 && err.code === 'INSUFFICIENT_ROLE') {
-          message = 'Chỉ Lead Designer của dự án mới có quyền phân công phòng.';
-        } else if (err.status === 422 && err.code === 'ROOM_NOT_IN_APARTMENT') {
-          message = 'Phòng không thuộc căn hộ của dự án.';
-        } else if (err.status === 422 && err.code === 'DESIGNER_NOT_IN_PROJECT') {
-          message = 'Designer được chọn không thuộc đội ngũ dự án.';
-        } else {
-          message = err.message;
-        }
-      }
-      setToast({ type: 'error', message });
+      setToast({ type: 'error', message: errorText(err) });
     } finally {
       setSaving(false);
     }
@@ -109,16 +98,16 @@ export const RoomAssignmentsTab: React.FC<RoomAssignmentsTabProps> = ({ projectI
       <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <DoorOpen size={16} className="text-slate-400" />
-          <h2 className="text-base font-bold text-slate-900">Room assignments</h2>
+          <h2 className="text-base font-bold text-slate-900">{t('projectDetail.roomAssignments')}</h2>
         </div>
         {!canEdit && (
           <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-bold text-slate-500">
-            Chế độ chỉ xem
+            View only
           </span>
         )}
       </div>
 
-      {loading && <p className="py-6 text-center text-xs text-slate-400">Đang tải danh sách phòng…</p>}
+      {loading && <p className="py-6 text-center text-xs text-slate-400">Loading rooms…</p>}
 
       {!loading && loadError && (
         <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-semibold text-red-700">
@@ -127,7 +116,7 @@ export const RoomAssignmentsTab: React.FC<RoomAssignmentsTabProps> = ({ projectI
       )}
 
       {!loading && !loadError && rooms.length === 0 && (
-        <p className="py-6 text-center text-xs text-slate-400">Dự án chưa có phòng nào.</p>
+        <p className="py-6 text-center text-xs text-slate-400">This project has no rooms yet.</p>
       )}
 
       {!loading && !loadError && rooms.length > 0 && (
@@ -138,8 +127,8 @@ export const RoomAssignmentsTab: React.FC<RoomAssignmentsTabProps> = ({ projectI
                 <tr className="border-b border-slate-100 text-[11px] font-bold text-slate-400 uppercase tracking-wider bg-slate-50/80">
                   <th className="py-3 px-4 rounded-l-xl">ROOM</th>
                   <th className="py-3 px-4">FLOOR</th>
-                  <th className="py-3 px-4">ĐANG PHỤ TRÁCH</th>
-                  <th className="py-3 px-4 rounded-r-xl">PHÂN CÔNG (DESIGNER ID)</th>
+                  <th className="py-3 px-4">ASSIGNED TO</th>
+                  <th className="py-3 px-4 rounded-r-xl">REASSIGN (DESIGNER ID)</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs">
@@ -147,7 +136,7 @@ export const RoomAssignmentsTab: React.FC<RoomAssignmentsTabProps> = ({ projectI
                   <tr key={room.roomId} className="hover:bg-slate-50/50 transition">
                     <td className="py-3 px-4 font-bold text-slate-900">{room.roomName}</td>
                     <td className="py-3 px-4 text-slate-500 font-medium">{room.floorId}</td>
-                    <td className="py-3 px-4 text-slate-700 font-medium">{room.designerName || '— chưa giao —'}</td>
+                    <td className="py-3 px-4 text-slate-700 font-medium">{room.designerName || 'Not assigned'}</td>
                     <td className="py-3 px-4">
                       {canEdit ? (
                         <input
@@ -155,7 +144,7 @@ export const RoomAssignmentsTab: React.FC<RoomAssignmentsTabProps> = ({ projectI
                           value={draft[room.roomId] ?? ''}
                           onChange={(e) => setDraft((d) => ({ ...d, [room.roomId]: e.target.value }))}
                           disabled={saving}
-                          placeholder="UUID — để trống = bỏ giao"
+                          placeholder="Designer UUID, empty = unassign"
                           className="w-full min-w-[220px] rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600"
                         />
                       ) : (
@@ -177,12 +166,12 @@ export const RoomAssignmentsTab: React.FC<RoomAssignmentsTabProps> = ({ projectI
                 className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-xs font-bold text-white shadow-md transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {saving && <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white" />}
-                {saving ? 'Đang lưu…' : 'Lưu phân công phòng'}
+                {saving ? 'Saving…' : 'Save room assignments'}
               </button>
             </div>
           ) : (
             <p className="mt-4 text-[11px] font-medium text-slate-400">
-              Chỉ Lead Designer của dự án mới có quyền chỉnh sửa phân công phòng.
+              Only the project's Lead Designer can change room assignments.
             </p>
           )}
         </>

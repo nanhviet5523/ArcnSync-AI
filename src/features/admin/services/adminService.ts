@@ -1,9 +1,7 @@
 import type {
   AdminUser,
-  InviteUserPayload,
   BuildingTypeItem,
   ConstraintRuleItem,
-  DesignStyleItem,
   MaterialFinishItem,
   ProductCategoryItem,
   PromptLibraryItem,
@@ -11,112 +9,7 @@ import type {
   GenerationStatDay,
 } from '@/types/admin';
 
-export const INITIAL_ADMIN_USERS: AdminUser[] = [
-  {
-    id: 'usr-001',
-    name: 'Minh Anh',
-    email: 'minh.anh@gmail.com',
-    role: 'Homeowner',
-    status: 'Active',
-    lastActive: 'Today',
-    avatar: 'MA',
-    avatarBgColor: 'bg-teal-600',
-    permissions: ['View projects', 'Comment designs'],
-  },
-  {
-    id: 'usr-002',
-    name: 'Nguyen Linh',
-    email: 'linh@archsync.vn',
-    role: 'Designer',
-    status: 'Active',
-    lastActive: 'Today',
-    avatar: 'NL',
-    avatarBgColor: 'bg-blue-600',
-    permissions: [
-      'Edit designs & versions',
-      'Use the AI design tool',
-      'See budget & BOM',
-    ],
-  },
-  {
-    id: 'usr-003',
-    name: 'Pham Duc',
-    email: 'duc@archsync.vn',
-    role: 'Designer',
-    status: 'Active',
-    lastActive: 'Yesterday',
-    avatar: 'PD',
-    avatarBgColor: 'bg-blue-600',
-    permissions: [
-      'Edit designs & versions',
-      'Use the AI design tool',
-      'See budget & BOM',
-    ],
-  },
-  {
-    id: 'usr-004',
-    name: 'Tran Nam',
-    email: 'nam@archsync.vn',
-    role: 'Staff',
-    status: 'Active',
-    lastActive: 'Today',
-    avatar: 'TN',
-    avatarBgColor: 'bg-purple-600',
-    permissions: [
-      'Manage requests',
-      'Create contracts',
-      'Assign designers',
-    ],
-  },
-  {
-    id: 'usr-005',
-    name: 'Noi That Viet',
-    email: 'contact@noithatviet.vn',
-    role: 'Supplier',
-    status: 'Active',
-    lastActive: '2 days ago',
-    avatar: 'NV',
-    avatarBgColor: 'bg-slate-900',
-    permissions: ['Upload catalog', 'Update stock', 'Chat with designers'],
-  },
-  {
-    id: 'usr-006',
-    name: 'Sang Lighting',
-    email: 'hello@sanglighting.vn',
-    role: 'Supplier',
-    status: 'Active',
-    lastActive: 'Yesterday',
-    avatar: 'SL',
-    avatarBgColor: 'bg-purple-600',
-    permissions: ['Upload catalog', 'Update stock', 'Chat with designers'],
-  },
-  {
-    id: 'usr-007',
-    name: 'Le Trang',
-    email: 'trang@archsync.vn',
-    role: 'Designer',
-    status: 'Invited',
-    lastActive: '—',
-    avatar: 'LT',
-    avatarBgColor: 'bg-blue-600',
-    permissions: [
-      'Edit designs & versions',
-      'Use the AI design tool',
-      'See budget & BOM',
-    ],
-  },
-  {
-    id: 'usr-008',
-    name: 'Viglacera Tiles',
-    email: 'sales@viglacera-tiles.vn',
-    role: 'Supplier',
-    status: 'Invited',
-    lastActive: '—',
-    avatar: 'VT',
-    avatarBgColor: 'bg-purple-600',
-    permissions: ['Upload catalog', 'Update stock', 'Chat with designers'],
-  },
-];
+export const INITIAL_ADMIN_USERS: AdminUser[] = [];
 
 export const INITIAL_BUILDING_TYPES: BuildingTypeItem[] = [
   {
@@ -148,61 +41,6 @@ export const INITIAL_BUILDING_TYPES: BuildingTypeItem[] = [
     name: 'Cultural house',
     enabled: false,
     statusText: 'Not supported in this version',
-  },
-];
-
-export const INITIAL_DESIGN_STYLES: string[] = [
-  'Japandi',
-  'Minimalist',
-  'Indochine',
-  'Scandinavian',
-  'Contemporary',
-  'Industrial',
-  'Tropical Modern',
-];
-
-export const INITIAL_DESIGN_STYLES_ITEMS: DesignStyleItem[] = [
-  {
-    id: 'ds-1',
-    name: 'Japandi',
-    description: 'Warm timber, soft neutrals and calm, uncluttered shapes.',
-    aiKeywords: 'warm timber, low furniture, paper lantern',
-  },
-  {
-    id: 'ds-2',
-    name: 'Minimalist',
-    description: 'Clean lines, monochrome tones, maximum function with minimum clutter.',
-    aiKeywords: 'clean lines, neutral tones, hidden storage, simple silhouettes',
-  },
-  {
-    id: 'ds-3',
-    name: 'Indochine',
-    description: 'Blend of French colonial romance and traditional Vietnamese craft.',
-    aiKeywords: 'dark wood, rattan, cement tiles, tropical foliage, brass accents',
-  },
-  {
-    id: 'ds-4',
-    name: 'Scandinavian',
-    description: 'Bright interiors, functional simplicity, cozy textiles and blonde woods.',
-    aiKeywords: 'white walls, light pine wood, cozy throws, organic ceramics',
-  },
-  {
-    id: 'ds-5',
-    name: 'Contemporary',
-    description: 'Current trends with smooth lines, cutting-edge lighting and subtle textures.',
-    aiKeywords: 'open spaces, sculptural lighting, mixed metals, textured fabric',
-  },
-  {
-    id: 'ds-6',
-    name: 'Industrial',
-    description: 'Exposed materials, brickwork, metal beams and raw loft aesthetics.',
-    aiKeywords: 'raw concrete, exposed pipes, weathered leather, iron fixtures',
-  },
-  {
-    id: 'ds-7',
-    name: 'Tropical Modern',
-    description: 'Indoor-outdoor flow, natural airflow, lush greenery and warm earth tones.',
-    aiKeywords: 'large glass doors, terracotta, indoor plants, teak wood, woven bamboo',
   },
 ];
 
@@ -320,36 +158,6 @@ export const GENERATION_STATS_WEEK: GenerationStatDay[] = [
 export const adminService = {
   getUsers: async (): Promise<AdminUser[]> => {
     return Promise.resolve([...INITIAL_ADMIN_USERS]);
-  },
-
-  inviteUser: async (payload: InviteUserPayload): Promise<AdminUser> => {
-    const initials = payload.fullName
-      .trim()
-      .split(/\s+/)
-      .map((part) => part[0]?.toUpperCase())
-      .slice(0, 2)
-      .join('');
-
-    const colorMap: Record<string, string> = {
-      Designer: 'bg-blue-600',
-      Staff: 'bg-purple-600',
-      Supplier: 'bg-slate-900',
-      Homeowner: 'bg-teal-600',
-    };
-
-    const newUser: AdminUser = {
-      id: `usr-${Date.now()}`,
-      name: payload.fullName,
-      email: payload.workEmail,
-      role: payload.role,
-      status: 'Invited',
-      lastActive: '—',
-      avatar: initials || 'US',
-      avatarBgColor: colorMap[payload.role] || 'bg-blue-600',
-      permissions: payload.permissions,
-    };
-
-    return Promise.resolve(newUser);
   },
 
   updateUser: async (_id: string, updates: Partial<AdminUser>): Promise<Partial<AdminUser>> => {

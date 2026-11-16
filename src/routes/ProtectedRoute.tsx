@@ -13,17 +13,17 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   userRole = getCurrentUser()?.role,
   allowedRoles,
 }) => {
-  // 1. Chưa đăng nhập -> Chuyển hướng về trang Login
+  // 1. Redirect unauthenticated users to the login page.
   if (!userRole) {
     return <Navigate to={ROUTES.LOGIN} replace />;
   }
 
-  // 2. Không có quyền truy cập vai trò này -> Chuyển hướng về đúng Dashboard của role đó
+  // 2. Redirect users without access to this role to their dashboard.
   if (!allowedRoles.includes(userRole)) {
     return <Navigate to={DEFAULT_ROLE_REDIRECT[userRole]} replace />;
   }
 
-  // 3. Đúng quyền -> Cho phép render route con
+  // 3. Render the child route when the user has the required role.
   return <Outlet />;
 };
 

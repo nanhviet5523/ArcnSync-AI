@@ -274,7 +274,7 @@ export const ContractDetail: React.FC = () => {
           <div className="flex flex-wrap gap-3">
             <button
               type="button"
-              onClick={() => navigate(`/create-contract?projectId=${encodeURIComponent(projectId)}`)}
+              onClick={() => navigate(`/staff-create-contract?projectId=${encodeURIComponent(projectId)}`)}
               className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50"
             >
               Chỉnh sửa hợp đồng

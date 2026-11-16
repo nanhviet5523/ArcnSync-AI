@@ -4,7 +4,7 @@ export interface LogoProps {
   size?: number;
   showText?: boolean;
   className?: string;
-  /** Khi có giá trị, Logo trở thành Link điều hướng SPA tới route này. Bỏ trống cho Logo tĩnh (vd: Footer). */
+  /** When set, the logo becomes an SPA link to this route. Omit for static logos (e.g. Footer). */
   to?: string;
 }
 
@@ -16,7 +16,7 @@ export const Logo: React.FC<LogoProps> = ({
 }: LogoProps) => {
   const mark = (
     <div className={`inline-flex items-center gap-2.5 ${className}`}>
-      {/* Icon Nền xanh đen bo góc */}
+      {/* Rounded dark background icon */}
       <div
         className="bg-slate-900 flex items-center justify-center shrink-0"
         style={{
@@ -25,7 +25,7 @@ export const Logo: React.FC<LogoProps> = ({
           borderRadius: `${size * 0.28}px`,
         }}
       >
-        {/* SVG Ngôi nhà */}
+        {/* House SVG */}
         <svg
           width={size * 0.6}
           height={size * 0.6}
@@ -36,12 +36,12 @@ export const Logo: React.FC<LogoProps> = ({
           strokeLinecap="round"
           strokeLinejoin="round"
         >
-          {/* Mái nhà & Khung nhà màu trắng */}
+          {/* White roof and house frame */}
           <path
             d="M3 10.5L12 3L21 10.5V20C21 20.5523 20.5523 21 20 21H4C3.44772 21 3 20.5523 3 20V10.5Z"
             stroke="#FFFFFF"
           />
-          {/* Cửa nhà màu xanh lam sáng */}
+          {/* Bright blue doorway */}
           <path
             d="M9 21V15C9 14.4477 9.44772 14 10 14H14C14.5523 14 15 14.4477 15 15V21"
             stroke="#00D2FF"
@@ -50,7 +50,7 @@ export const Logo: React.FC<LogoProps> = ({
         </svg>
       </div>
 
-      {/* Chữ Brand Name */}
+      {/* Brand name */}
       {showText && (
         <span
           className="font-extrabold text-slate-900 tracking-tight select-none"

@@ -17,7 +17,7 @@ export const Messages: React.FC = () => {
   const navigate = useNavigate();
   const currentUser = getCurrentUser();
 
-  // State quản lý danh sách hội thoại
+  // Conversation list state.
   const [conversations] = useState([
     {
       id: '1',
@@ -61,7 +61,7 @@ export const Messages: React.FC = () => {
     },
   ]);
 
-  // State quản lý tin nhắn
+  // Message state.
   const [messages, setMessages] = useState([
     {
       id: 'm1',
@@ -161,7 +161,7 @@ export const Messages: React.FC = () => {
 
         {/* 3 Columns Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* CỘT TRÁI (3 cols): Conversations List */}
+          {/* LEFT COLUMN (3 cols): Conversation list */}
           <div className="lg:col-span-3 bg-white rounded-2xl border border-slate-200 shadow-sm p-4 h-[680px] flex flex-col">
             <div className="relative mb-4">
               <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -210,7 +210,7 @@ export const Messages: React.FC = () => {
             </div>
           </div>
 
-          {/* CỘT GIỮA (6 cols): Chat Window */}
+          {/* CENTER COLUMN (6 cols): Chat window */}
           <div className="lg:col-span-6 bg-white rounded-2xl border border-slate-200 shadow-sm p-5 h-[680px] flex flex-col justify-between">
             <div className="pb-4 border-b border-slate-200 flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -338,7 +338,7 @@ export const Messages: React.FC = () => {
             </form>
           </div>
 
-          {/* CỘT PHẢI (3 cols): Project info & Shared Files & Members */}
+          {/* RIGHT COLUMN (3 cols): Project info, shared files, and members */}
           <div className="lg:col-span-3 space-y-5">
             {/* Box 1: Project Snapshot */}
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-3">

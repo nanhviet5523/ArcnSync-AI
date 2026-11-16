@@ -124,7 +124,7 @@ export const CreateContract: React.FC = () => {
       const contract = await createProjectContract(projectId.trim(), buildPayload());
       setSuccess(`Đã tạo hợp đồng ${contract.contractNo}. Dự án chuyển sang trạng thái CONTRACT_PENDING.`);
       // Return to the project detail view after a brief confirmation.
-      window.setTimeout(() => navigate(`/staff-project-detail?projectId=${encodeURIComponent(projectId.trim())}`), 1200);
+      window.setTimeout(() => navigate(`/staff/projects/${encodeURIComponent(projectId.trim())}`), 1200);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Có lỗi xảy ra. Vui lòng thử lại.');
     } finally {

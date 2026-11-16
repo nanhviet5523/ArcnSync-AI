@@ -21,10 +21,9 @@ export class ApiError extends Error {
   status: number;
   messages: string[];
   fieldErrors: Record<string, string>;
-  /** Backend error code, e.g. BAD_REQUEST, MILESTONE_TOTAL_MISMATCH. '' when unknown. */
+  /** Mã lỗi backend, vd UNKNOWN_BLOCKS, COMMENTS_OPEN */
   code: string;
-  /** Extra structured context from the backend error body, e.g. { projectId, projectCode, status }. */
-  details: unknown;
+  details: Record<string, unknown>;
 
   constructor(
     message: string,
@@ -32,7 +31,7 @@ export class ApiError extends Error {
     messages: string[] = [],
     fieldErrors: Record<string, string> = {},
     code = '',
-    details: unknown = undefined,
+    details: Record<string, unknown> = {},
   ) {
     super(message);
     this.name = 'ApiError';
@@ -116,19 +115,17 @@ const BE_ROLE_MAP: Record<string, UserRole> = {
   ADMIN: 'admin',
 };
 
-function buildApiError(
+export function buildApiError(
   status: number,
   data: unknown,
   fallback: string,
 ): ApiError {
   const body = data as {
+    code?: unknown;
     message?: unknown;
     errors?: unknown;
     details?: unknown;
-    code?: unknown;
   } | null;
-
-  const code = typeof body?.code === 'string' ? body.code : '';
 
   const messages: string[] = [];
   const fieldErrors: Record<string, string> = {};
@@ -144,7 +141,10 @@ function buildApiError(
     messages.push(body.message);
   }
 
-  const errors = body?.errors;
+  const validationFields = (body?.details as { fields?: unknown } | undefined)?.fields;
+  const errors = Array.isArray(validationFields)
+    ? validationFields.map((f: { field?: unknown; errors?: unknown }) => ({ field: f?.field, message: Array.isArray(f?.errors) ? f.errors[0] : undefined }))
+    : body?.errors ?? body?.details;
 
   if (Array.isArray(errors)) {
     for (const item of errors) {
@@ -166,7 +166,12 @@ function buildApiError(
     }
   } else if (errors && typeof errors === 'object') {
     for (const [field, value] of Object.entries(errors)) {
-      const message = Array.isArray(value) ? value[0] : value;
+      const nested = value && typeof value === 'object' && !Array.isArray(value)
+        ? (value as { message?: unknown; constraints?: Record<string, unknown> })
+        : null;
+      const message = Array.isArray(value) ? value[0]
+        : typeof value === 'string' ? value
+          : nested?.message ?? (nested?.constraints ? Object.values(nested.constraints)[0] : undefined);
 
       if (typeof message === 'string') {
         fieldErrors[field] = message;
@@ -174,11 +179,92 @@ function buildApiError(
     }
   }
 
-  const message =
-    messages[0] ||
-    `${fallback} (${status}). Please try again.`;
+  if (errors && typeof errors === 'object' && !Array.isArray(errors)) {
+    const nestedErrors = (errors as { fieldErrors?: unknown }).fieldErrors;
+    if (nestedErrors && typeof nestedErrors === 'object' && !Array.isArray(nestedErrors)) {
+      for (const [field, value] of Object.entries(nestedErrors)) {
+        const message = Array.isArray(value) ? value[0] : value;
+        if (typeof message === 'string') fieldErrors[field] = message;
+      }
+    }
+  }
 
-  return new ApiError(message, status, messages, fieldErrors, code, body?.details);
+  const code = typeof body?.code === 'string' ? body.code.toUpperCase() : '';
+  const knownCodeMessages: Record<string, string> = {
+    TOKEN_EXPIRED: 'Your session has expired. Please sign in again.',
+    DESIGN_STYLE_CODE_EXISTS: 'A design style with this code already exists.',
+    CATEGORY_CODE_EXISTS: 'A category with this code already exists.',
+    PRODUCT_SKU_EXISTS: 'A product with this SKU already exists.',
+    APARTMENT_ALREADY_EXISTS: 'An apartment with these details already exists.',
+    USER_NOT_FOUND: 'No registered user was found for the provided email address.',
+    USER_NOT_ACTIVE: 'The customer account is not active.',
+    NOT_APARTMENT_STAFF: 'You can edit only apartments assigned to projects you manage.',
+    APARTMENT_LOCKED: 'This apartment cannot be edited while its project is active.',
+  };
+  const statusMessage = status >= 500
+    ? 'The server encountered an error. Please try again later.'
+    : status === 401
+      ? 'Your session has expired or your credentials are invalid. Please sign in again.'
+      : status === 403
+        ? 'You do not have permission to perform this action.'
+        : status === 404
+          ? 'The requested item could not be found or is not available.'
+          : status === 409
+            ? 'This request conflicts with existing data. Review the item and try again.'
+            : status === 400 || status === 422
+              ? 'The submitted information is invalid. Check the fields and try again.'
+              : status === 429
+                ? 'Too many requests. Wait a moment and try again.'
+                : `${fallback} (${status}). Please try again.`;
+
+  const normalizedFieldErrors = status >= 500
+    ? {}
+    : Object.fromEntries(
+      Object.entries(fieldErrors).map(([field, message]) => [
+        field,
+        hasVietnameseText(message) ? englishFieldError(field) : message,
+      ]),
+    );
+  const normalizedMessages = status >= 500
+    ? [statusMessage]
+    : messages.map((message) => {
+      if (!hasVietnameseText(message)) return message;
+      if (status === 401 || status === 403 || status === 404 || status === 409 || status === 429) {
+        return statusMessage;
+      }
+      return englishFieldErrorFromMessage(message);
+    });
+  const message = knownCodeMessages[code]
+    ?? (status >= 500 ? statusMessage : normalizedMessages[0] ?? statusMessage);
+
+  const details = body?.details && typeof body.details === 'object' && !Array.isArray(body.details)
+    ? (body.details as Record<string, unknown>) : {};
+  return new ApiError(message, status, normalizedMessages, normalizedFieldErrors, code ? String(body?.code) : '', details);
+}
+
+function hasVietnameseText(value: string): boolean {
+  return /[À-ỹĐđ]/u.test(value)
+    || /\b(khong|loi|du lieu|het han|dang nhap|vui long|khong hop le|that bai|khong tim thay)\b/i.test(value);
+}
+
+function englishFieldError(field: string): string {
+  const key = field.toLowerCase().replace(/[^a-z]/g, '');
+  if (key.includes('email')) return 'Enter a valid email address.';
+  if (key.includes('phone')) return 'Enter a valid phone number.';
+  if (key.includes('password')) return 'Check the password requirements and try again.';
+  if (key.includes('fullname') || key === 'name') return 'Enter a valid name.';
+  if (key.includes('sku')) return 'Enter a valid product SKU.';
+  if (key.includes('code')) return 'Enter a valid code.';
+  return 'This field is invalid. Check it and try again.';
+}
+
+function englishFieldErrorFromMessage(message: string): string {
+  const text = message.toLowerCase();
+  if (text.includes('email') || text.includes('e-mail')) return 'Enter a valid email address.';
+  if (text.includes('phone') || text.includes('điện thoại')) return 'Enter a valid phone number.';
+  if (text.includes('password') || text.includes('mật khẩu')) return 'Check the password requirements and try again.';
+  if (text.includes('name') || text.includes('tên')) return 'Enter a valid name.';
+  return 'The submitted information is invalid. Check the fields and try again.';
 }
 
 async function postJson<T>(
@@ -340,6 +426,29 @@ export function getRefreshToken(): string | null {
   return getSessionStorage()?.getItem(REFRESH_TOKEN_KEY) ?? null;
 }
 
+export function updateCurrentUserProfile(updates: Pick<User, 'name' | 'phone'>): void {
+  if (typeof window === 'undefined') return;
+  for (const storage of [window.localStorage, window.sessionStorage]) {
+    const savedSession = storage.getItem(SESSION_KEY);
+    if (!savedSession) continue;
+    try {
+      const user = JSON.parse(savedSession) as User;
+      storage.setItem(SESSION_KEY, JSON.stringify({ ...user, ...updates }));
+    } catch {
+      storage.removeItem(SESSION_KEY);
+    }
+  }
+  dispatchAuthChange();
+}
+
+export function replaceSessionTokens(accessToken: string, refreshToken: string): void {
+  const storage = getSessionStorage();
+  if (!storage) return;
+  storage.setItem(ACCESS_TOKEN_KEY, accessToken);
+  storage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+  dispatchAuthChange();
+}
+
 // ---------------------------------------------------------------------------
 // Login
 // ---------------------------------------------------------------------------
@@ -461,6 +570,7 @@ export async function apiFetch(
 
     if (
       init.body !== undefined &&
+      !(init.body instanceof FormData) &&
       !headers.has('Content-Type')
     ) {
       headers.set('Content-Type', 'application/json');
@@ -499,6 +609,44 @@ export async function apiFetch(
       'Cannot connect to the server. Please check your connection and try again.',
     );
   }
+}
+
+/**
+ * Multipart POST that reports upload progress (0–1). fetch cannot, so this uses XHR with the same token and one
+ * retry after a refresh on 401, like apiFetch.
+ */
+export async function apiUpload<T>(
+  path: string,
+  form: FormData,
+  onProgress?: (fraction: number) => void,
+): Promise<T> {
+  const send = (token: string | null) =>
+    new Promise<{ status: number; data: unknown }>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', `${API_BASE_URL}${path}`);
+      if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) onProgress?.(e.loaded / e.total);
+      };
+      xhr.onload = () => {
+        let data: unknown = null;
+        try { data = JSON.parse(xhr.responseText); } catch { /* empty or not JSON */ }
+        resolve({ status: xhr.status, data });
+      };
+      xhr.onerror = () =>
+        reject(new ApiError('Cannot connect to the server. Please check your connection and try again.'));
+      xhr.send(form);
+    });
+
+  let res = await send(getAccessToken());
+  if (res.status === 401) {
+    onProgress?.(0);
+    res = await send(await refreshAccessToken());
+  }
+  if (res.status < 200 || res.status >= 300) {
+    throw buildApiError(res.status, res.data, `Request failed (${res.status}). Please try again.`);
+  }
+  return res.data as T;
 }
 
 export async function apiRequest<T>(
@@ -578,4 +726,38 @@ export interface AcceptInviteResponse {
 
 export function acceptInvite(payload: AcceptInvitePayload): Promise<AcceptInviteResponse> {
   return postJson<AcceptInviteResponse>('/auth/accept-invite', payload, 'Account activation failed');
+}
+
+// ---------------------------------------------------------------------------
+// Files behind auth (images, .glb, DXF)
+// ---------------------------------------------------------------------------
+
+/** File cần Bearer token (ảnh, .glb, DXF): tải qua apiFetch rồi tạo blob URL. Lỗi giữ nguyên ApiError (có status, code). */
+const blobCache = new Map<string, Promise<string>>();
+export function fetchBlobUrl(path: string): Promise<string> {
+  let p = blobCache.get(path);
+  if (!p) {
+    p = apiFetch(path).then(async (res) => {
+      if (!res.ok) throw buildApiError(res.status, await res.json().catch(() => null), 'Không tải được file');
+      return URL.createObjectURL(await res.blob());
+    });
+    p.catch(() => blobCache.delete(path));
+    blobCache.set(path, p);
+  }
+  return p;
+}
+export function revokeBlobUrls() {
+  for (const p of blobCache.values()) p.then(URL.revokeObjectURL, () => undefined);
+  blobCache.clear();
+}
+
+export async function downloadFile(path: string, fallbackName: string) {
+  const res = await apiFetch(path);
+  if (!res.ok) throw buildApiError(res.status, await res.json().catch(() => null), 'Không tải được file');
+  const name = /filename="?([^";]+)"?/.exec(res.headers.get('Content-Disposition') ?? '')?.[1] ?? fallbackName;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(await res.blob());
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
