@@ -5,7 +5,7 @@ import { Logo } from '@/components/common/Logo';
 import { ApiError, resendOtp, verifyEmail } from '@/services/authService';
 
 const PENDING_EMAIL_KEY = 'archsync-pending-verify-email';
-const RESEND_COOLDOWN_SECONDS = 60;
+const RESEND_COOLDOWN_SECONDS = 20;
 
 export const VerifyOtpPage: React.FC = () => {
   const location = useLocation();
@@ -34,7 +34,7 @@ export const VerifyOtpPage: React.FC = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  // Đếm ngược "Resend OTP": bắt đầu 60s ngay khi vào trang, reset lại mỗi lần gửi lại thành công.
+  // Đếm ngược "Resend OTP": bắt đầu 20s ngay khi vào trang, reset lại mỗi lần gửi lại thành công.
   const [resendCountdown, setResendCountdown] = useState(RESEND_COOLDOWN_SECONDS);
   const [resending, setResending] = useState(false);
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);

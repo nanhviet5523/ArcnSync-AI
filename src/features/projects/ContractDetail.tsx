@@ -19,7 +19,7 @@ import type { UserRole } from '@/types/role';
 import { Button, Modal } from '@/components/ui';
 import {
   CONTRACT_FILE_MAX_BYTES,
-  downloadContractFile,
+  getContractFile,
   formatVnd,
   getProjectContract,
   isUuid,
@@ -187,9 +187,34 @@ export const ContractDetail: React.FC = () => {
   };
 
   const handleDownload = (contractId: string) => runAction('Đang tải file…', async () => {
-    const { blob, fileName } = await downloadContractFile(contractId);
+    const { blob, fileName } = await getContractFile(contractId);
     saveBlobAs(blob, fileName);
     setActionMessage(null); // save dialog is the feedback; no banner needed
+  });
+
+  // PDF viewer: the blob URL lives only while the modal is open and is revoked on close/unmount.
+  const [pdfViewer, setPdfViewer] = useState<{ url: string; fileName: string; blob: Blob; version: string } | null>(null);
+  const pdfUrlRef = useRef<string | null>(null);
+  const closePdfViewer = useCallback(() => {
+    if (pdfUrlRef.current) URL.revokeObjectURL(pdfUrlRef.current);
+    pdfUrlRef.current = null;
+    setPdfViewer(null);
+  }, []);
+  useEffect(() => () => { if (pdfUrlRef.current) URL.revokeObjectURL(pdfUrlRef.current); }, []);
+  // The served file depends on signing state and uploads: close a stale viewer when either changes.
+  const fileVersion = `${contract?.esignStatus ?? ''}|${contract?.unsignedFile?.hash ?? ''}`;
+  const viewerOpen = pdfViewer !== null && pdfViewer.version === fileVersion;
+  useEffect(() => {
+    if (pdfViewer && pdfViewer.version !== fileVersion && pdfUrlRef.current) { URL.revokeObjectURL(pdfUrlRef.current); pdfUrlRef.current = null; }
+  }, [pdfViewer, fileVersion]);
+
+  const handleView = (contractId: string) => runAction('Đang tải file…', async () => {
+    const { blob, fileName } = await getContractFile(contractId);
+    if (pdfUrlRef.current) URL.revokeObjectURL(pdfUrlRef.current);
+    const url = URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
+    pdfUrlRef.current = url;
+    setPdfViewer({ url, fileName, blob, version: fileVersion });
+    setActionMessage(null);
   });
 
   const handleSendSigningRequest = async (contractId: string) => {
@@ -431,6 +456,22 @@ export const ContractDetail: React.FC = () => {
         </div>
       </div>
 
+      {pdfViewer && viewerOpen && (
+        <Modal
+          size="lg"
+          title={pdfViewer.fileName}
+          onClose={closePdfViewer}
+          footer={(
+            <>
+              <Button variant="secondary" onClick={closePdfViewer}>{t('common.close')}</Button>
+              <Button variant="primary" onClick={() => saveBlobAs(pdfViewer.blob, pdfViewer.fileName)}>{t('contractFile.downloadPdf')}</Button>
+            </>
+          )}
+        >
+          <iframe src={pdfViewer.url} title={pdfViewer.fileName} className="h-[70vh] w-full rounded-lg border border-slate-100" />
+        </Modal>
+      )}
+
       {confirmSigning && (
         <Modal
           title={t('contractSigning.confirmTitle')}
@@ -533,7 +574,7 @@ export const ContractDetail: React.FC = () => {
                 <button
                   type="button"
                   disabled={actionBusy}
-                  onClick={() => void handleDownload(contract.id)}
+                  onClick={() => void handleView(contract.id)}
                   className="text-xs font-semibold text-blue-600 hover:underline"
                 >
                   {t('contractFile.view')}
@@ -571,7 +612,7 @@ export const ContractDetail: React.FC = () => {
             <button
               type="button"
               disabled={actionBusy}
-              onClick={() => void handleDownload(contract.id)}
+              onClick={() => void handleView(contract.id)}
               className="mb-4 inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
             >
               <FileText size={14} /> Xem file PDF hợp đồng ({contract.unsignedFile.fileName})

@@ -386,9 +386,26 @@ export async function downloadContractFile(
 
   if (!response.ok) {
     const status = response.status;
+    // The error body is JSON ({ code, message }) although the success body is a PDF: read it as text and parse.
+    let errorData: { code?: string; message?: string } | undefined;
+    try {
+      errorData = JSON.parse(await (await response.blob()).text());
+    } catch {
+      // fallback: body is not JSON
+    }
+    // Branch on `code`, not status: the two 404s mean different things.
+    const code = errorData?.code ?? '';
+    const message =
+      code === 'CONTRACT_FILE_NOT_FOUND' ? 'Hợp đồng chưa có file PDF.'
+        : code === 'CONTRACT_NOT_FOUND' ? 'Không tìm thấy hợp đồng.'
+          : status === 403 ? 'Bạn không có quyền xem file này.'
+            : (errorData?.message ?? `Không tải được file (${status}).`);
     throw new ApiError(
-      status === 404 ? 'Hợp đồng chưa có file PDF.' : `Không tải được file (${status}).`,
+      message,
       status,
+      [],
+      {},
+      errorData?.code ?? '',
     );
   }
 
@@ -399,6 +416,9 @@ export async function downloadContractFile(
   return { blob: await response.blob(), fileName };
 }
 
+/** GET /contracts/{id}/file (Bearer JWT; CUSTOMER, STAFF, ADMIN, DESIGNER). Resolves with the PDF blob. */
+export const getContractFile = downloadContractFile;
+
 /** Trigger a browser save-as for a blob fetched via {@link downloadContractFile}. */
 export function saveBlobAs(blob: Blob, fileName: string): void {
   const url = URL.createObjectURL(blob);
@@ -408,5 +428,6 @@ export function saveBlobAs(blob: Blob, fileName: string): void {
   document.body.appendChild(link);
   link.click();
   link.remove();
-  URL.revokeObjectURL(url);
+  // Some browsers have not started the download yet right after click(): revoke later.
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }

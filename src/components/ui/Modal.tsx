@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { Z } from './zIndex';
 
 /** Dialog: Esc and the backdrop close it, focus moves inside and stays there with Tab. */
-export function Modal({ title, onClose, children, footer, size = 'sm' }: { title: string; onClose: () => void; children: ReactNode; footer?: ReactNode; size?: 'sm' | 'md' }) {
+export function Modal({ title, onClose, children, footer, size = 'sm' }: { title: string; onClose: () => void; children: ReactNode; footer?: ReactNode; size?: 'sm' | 'md' | 'lg' }) {
   const box = useRef<HTMLDivElement>(null);
   const close = useRef(onClose);
   useEffect(() => { close.current = onClose; });
@@ -27,7 +27,7 @@ export function Modal({ title, onClose, children, footer, size = 'sm' }: { title
   return (
     <div className={`fixed inset-0 ${Z.modal} flex items-end justify-center bg-slate-900/40 p-0 sm:items-center sm:p-4`} onClick={onClose}>
       <div ref={box} role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}
-        className={`flex max-h-[92vh] w-full flex-col rounded-t-2xl bg-white shadow-xl sm:rounded-xl ${size === 'md' ? 'sm:max-w-xl' : 'sm:max-w-md'}`}>
+        className={`flex max-h-[92vh] w-full flex-col rounded-t-2xl bg-white shadow-xl sm:rounded-xl ${size === 'lg' ? 'sm:max-w-4xl' : size === 'md' ? 'sm:max-w-xl' : 'sm:max-w-md'}`}>
         <h2 className="border-b border-slate-100 px-5 py-4 text-[15px] font-semibold text-slate-900">{title}</h2>
         <div className="overflow-y-auto px-5 py-4">{children}</div>
         {footer && <div className="flex flex-wrap justify-end gap-2 border-t border-slate-100 px-5 py-3">{footer}</div>}

@@ -38,7 +38,7 @@ export const StaffProjectDetail: React.FC = () => {
 
     setAssigning(true);
     try {
-      const updated = await assignLeadDesigner(projectId, designerId);
+      const updated = await assignLeadDesigner(projectId, { designerId });
       setAssignedDesigner(updated.designer);
       setShowAssignForm(false);
       setDesignerIdInput('');

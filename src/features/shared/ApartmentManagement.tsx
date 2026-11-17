@@ -326,7 +326,8 @@ export const ApartmentManagement: React.FC = () => {
         created = await apartmentService.create({ ...payload, ...(canSetOwner ? { ownerEmail: form.ownerEmail.trim() } : {}) });
       }
       setModalOpen(false);
-      if (created) offerRooms(created, Number(form.bedroomCount), Number(form.bathroomCount));
+      // Staff may add rooms only once in charge of a project of this property (the API answers 403 before that): only the owner is offered rooms.
+      if (created && role !== 'staff') offerRooms(created, Number(form.bedroomCount), Number(form.bathroomCount));
       await load(page, query);
     } catch (reason) {
       if (!showApiFieldError(reason)) setFormError(errorMessage(reason, 'Could not save the apartment. Check the fields and try again.'));

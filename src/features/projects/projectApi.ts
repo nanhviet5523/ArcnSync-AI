@@ -1,6 +1,6 @@
-import { apiRequest } from '@/services/authService';
+import { apiFetch, apiRequest, buildApiError } from '@/services/authService';
 import type { UserRole } from '@/types/role';
-import { t } from '@/i18n';
+import { errorText, t } from '@/i18n';
 
 export type ProjectStatus =
   | 'DRAFT' | 'CONTRACT_PENDING' | 'REQUIREMENT_ANALYSIS' | 'IN_DESIGN'
@@ -21,6 +21,8 @@ export interface Apartment {
   bathroomCount: number;
   owner: Person;
   floors: ApartmentFloor[];
+  /** Project detail only (GET /projects/:id). The project list leaves it out. */
+  rooms?: ProjectRoomRef[];
 }
 
 /** Role inside one project's design team, not an account role. */
@@ -29,14 +31,15 @@ export type ProjectRole = 'LEAD' | 'MEMBER';
 export type MyProjectRole = ProjectRole;
 
 export interface ProjectMember { designerId: string; fullName: string; email: string; title: string | null; addedAt: string }
+/** One item of GET /projects/:id/members (same shape as `members[]` of GET /projects/:id). */
+export type ProjectMemberItem = ProjectMember;
+export interface GetProjectMembersResponse { items: ProjectMemberItem[] }
 export interface ProjectRoomRef { id: string; name: string; floorId: string }
 export interface RoomAssignment { roomId: string; roomName: string; floorId: string; designerId: string; designerName: string }
 
 /** One person of GET /projects/:id/team. The Lead has addedAt null. */
 export interface TeamPerson { userId: string; name: string; email: string; avatar: string | null; addedAt: string | null; assignedRooms: ProjectRoomRef[] }
 export interface ProjectTeam { lead: TeamPerson | null; members: TeamPerson[] }
-/** Rooms of people who left the team, now the Lead's (their unmerged drafts moved too, back to DRAFT). */
-export interface ReassignedRoom { roomId: string; roomName: string; floorId: string; fromDesignerId: string; toDesignerId: string }
 export interface DesignerOption { id: string; fullName: string; email: string; isAvailable: boolean; activeProjectCount: number }
 
 export interface Project {
@@ -59,6 +62,31 @@ export interface Project {
   myProjectRole?: ProjectRole | null;
   /** Project list only: rooms assigned to the viewer. */
   myRooms?: ProjectRoomRef[];
+  householdSize?: number | null;
+  preferredStyle?: { id: string; code: string; name: string } | null;
+  /** Percent as a string, e.g. "10.00". */
+  budgetTolerancePercent?: string;
+}
+
+/** PUT /projects/:id/designer body. */
+export interface AssignLeadDesignerPayload {
+  /** user_id of the new Lead Designer. */
+  designerId: string;
+}
+
+/**
+ * PATCH /projects/:id body. Leave a field out to keep it; null clears description, householdSize or
+ * preferredStyleId (never send ""). Nothing else (status, code, apartmentId…) is accepted.
+ */
+export interface UpdateProjectPayload {
+  title?: string;
+  description?: string | null;
+  householdSize?: number | null;
+  preferredStyleId?: string | null;
+  budgetMin?: string | number;
+  budgetMax?: string | number;
+  /** 0..10. */
+  budgetTolerancePercent?: number;
 }
 
 interface Page<T> { items: T[]; page: number; limit: number; total: number }
@@ -131,6 +159,8 @@ export interface RoomAssignmentItem {
   /** user_id of the Lead or a Member; null = unassign. */
   designerId: string | null;
 }
+/** Name used by the PUT spec for one entry of `assignments`. */
+export type AssignRoomItem = RoomAssignmentItem;
 export interface UpdateRoomAssignmentsPayload { assignments: RoomAssignmentItem[] }
 
 export interface ProjectQuery {
@@ -193,10 +223,53 @@ export function createProject(payload: CreateProjectPayload): Promise<ProjectRes
 
 /**
  * PUT /projects/:id/designer: the project's Staff or an Admin sets (or changes) the Lead Designer.
- * - 404 `DESIGNER_NOT_FOUND`, 422 `USER_NOT_ACTIVE`, 422 `DESIGNER_NOT_AVAILABLE`, 422 `PROJECT_CLOSED`.
+ * The Lead being replaced leaves the project: their rooms become unassigned and their unmerged drafts are deleted.
+ * - 400 `VALIDATION_ERROR`, 403 `INSUFFICIENT_ROLE`, 404 `DESIGNER_NOT_FOUND` / `PROJECT_NOT_FOUND`,
+ *   422 `USER_NOT_ACTIVE` / `DESIGNER_NOT_AVAILABLE` / `PROJECT_CLOSED`.
  */
-export function assignLeadDesigner(projectId: string, designerId: string): Promise<ProjectResponse> {
-  return apiRequest<ProjectResponse>(`${path(projectId)}/designer`, json('PUT', { designerId }));
+export function assignLeadDesigner(projectId: string, payload: AssignLeadDesignerPayload): Promise<ProjectResponse> {
+  return apiRequest<ProjectResponse>(`${path(projectId)}/designer`, json('PUT', { designerId: payload.designerId }));
+}
+
+/**
+ * PATCH /projects/:id: Staff in charge or Admin edits a DRAFT project. Returns the project summary.
+ * Errors: 400 VALIDATION_ERROR (details.fields), 403 INSUFFICIENT_ROLE, 404 PROJECT_NOT_FOUND / DESIGN_STYLE_NOT_FOUND,
+ * 422 PROJECT_NOT_EDITABLE / INVALID_BUDGET_RANGE / DESIGN_STYLE_INACTIVE.
+ */
+export function updateProject(projectId: string, payload: UpdateProjectPayload): Promise<ProjectResponse> {
+  // rebuilt from the whitelisted fields so nothing extra reaches the API
+  const body: UpdateProjectPayload = {
+    ...(payload.title !== undefined ? { title: payload.title } : {}),
+    ...(payload.description !== undefined ? { description: payload.description === '' ? null : payload.description } : {}),
+    ...(payload.householdSize !== undefined ? { householdSize: payload.householdSize } : {}),
+    ...(payload.preferredStyleId !== undefined ? { preferredStyleId: payload.preferredStyleId === '' ? null : payload.preferredStyleId } : {}),
+    ...(payload.budgetMin !== undefined ? { budgetMin: String(payload.budgetMin) } : {}),
+    ...(payload.budgetMax !== undefined ? { budgetMax: String(payload.budgetMax) } : {}),
+    ...(payload.budgetTolerancePercent !== undefined ? { budgetTolerancePercent: payload.budgetTolerancePercent } : {}),
+  };
+  return apiRequest<ProjectResponse>(path(projectId), json('PATCH', body));
+}
+
+/**
+ * POST /projects/:id/design-kickoff, no body: Staff in charge or Admin moves REQUIREMENT_ANALYSIS → IN_DESIGN.
+ * Not idempotent: callers must block a second click while it runs.
+ * Errors: 403 INSUFFICIENT_ROLE, 404 PROJECT_NOT_FOUND, 422 DESIGNER_NOT_ASSIGNED / INVALID_PROJECT_STATUS_TRANSITION (details.from).
+ */
+export function kickoffProjectDesign(projectId: string): Promise<Project> {
+  return apiRequest<Project>(`${path(projectId)}/design-kickoff`, { method: 'POST' });
+}
+
+/** Message for a failed kickoff, chosen by the backend `code` (and `details.from` for a wrong status). */
+export function kickoffErrorText(e: unknown): string {
+  const { code, details } = (e ?? {}) as { code?: string; details?: { from?: string } };
+  if (code === 'DESIGNER_NOT_ASSIGNED') return t('kickoff.noDesigner');
+  if (code === 'INVALID_PROJECT_STATUS_TRANSITION') {
+    const from = details?.from;
+    return t(from === 'DRAFT' ? 'kickoff.fromDraft' : from === 'CONTRACT_PENDING' ? 'kickoff.fromContractPending' : from === 'IN_DESIGN' ? 'kickoff.alreadyStarted' : 'kickoff.wrongStatus');
+  }
+  if (code === 'PROJECT_NOT_FOUND') return t('kickoff.notFound');
+  if (code === 'INSUFFICIENT_ROLE') return t('kickoff.forbidden');
+  return errorText(e);
 }
 
 /** GET /projects/:id/room-assignments: assigned rooms and who holds them. */
@@ -207,17 +280,130 @@ export function getRoomAssignments(projectId: string): Promise<RoomAssignmentLis
 /**
  * PUT /projects/:id/room-assignments: the Lead gives rooms to the Lead or a Member (designerId null = unassign).
  * Rooms not listed keep their designer. Changing a room's designer deletes that room's draft.
- * - 403 `INSUFFICIENT_ROLE`, 422 `ROOM_NOT_IN_APARTMENT`, 422 `DESIGNER_NOT_IN_PROJECT`.
+ * - 400 `VALIDATION_ERROR`, 403 `NOT_PROJECT_DESIGNER` / `INSUFFICIENT_ROLE`, 404 `PROJECT_NOT_FOUND`,
+ *   422 `ROOM_NOT_IN_APARTMENT` / `DESIGNER_NOT_IN_PROJECT` / `PROJECT_CLOSED`.
  */
 export function updateRoomAssignments(projectId: string, payload: UpdateRoomAssignmentsPayload): Promise<RoomAssignmentListResponse> {
   return apiRequest<RoomAssignmentListResponse>(`${path(projectId)}/room-assignments`, json('PUT', payload));
+}
+
+/**
+ * GET /projects/:id/members: the Members (not the Lead, who is `designer` of the project), oldest first, not paged.
+ * No Member yet is `{ items: [] }`, not an error. Errors: 400 BAD_REQUEST, 403 INSUFFICIENT_ROLE, 404 PROJECT_NOT_FOUND.
+ */
+export function getProjectMembers(projectId: string): Promise<GetProjectMembersResponse> {
+  return apiRequest<GetProjectMembersResponse>(`${path(projectId)}/members`);
+}
+
+/** POST /projects/:id/members body. */
+export interface AddProjectMemberPayload {
+  /** user_id of the designer to add. */
+  designerId: string;
+}
+
+/**
+ * POST /projects/:id/members: the Lead adds a Member. 201 with the new Member.
+ * Errors: 400 VALIDATION_ERROR, 403 NOT_PROJECT_DESIGNER / INSUFFICIENT_ROLE, 404 DESIGNER_NOT_FOUND / PROJECT_NOT_FOUND,
+ * 409 PROJECT_MEMBER_EXISTS, 422 USER_NOT_ACTIVE / PROJECT_CLOSED.
+ */
+export function addProjectMember(projectId: string, payload: AddProjectMemberPayload): Promise<ProjectMemberItem> {
+  return apiRequest<ProjectMemberItem>(`${path(projectId)}/members`, json('POST', { designerId: payload.designerId }));
+}
+
+/**
+ * DELETE /projects/:id/members/:designerId, no body: the Lead removes a Member. 204 No Content.
+ * Their rooms become unassigned and their unmerged drafts are deleted.
+ * Errors: 400 BAD_REQUEST, 403 NOT_PROJECT_DESIGNER / INSUFFICIENT_ROLE, 404 PROJECT_MEMBER_NOT_FOUND / PROJECT_NOT_FOUND,
+ * 422 PROJECT_CLOSED.
+ */
+export async function removeProjectMember(projectId: string, designerId: string): Promise<true> {
+  const response = await apiFetch(`${path(projectId)}/members/${encodeURIComponent(designerId)}`, { method: 'DELETE' });
+  // 204 has no body: never read it
+  if (response.status === 204 || response.ok) return true;
+  const data = await response.json().catch(() => null);
+  throw buildApiError(response.status, data, `Request failed (${response.status}). Please try again.`);
+}
+
+const REMOVE_MEMBER_ERRORS: Record<string, string> = {
+  PROJECT_MEMBER_NOT_FOUND: 'team.rmErrGone',
+  NOT_PROJECT_DESIGNER: 'team.rmErrNotLead',
+  PROJECT_CLOSED: 'team.rmErrClosed',
+  PROJECT_NOT_FOUND: 'team.errMembersNotFound',
+  INSUFFICIENT_ROLE: 'team.rmErrForbidden',
+  BAD_REQUEST: 'team.rmErrBadId',
+};
+
+/** Message for a failed DELETE /members/:designerId, chosen by the backend `code`. */
+export function removeMemberErrorText(e: unknown): string {
+  const key = REMOVE_MEMBER_ERRORS[(e as { code?: string } | null)?.code ?? ''];
+  return key ? t(key) : errorText(e);
+}
+
+/** A designer the Lead can add. Its `id` is the `designerId` of POST /projects/:id/members. */
+export interface InvitableDesignerItem {
+  id: string;
+  fullName: string;
+  email: string;
+  /** Always null: show initials. */
+  avatarUrl: null;
+}
+export interface GetInvitableDesignersResponse { items: InvitableDesignerItem[] }
+
+/**
+ * GET /projects/:id/invitable-designers (Lead only): designers who are not on the team yet. Only `q` (max 100
+ * characters) is sent, never page/limit.
+ * Errors: 400 VALIDATION_ERROR, 403 NOT_PROJECT_DESIGNER / INSUFFICIENT_ROLE, 404 PROJECT_NOT_FOUND, 422 PROJECT_CLOSED.
+ */
+export async function getInvitableDesigners(projectId: string, query?: string): Promise<InvitableDesignerItem[]> {
+  const res = await apiRequest<GetInvitableDesignersResponse>(`${path(projectId)}/invitable-designers${qs({ q: query?.trim().slice(0, 100) })}`);
+  return res.items;
+}
+
+const INVITABLE_ERRORS: Record<string, string> = {
+  PROJECT_CLOSED: 'team.invErrClosed',
+  NOT_PROJECT_DESIGNER: 'team.invErrNotLead',
+  PROJECT_NOT_FOUND: 'team.errMembersNotFound',
+  INSUFFICIENT_ROLE: 'team.invErrForbidden',
+  VALIDATION_ERROR: 'team.invErrQuery',
+};
+
+/** Message for a failed GET /invitable-designers, chosen by the backend `code`. */
+export function invitableErrorText(e: unknown): string {
+  const key = INVITABLE_ERRORS[(e as { code?: string } | null)?.code ?? ''];
+  return key ? t(key) : errorText(e);
+}
+
+const ADD_MEMBER_ERRORS: Record<string, string> = {
+  NOT_PROJECT_DESIGNER: 'team.addErrNotLead',
+  DESIGNER_NOT_FOUND: 'team.addErrDesignerNotFound',
+  USER_NOT_ACTIVE: 'team.addErrNotActive',
+  PROJECT_CLOSED: 'team.addErrClosed',
+  PROJECT_NOT_FOUND: 'team.errMembersNotFound',
+  INSUFFICIENT_ROLE: 'team.addErrForbidden',
+  VALIDATION_ERROR: 'team.addErrInvalidId',
+  PROJECT_MEMBER_EXISTS: 'team.addErrExists',
+};
+
+/** Message for a failed POST /members, chosen by the backend `code`. */
+export function addMemberErrorText(e: unknown): string {
+  const key = ADD_MEMBER_ERRORS[(e as { code?: string } | null)?.code ?? ''];
+  return key ? t(key) : errorText(e);
+}
+
+/** Message for a failed team/members load, chosen by the backend `code`. */
+export function membersErrorText(e: unknown, role: string | undefined): string {
+  const { code, status } = (e ?? {}) as { code?: string; status?: number };
+  if (code === 'PROJECT_NOT_FOUND' || status === 404) return t(role === 'designer' ? 'team.errNotOnTeam' : 'team.errMembersNotFound');
+  if (code === 'INSUFFICIENT_ROLE') return t('team.errMembersForbidden');
+  if (code === 'BAD_REQUEST') return t('team.errBadProjectId');
+  return errorText(e);
 }
 
 /** The design team of a project, assembled from the project, its members and its room assignments. */
 async function getTeam(id: string): Promise<ProjectTeam> {
   const [project, members, rooms] = await Promise.all([
     apiRequest<Project>(path(id)),
-    apiRequest<{ items: ProjectMember[] }>(`${path(id)}/members`),
+    getProjectMembers(id),
     getRoomAssignments(id),
   ]);
   const roomsOf = (designerId: string): ProjectRoomRef[] =>
@@ -235,7 +421,7 @@ export const projectApi = {
   list: (q: { status?: ProjectStatus; q?: string } = {}) => getProjects({ ...q, limit: 100 }),
   get: (id: string) => apiRequest<Project>(path(id)),
   create: createProject,
-  kickoff: (id: string) => apiRequest<Project>(`${path(id)}/design-kickoff`, json('POST')),
+  kickoff: kickoffProjectDesign,
   assignLeadDesigner,
 
   /**
@@ -243,9 +429,6 @@ export const projectApi = {
    * the Members come from GET /projects/:id/members, and the rooms from GET /projects/:id/room-assignments.
    */
   getTeam: getTeam,
-  /** Staff, Admin. Replaces the whole team; people left out give their rooms and drafts to the Lead. */
-  updateTeam: (id: string, body: { leadId: string; memberIds: string[] }) =>
-    apiRequest<ProjectTeam & { reassignedRooms: ReassignedRoom[] }>(`${path(id)}/team`, json('PUT', body)),
   listRoomAssignments: async (id: string) => (await getRoomAssignments(id)).items,
   updateRoomAssignments: (id: string, assignments: RoomAssignmentItem[]) => updateRoomAssignments(id, { assignments }),
 

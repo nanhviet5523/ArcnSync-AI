@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { AppShell, Banner, Button, Card, DetailList, ErrorState, PageHeader, Skeleton, StatusChip, Stepper } from '@/components/ui';
 import { errorText, formatDate, formatMoney, formatNumber, t, tList } from '@/i18n';
 import { getCurrentUser } from '@/services/authService';
-import { canOpenWorkspace, projectApi, stepIndex } from './projectApi';
+import { canOpenWorkspace, kickoffErrorText, kickoffProjectDesign, projectApi, stepIndex } from './projectApi';
 import type { DesignerOption, Project } from './projectApi';
 import { TeamCard } from '@/features/design-workspace/TeamCard';
 import { isOffTeam } from '@/features/design-workspace/logic';
@@ -15,8 +15,10 @@ import { RoomAssignmentsTab } from './RoomAssignmentsTab';
 import { ReviewCard } from '@/features/reviews/ReviewCard';
 import { conceptStep, nextFor, useLatestVersions } from './projectView';
 import { CreateContractModal } from './CreateContractModal';
+import { EditProjectModal } from './EditProjectModal';
 import type { ContractToast } from './CreateContractModal';
 import { getProjectContract } from './services/contractsApi';
+import { isUuid } from './services/contractsApi';
 import type { ContractResponse } from './services/contractsApi';
 
 /** Project overview for Staff (/staff/projects/:id), Designer (/designer/projects/:id) and Homeowner (/homeowner/projects/:id). */
@@ -33,16 +35,20 @@ export function ProjectDetail() {
   const [designers, setDesigners] = useState<DesignerOption[] | null>(null);
   const [error, setError] = useState('');
   const [offTeam, setOffTeam] = useState(false);
-  const [actionError, setActionError] = useState('');
   const [busy, setBusy] = useState<'' | 'kickoff'>('');
   /** Staff only. undefined = not checked yet (or the check failed), null = the project has no contract. */
   const [contract, setContract] = useState<ContractResponse | null | undefined>(undefined);
   const [contractOpen, setContractOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  /** Bumped after the Lead changes, so the room assignments are fetched again. */
+  const [roomsKey, setRoomsKey] = useState(0);
   const [contractCheckFailed, setContractCheckFailed] = useState(false);
   const [toast, setToast] = useState<ContractToast | null>(null);
 
   const load = useCallback(async () => {
     setError('');
+    // A malformed id would only come back as 400 BAD_REQUEST: show "not found" without calling the API.
+    if (!isUuid(id)) { setError(t('errors.notFound')); return; }
     try {
       const [p, d, rooms] = await Promise.all([projectApi.get(id), staff ? projectApi.listDesigners() : Promise.resolve(null), designer ? projectApi.listRoomAssignments(id) : Promise.resolve([])]);
       // same fields as a row of the project list, so the next step reads the same on both
@@ -77,9 +83,22 @@ export function ProjectDetail() {
   const forVersions = useMemo(() => (designer && project ? [project] : null), [designer, project]);
   const { latest, ready } = useLatestVersions(forVersions, 'designer');
 
-  const act = async (kind: 'kickoff', fn: () => Promise<Project>) => {
-    setBusy(kind); setActionError('');
-    try { await fn(); await load(); } catch (e) { setActionError(errorText(e)); } finally { setBusy(''); }
+  // The kickoff is not idempotent: the ref blocks a second click before the loading state renders.
+  const kickoffRunning = useRef(false);
+  const startDesign = async (projectId: string) => {
+    if (kickoffRunning.current) return;
+    kickoffRunning.current = true;
+    setBusy('kickoff');
+    try {
+      await kickoffProjectDesign(projectId);
+      setToast({ tone: 'success', message: t('kickoff.success') });
+      await load();
+    } catch (e) {
+      setToast({ tone: 'error', message: kickoffErrorText(e) });
+    } finally {
+      kickoffRunning.current = false;
+      setBusy('');
+    }
   };
   const contractPage = `/project-contract?projectId=${encodeURIComponent(id)}`;
   const back = { to: staff ? '/staff/projects' : designer ? '/designer/projects' : '/homeowner/projects', label: t('projectDetail.back') };
@@ -104,6 +123,10 @@ export function ProjectDetail() {
   // The contract is signed (ACTIVE) but the deposit is not paid: the project is still CONTRACT_PENDING until it is.
   const waitingDeposit = project.status === 'CONTRACT_PENDING' && contract?.status === 'ACTIVE';
   const workspace = canOpenWorkspace(project.status);
+  // "Start design": REQUIREMENT_ANALYSIS, a Lead assigned, and Admin or the Staff member in charge
+  const canKickoff = kickoffReady && !!project.designer && (role === 'admin' || (role === 'staff' && project.staff.id === userId));
+  // PATCH /projects/:id: a DRAFT project, by Admin or the Staff member in charge
+  const canEditProject = project.status === 'DRAFT' && (role === 'admin' || (role === 'staff' && project.staff.id === userId));
   const open = () => navigate(`/projects/${project.id}/workspace`);
   // one sentence for this page and the project's card; a designer waits for the version check
   const next = designer && !ready ? '' : nextFor(role, project, designer ? latest(project.id) : undefined);
@@ -122,9 +145,9 @@ export function ProjectDetail() {
     ? <Button variant="primary" onClick={openQuotation}>{t('projectDetail.openQuotation')}</Button>
     : workspace
     ? <Button variant="primary" onClick={open}>{workspaceLabel}</Button>
-    : staff && kickoffReady
-      ? <Button variant="primary" loading={busy === 'kickoff'} disabled={!project.designer} title={project.designer ? undefined : t('projectDetail.startDesignHint')}
-          onClick={() => act('kickoff', () => projectApi.kickoff(project.id))}>{t('projectDetail.startDesign')}</Button>
+    : canKickoff
+      ? <Button variant="primary" loading={busy === 'kickoff'} disabled={busy === 'kickoff'}
+          onClick={() => void startDesign(project.id)}>{t('projectDetail.startDesign')}</Button>
       : null;
 
   return (
@@ -137,6 +160,7 @@ export function ProjectDetail() {
         primary={primary}
         secondary={<>
           {secondary}
+          {canEditProject && <Button onClick={() => setEditOpen(true)}>{t('editProject.open')}</Button>}
           {staff && project.status === 'DRAFT' && contract === null && <Button onClick={() => setContractOpen(true)}>{t('projectDetail.createContract')}</Button>}
           {staff && contractCheckFailed && <Button title={t('contractPage.contractStatusFailed')} onClick={() => void loadContract()}>{t('contractPage.retryCheck')}</Button>}
           {/* A staff member with no contract yet creates it with the button above; "Contract" has nothing to show until then. */}
@@ -160,7 +184,6 @@ export function ProjectDetail() {
         </div>
       )}
 
-      {actionError && <div className="mb-5"><ErrorState message={actionError} /></div>}
 
       <div className="grid items-start gap-5 lg:grid-cols-2">
         <Card title={t('projectDetail.home')}>
@@ -201,22 +224,35 @@ export function ProjectDetail() {
 
           {designer && project.designer && (
             <div className="mt-5 border-t border-slate-100 pt-4">
-              <TeamCard bare project={project} role={viewerRole} />
+              <TeamCard bare project={project} role={viewerRole} onToast={setToast}
+                onTeamChange={(added) => {
+                  // a new Member joins the room-assignment choices at once; otherwise reload the project
+                  if (added) setProject((p) => (p ? { ...p, members: [...(p.members ?? []), added] } : p));
+                  else { void load(); setRoomsKey((k) => k + 1); }
+                }} />
             </div>
           )}
 
           {staff && (
             <div className="mt-5 border-t border-slate-100 pt-4">
-              <DesignTeamCard project={project} role={viewerRole} designers={designers} onSaved={load} />
+              <DesignTeamCard project={project} role={viewerRole} designers={designers} onToast={setToast} onSaved={() => { void load(); setRoomsKey((k) => k + 1); }} />
               {kickoffReady && <p className="mt-3 text-xs text-slate-500">{t('projectDetail.kickoffNote')}</p>}
             </div>
           )}
         </Card>
       </div>
       <div className="mt-5">
-        <RoomAssignmentsTab projectId={project.id} leadDesignerId={project.designer?.id ?? null} />
+        <RoomAssignmentsTab projectId={project.id} leadDesignerId={project.designer?.id ?? null} apartmentRooms={project.apartment.rooms} floors={project.apartment.floors} leadName={project.designer?.fullName} members={project.members} reloadKey={roomsKey} />
       </div>
 
+      {editOpen && (
+        <EditProjectModal
+          project={project}
+          onClose={() => setEditOpen(false)}
+          onToast={setToast}
+          onSaved={() => { setEditOpen(false); void load(); }}
+        />
+      )}
       {contractOpen && (
         <CreateContractModal
           projectId={project.id}
