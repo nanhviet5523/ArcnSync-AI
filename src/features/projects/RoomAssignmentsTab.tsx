@@ -26,6 +26,8 @@ interface RoomAssignmentsTabProps {
   leadName?: string;
   /** `members` of GET /projects/:id (the Lead is not among them). */
   members?: ProjectMember[];
+  /** The project is COMPLETED or CANCELLED: assignments are view-only. */
+  closed?: boolean;
   /** Change it to fetch the assignments again (e.g. after the Lead changed). */
   reloadKey?: number;
 }
@@ -59,9 +61,9 @@ function saveErrorText(err: unknown): string {
  * Room assignments of one project (GET/PUT /projects/{id}/room-assignments).
  * Only the project's Lead Designer can edit; every other role sees it view-only.
  */
-export const RoomAssignmentsTab: React.FC<RoomAssignmentsTabProps> = ({ projectId, leadDesignerId, apartmentRooms, floors, leadName, members, reloadKey }) => {
+export const RoomAssignmentsTab: React.FC<RoomAssignmentsTabProps> = ({ projectId, leadDesignerId, apartmentRooms, floors, leadName, members, closed = false, reloadKey }) => {
   const currentUser = getCurrentUser();
-  const canEdit = currentUser?.role === 'designer' && !!leadDesignerId && currentUser.id === leadDesignerId;
+  const canEdit = !closed && currentUser?.role === 'designer' && !!leadDesignerId && currentUser.id === leadDesignerId;
 
   const [rooms, setRooms] = useState<RoomAssignment[]>([]);
   const [draft, setDraft] = useState<Record<string, string>>({});

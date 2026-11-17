@@ -25,6 +25,7 @@ const LEAD_ERRORS: Record<string, string> = {
   USER_NOT_ACTIVE: 'team.errUserNotActive',
   DESIGNER_NOT_AVAILABLE: 'team.errNotAvailable',
   PROJECT_CLOSED: 'team.errProjectClosed',
+  INVALID_PROJECT_STATUS: 'team.errProjectClosed',
   PROJECT_NOT_FOUND: 'team.errProjectNotFound',
 };
 
@@ -116,12 +117,6 @@ export function DesignTeamCard({ project, role, designers, onSaved, onToast }: P
       </Field>
       <div className="mt-3 flex justify-end">
         <Button disabled={!leadId || leadId === savedLead} loading={busy && !confirm} onClick={submit}>{t('team.assignLead')}</Button>
-      </div>
-
-      <div className="mt-4">
-        <h4 className="mb-1.5 text-[13px] font-medium text-slate-700">{t('team.members')}</h4>
-        {memberRows.length ? <ul className="divide-y divide-slate-100">{memberRows}</ul> : <p className="text-sm text-slate-500">{t('team.noMembers')}</p>}
-        <p className="mt-2 text-xs text-slate-500">{t('team.membersByLead')}</p>
       </div>
 
       {confirm && (

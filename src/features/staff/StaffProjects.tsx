@@ -427,7 +427,7 @@ export const StaffProjects: React.FC = () => {
                         )}
                       </td>
                       <td className="py-4 px-4 text-slate-500 font-medium">
-                        {item.myRooms.length > 0 ? item.myRooms.map((room) => room.name).join(', ') : '—'}
+                        {item.myRooms?.length ? item.myRooms.map((room) => room.name).join(', ') : '—'}
                       </td>
                       <td className="py-4 px-4">
                         <button

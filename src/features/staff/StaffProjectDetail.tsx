@@ -13,7 +13,8 @@ export const StaffProjectDetail: React.FC = () => {
   const [params] = useSearchParams();
   const workspace = useDemoWorkspace();
   const project = workspace.projects.find((item) => item.id === params.get('projectId')) ?? workspace.projects[0];
-  const projectId = params.get('projectId') ?? project?.id ?? '';
+  const projectId = params.get('projectId') ?? '';
+  const hasValidProjectId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(projectId);
 
   // Lead Designer thật, được gán qua API — khi null thì hiển thị tên demo.
   const [assignedDesigner, setAssignedDesigner] = useState<ProjectDesignerRef | null>(null);
@@ -30,6 +31,10 @@ export const StaffProjectDetail: React.FC = () => {
 
   const handleAssignDesigner = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!hasValidProjectId) {
+      setToast({ type: 'error', message: 'Mã dự án không hợp lệ.' });
+      return;
+    }
     const designerId = designerIdInput.trim();
     if (!designerId) {
       setToast({ type: 'error', message: 'Vui lòng nhập Designer ID (UUID).' });
@@ -52,7 +57,7 @@ export const StaffProjectDetail: React.FC = () => {
           message = 'Tài khoản Designer chưa active.';
         } else if (err.status === 422 && err.code === 'DESIGNER_NOT_AVAILABLE') {
           message = 'Designer hiện không nhận dự án mới.';
-        } else if (err.status === 422 && err.code === 'PROJECT_CLOSED') {
+        } else if (err.status === 422 && (err.code === 'PROJECT_CLOSED' || err.code === 'INVALID_PROJECT_STATUS')) {
           message = 'Dự án đã kết thúc, không thể phân công.';
         } else {
           message = err.message;
@@ -272,7 +277,7 @@ export const StaffProjectDetail: React.FC = () => {
             </div>
 
             {/* Box 1b: Room assignments (view-only for Staff — chỉnh sửa chỉ dành cho Lead Designer) */}
-            <RoomAssignmentsTab projectId={projectId} leadDesignerId={assignedDesigner?.id ?? null} />
+            {hasValidProjectId && <RoomAssignmentsTab projectId={projectId} leadDesignerId={assignedDesigner?.id ?? null} />}
 
             {/* Box 2: Add role to project */}
             <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">

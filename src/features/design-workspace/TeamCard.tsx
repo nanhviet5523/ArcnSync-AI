@@ -3,9 +3,7 @@ import type { ReactNode } from 'react';
 import { Avatar, Button, Card, ErrorState, Field, Input, Modal, Skeleton, avatarLabels } from '@/components/ui';
 import { addMemberErrorText, addProjectMember, getInvitableDesigners, invitableErrorText, membersErrorText, projectApi, removeMemberErrorText, removeProjectMember } from '@/features/projects/projectApi';
 import type { InvitableDesignerItem as InvitableDesigner, ProjectMember, ProjectTeam } from '@/features/projects/projectApi';
-import { getCurrentUser } from '@/services/authService';
 import { t } from '@/i18n';
-import { resolveProjectRole } from './logic';
 import type { Project, Role } from './types';
 
 export function TeamRow({ id, name, label, sub, action }: { id: string; name: string; label?: string; sub: ReactNode; action?: ReactNode }) {
@@ -52,10 +50,10 @@ export function TeamCard({ project, role, bare = false, onToast, onTeamChange }:
     try { setTeam(await projectApi.getTeam(project.id)); } catch (e) { setError(membersErrorText(e, role)); }
   }, [homeowner, project.id, role]);
   useEffect(() => { Promise.resolve().then(load); }, [load]);
-  // Add member: the Lead only, while the project is open, and only where toasts can be shown.
+  // Add/remove member: Staff and Admin (the backend answers 403 to anyone else), only where toasts can be shown.
   const closed = project.status === 'COMPLETED' || project.status === 'CANCELLED';
-  // the Lead sees the button; it is disabled once the project is closed
-  const isLead = role === 'designer' && !!onToast && resolveProjectRole(project, getCurrentUser()?.id ?? '') === 'LEAD';
+  // they see the buttons; they are disabled once the project is closed
+  const canManage = (role === 'staff' || role === 'admin') && !!onToast;
   const [adding, setAdding] = useState(false);
   const [q, setQ] = useState('');
   /** q after 300 ms without typing: what is searched. */
@@ -107,7 +105,7 @@ export function TeamCard({ project, role, bare = false, onToast, onTeamChange }:
     } finally { setSaving(false); }
   };
 
-  // Remove member (Lead only): confirm, then reload the members and the room assignments.
+  // Remove member (Staff/Admin): confirm, then reload the members and the room assignments.
   const [toRemove, setToRemove] = useState<{ id: string; name: string } | null>(null);
   const [removing, setRemoving] = useState('');
   const remove = async (designerId: string) => {
@@ -144,7 +142,7 @@ export function TeamCard({ project, role, bare = false, onToast, onTeamChange }:
               {shown.lead && <TeamRow id={shown.lead.userId} name={shown.lead.name} label={avatars[shown.lead.userId]} sub={subOf(t('team.lead'), shown.lead.assignedRooms)} />}
               {shown.members.map((m) => (
                 <TeamRow key={m.userId} id={m.userId} name={m.name} label={avatars[m.userId]} sub={subOf(t('team.member'), m.assignedRooms)}
-                  action={isLead && !closed ? (
+                  action={canManage && !closed ? (
                     <Button variant="ghost" size="sm" aria-label={t('team.removeMemberAria', { name: m.name })}
                       loading={removing === m.userId} disabled={!!removing} onClick={() => setToRemove({ id: m.userId, name: m.name })}>
                       {t('team.removeMember')}
@@ -155,7 +153,7 @@ export function TeamCard({ project, role, bare = false, onToast, onTeamChange }:
             {!shown.members.length && <p className="mt-2 text-xs text-slate-500">{t('team.noMembers')}</p>}
           </>
         )}
-      {isLead && shown && <div className="mt-3 flex justify-end"><Button disabled={closed} title={closed ? t('team.addErrClosed') : undefined} onClick={openAdd}>{t('team.addMember')}</Button></div>}
+      {canManage && shown && <div className="mt-3 flex justify-end"><Button disabled={closed} title={closed ? t('team.addErrClosed') : undefined} onClick={openAdd}>{t('team.addMember')}</Button></div>}
       {role === 'designer' && <p className="mt-3 border-t border-slate-100 pt-3 text-xs text-slate-500">{t('team.managedByStaff')}</p>}
       {toRemove && (
         <Modal title={t('team.removeTitle')} onClose={() => { if (!removing) setToRemove(null); }} footer={<>

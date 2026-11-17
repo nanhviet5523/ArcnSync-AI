@@ -91,6 +91,7 @@ export const en = {
     rmErrGone: 'This user is no longer a member of the project.',
     rmErrNotLead: 'Only the Lead Designer can remove members from this project.',
     rmErrClosed: 'Cannot remove members from a completed or cancelled project.',
+    rmErrLead: 'The Lead cannot be removed. Assign a new Lead instead.',
     rmErrForbidden: 'You do not have permission to remove project members.',
     rmErrBadId: 'Invalid project or designer ID.',
     searchDesigner: 'Search designers',

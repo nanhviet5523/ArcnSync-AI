@@ -95,6 +95,8 @@ export function ProjectDetail() {
       await load();
     } catch (e) {
       setToast({ tone: 'error', message: kickoffErrorText(e) });
+      // the project may have moved on server-side: sync the page
+      void load();
     } finally {
       kickoffRunning.current = false;
       setBusy('');
@@ -222,7 +224,7 @@ export function ProjectDetail() {
             ...(staff ? [{ label: t('projectDetail.budget'), value: <span className="tabular-nums">{t('projectDetail.budgetValue', { min: formatMoney(project.budgetMin), max: formatMoney(project.budgetMax) })}</span> }] : []),
           ]} />
 
-          {designer && project.designer && (
+          {(designer || staff) && project.designer && (
             <div className="mt-5 border-t border-slate-100 pt-4">
               <TeamCard bare project={project} role={viewerRole} onToast={setToast}
                 onTeamChange={(added) => {
@@ -242,7 +244,7 @@ export function ProjectDetail() {
         </Card>
       </div>
       <div className="mt-5">
-        <RoomAssignmentsTab projectId={project.id} leadDesignerId={project.designer?.id ?? null} apartmentRooms={project.apartment.rooms} floors={project.apartment.floors} leadName={project.designer?.fullName} members={project.members} reloadKey={roomsKey} />
+        <RoomAssignmentsTab projectId={project.id} leadDesignerId={project.designer?.id ?? null} apartmentRooms={project.apartment.rooms} floors={project.apartment.floors} leadName={project.designer?.fullName} members={project.members} closed={project.status === 'COMPLETED' || project.status === 'CANCELLED'} reloadKey={roomsKey} />
       </div>
 
       {editOpen && (
