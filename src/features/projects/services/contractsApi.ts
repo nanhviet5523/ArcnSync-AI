@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import { ApiError, apiFetch, apiRequest } from '@/services/authService';
 
 // ---------------------------------------------------------------------------
@@ -266,6 +267,20 @@ export function getContract(contractId: string): Promise<ContractResponse> {
   return apiRequest<ContractResponse>(`/contracts/${encodeURIComponent(contractId)}`);
 }
 
+/**
+ * GET /contracts/{id}. Same shape as {@link getProjectContract}. Returns `null` on 404 CONTRACT_NOT_FOUND
+ * (unknown id, no access, or a customer asking for a contract that is still NOT_SENT) so the UI shows
+ * an empty state instead of an error. Other failures throw: 403 INSUFFICIENT_ROLE, 400 BAD_REQUEST.
+ */
+export async function getContractById(contractId: string): Promise<ContractResponse | null> {
+  try {
+    return await getContract(contractId);
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404 && err.code === 'CONTRACT_NOT_FOUND') return null;
+    throw err;
+  }
+}
+
 /** Every field is optional: what is left out stays unchanged. `milestones` present replaces the whole schedule. */
 export interface UpdateContractPayload {
   /** VND string, > 0. Never null. */
@@ -304,6 +319,9 @@ export function updateContract(contractId: string, payload: UpdateContractPayloa
   });
 }
 
+/** PATCH /contracts/{id}: returns the updated contract, so callers can use it without a second GET. */
+export const updateContractDraft = updateContract;
+
 /**
  * Staff sends the signing request to the customer. POST /contracts/{id}/signing-request, no body.
  * NOT_SENT → AWAITING_CUSTOMER (response carries esignSentAt).
@@ -327,10 +345,14 @@ export async function withdrawContractSigning(contractId: string): Promise<void>
   });
 }
 
+/** DELETE /contracts/{id}/signing-request: 204 No Content, no body is parsed. */
+export const withdrawSigningRequest: (contractId: string) => Promise<void> = withdrawContractSigning;
+
 export interface RequestSignatureOtpResponse {
   /** How long the emailed OTP stays valid (backend default 15). */
   expiresInMinutes: number;
 }
+export type RequestOtpResponse = RequestSignatureOtpResponse;
 
 /**
  * Customer asks for a signing OTP by email. POST /contracts/{id}/signature-otps, no body.
@@ -355,6 +377,16 @@ export function signContract(contractId: string, otp: string): Promise<ContractR
   });
 }
 
+export interface SubmitSignaturePayload {
+  /** Exactly 6 digits, kept as a string to preserve leading zeros. */
+  otp: string;
+}
+
+/** POST /contracts/{id}/signatures (201): the contract comes back ACTIVE + SIGNED, deposit INVOICED. */
+export function submitContractSignature(contractId: string, payload: SubmitSignaturePayload): Promise<ContractResponse> {
+  return signContract(contractId, payload.otp);
+}
+
 /** Largest PDF the backend accepts for PUT /contracts/{id}/file. */
 export const CONTRACT_FILE_MAX_BYTES = 20 * 1024 * 1024;
 
@@ -373,6 +405,36 @@ export function uploadContractFile(contractId: string, file: File): Promise<Cont
   });
 }
 
+/** The error body of a failed blob request is JSON ({ code, message }): read it as text and parse. */
+export async function parseBlobError(blob: Blob): Promise<{ code: string; message: string }> {
+  try {
+    const data = JSON.parse(await blob.text()) as { code?: unknown; message?: unknown };
+    const message = Array.isArray(data.message) ? String(data.message[0] ?? '') : String(data.message ?? '');
+    return { code: typeof data.code === 'string' ? data.code : '', message };
+  } catch {
+    return { code: '', message: '' };
+  }
+}
+
+/** Branch on `code`, not status: the two 404s mean different things. */
+async function fileError(response: Response): Promise<ApiError> {
+  const { code, message } = await parseBlobError(await response.blob());
+  const text =
+    code === 'CONTRACT_FILE_NOT_FOUND' ? t('contractPage.fileNotFound')
+      : code === 'CONTRACT_NOT_FOUND' ? t('contractPage.fileContractNotFound')
+        : code === 'INSUFFICIENT_ROLE' || response.status === 403 ? t('contractPage.fileNoPermission')
+          : code === 'BAD_REQUEST' ? t('contractPage.invalidContractId')
+            : (message || t('contractPage.fileLoadFailed'));
+  return new ApiError(text, response.status, [], {}, code);
+}
+
+/** GET /contracts/{id}/file as a Blob (application/pdf), sent with the Bearer token. */
+export async function getContractFileBlob(contractId: string): Promise<Blob> {
+  const response = await apiFetch(`/contracts/${encodeURIComponent(contractId)}/file`);
+  if (!response.ok) throw await fileError(response);
+  return response.blob();
+}
+
 /**
  * Tải PDF hợp đồng: bản đã ký nếu có, chưa thì bản chưa ký.
  * GET /contracts/{id}/file. 404 nếu chưa có file nào (CONTRACT_FILE_NOT_FOUND).
@@ -384,30 +446,7 @@ export async function downloadContractFile(
 ): Promise<{ blob: Blob; fileName: string }> {
   const response = await apiFetch(`/contracts/${encodeURIComponent(contractId)}/file`);
 
-  if (!response.ok) {
-    const status = response.status;
-    // The error body is JSON ({ code, message }) although the success body is a PDF: read it as text and parse.
-    let errorData: { code?: string; message?: string } | undefined;
-    try {
-      errorData = JSON.parse(await (await response.blob()).text());
-    } catch {
-      // fallback: body is not JSON
-    }
-    // Branch on `code`, not status: the two 404s mean different things.
-    const code = errorData?.code ?? '';
-    const message =
-      code === 'CONTRACT_FILE_NOT_FOUND' ? 'Hợp đồng chưa có file PDF.'
-        : code === 'CONTRACT_NOT_FOUND' ? 'Không tìm thấy hợp đồng.'
-          : status === 403 ? 'Bạn không có quyền xem file này.'
-            : (errorData?.message ?? `Không tải được file (${status}).`);
-    throw new ApiError(
-      message,
-      status,
-      [],
-      {},
-      errorData?.code ?? '',
-    );
-  }
+  if (!response.ok) throw await fileError(response);
 
   const disposition = response.headers.get('Content-Disposition') ?? '';
   const match = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(disposition);

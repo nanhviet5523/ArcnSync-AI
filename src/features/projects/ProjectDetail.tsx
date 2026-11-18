@@ -165,7 +165,7 @@ export function ProjectDetail() {
         secondary={<>
           {secondary}
           {canEditProject && <Button onClick={() => setEditOpen(true)}>{t('editProject.open')}</Button>}
-          {staff && project.status === 'DRAFT' && contract === null && <Button onClick={() => setContractOpen(true)}>{t('projectDetail.createContract')}</Button>}
+          {staff && project.status === 'DRAFT' && project.apartment !== null && contract === null && <Button onClick={() => setContractOpen(true)}>{t('projectDetail.createContract')}</Button>}
           {staff && contractCheckFailed && <Button title={t('contractPage.contractStatusFailed')} onClick={() => void loadContract()}>{t('contractPage.retryCheck')}</Button>}
           {/* A staff member with no contract yet creates it with the button above; "Contract" has nothing to show until then. */}
           {!(staff && contract === null) && <Button onClick={() => navigate(contractPage)}>{t('projectDetail.contract')}</Button>}
@@ -262,7 +262,7 @@ export function ProjectDetail() {
           onClose={() => setContractOpen(false)}
           onToast={setToast}
           onCreated={() => { setContractOpen(false); void load(); void loadContract(); }}
-          onAlreadyExists={() => { setContractOpen(false); void loadContract(); setTimeout(() => navigate(contractPage), 1200); }}
+          onAlreadyExists={() => { setContractOpen(false); void load(); void loadContract(); setTimeout(() => navigate(contractPage), 1200); }}
         />
       )}
       {toasts.length > 0 && (

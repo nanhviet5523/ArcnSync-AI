@@ -19,16 +19,16 @@ import type { UserRole } from '@/types/role';
 import { Button, Modal } from '@/components/ui';
 import {
   CONTRACT_FILE_MAX_BYTES,
-  getContractFile,
+  getContractFileBlob,
   formatVnd,
   getProjectContract,
   isUuid,
   saveBlobAs,
   requestSignatureOtp,
   sendSigningRequest,
-  signContract,
+  submitContractSignature,
   uploadContractFile,
-  withdrawContractSigning,
+  withdrawSigningRequest,
   type ContractResponse,
   type ContractStatus,
   type EsignStatus,
@@ -136,7 +136,7 @@ export const ContractDetail: React.FC = () => {
   const fileInput = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [fileError, setFileError] = useState('');
-  const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [toast, setToast] = useState<{ type: 'success' | 'error' | 'warning'; message: string } | null>(null);
 
   // Send signing request (Staff, DRAFT + NOT_SENT + PDF uploaded).
   const [confirmSigning, setConfirmSigning] = useState(false);
@@ -155,41 +155,48 @@ export const ContractDetail: React.FC = () => {
     setLoadError(null);
     try {
       const result = await getProjectContract(projectId);
-      setContract(result);
+      // Customers only see a contract once it has been sent for signing.
+      setContract(isCustomer && result?.esignStatus === 'NOT_SENT' ? null : result);
     } catch (err) {
-      setLoadError(err instanceof ApiError ? err.message : 'Không tải được thông tin hợp đồng.');
+      setContract(null);
+      const code = err instanceof ApiError ? err.code : '';
+      setLoadError(
+        code === 'PROJECT_NOT_FOUND' ? t('contractPage.projectNotFound')
+          : code === 'INSUFFICIENT_ROLE' ? t('contractPage.noPermission')
+            : code === 'BAD_REQUEST' ? t('contractPage.invalidProjectId')
+              : err instanceof ApiError ? err.message : t('contractPage.loadFailed'),
+      );
     } finally {
       setLoading(false);
     }
-  }, [projectId]);
+  }, [projectId, isCustomer]);
 
   useEffect(() => {
     if (!isUuid(projectId)) {
       setLoading(false);
-      setLoadError('Mã dự án không hợp lệ (phải là UUID chuẩn).');
+      setLoadError(t('contractPage.invalidProjectId'));
       return;
     }
     void loadContract();
   }, [projectId, loadContract]);
 
-  const runAction = async (label: string, action: () => Promise<void>) => {
+  /** File fetches report failures as a red toast (the error text is already localized). */
+  const runFileAction = async (action: () => Promise<void>) => {
     setActionError(null);
     setActionMessage(null);
     setActionBusy(true);
     try {
       await action();
-      setActionMessage(label);
     } catch (err) {
-      setActionError(err instanceof ApiError ? err.message : 'Có lỗi xảy ra. Vui lòng thử lại.');
+      setToast({ type: 'error', message: err instanceof ApiError ? err.message : t('contractPage.fileLoadFailed') });
     } finally {
       setActionBusy(false);
     }
   };
 
-  const handleDownload = (contractId: string) => runAction('Đang tải file…', async () => {
-    const { blob, fileName } = await getContractFile(contractId);
-    saveBlobAs(blob, fileName);
-    setActionMessage(null); // save dialog is the feedback; no banner needed
+  const handleDownload = (contractId: string) => runFileAction(async () => {
+    const blob = await getContractFileBlob(contractId);
+    saveBlobAs(blob, `${contract?.contractNo ?? contractId}.pdf`); // the save dialog is the feedback
   });
 
   // PDF viewer: the blob URL lives only while the modal is open and is revoked on close/unmount.
@@ -208,13 +215,12 @@ export const ContractDetail: React.FC = () => {
     if (pdfViewer && pdfViewer.version !== fileVersion && pdfUrlRef.current) { URL.revokeObjectURL(pdfUrlRef.current); pdfUrlRef.current = null; }
   }, [pdfViewer, fileVersion]);
 
-  const handleView = (contractId: string) => runAction('Đang tải file…', async () => {
-    const { blob, fileName } = await getContractFile(contractId);
+  const handleView = (contractId: string) => runFileAction(async () => {
+    const blob = await getContractFileBlob(contractId);
     if (pdfUrlRef.current) URL.revokeObjectURL(pdfUrlRef.current);
     const url = URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
     pdfUrlRef.current = url;
-    setPdfViewer({ url, fileName, blob, version: fileVersion });
-    setActionMessage(null);
+    setPdfViewer({ url, fileName: `${contract?.contractNo ?? contractId}.pdf`, blob, version: fileVersion });
   });
 
   const handleSendSigningRequest = async (contractId: string) => {
@@ -261,10 +267,42 @@ export const ContractDetail: React.FC = () => {
     }
   };
 
-  const handleWithdrawSigning = (contractId: string) => runAction('Đã rút lại yêu cầu ký.', async () => {
-    await withdrawContractSigning(contractId);
-    await loadContract();
-  });
+  const [confirmRecall, setConfirmRecall] = useState(false);
+  const [recalling, setRecalling] = useState(false);
+  /** Synchronous guard against a double click firing two DELETEs. */
+  const recallInFlight = useRef(false);
+
+  const handleWithdrawSigning = async (contractId: string) => {
+    if (recallInFlight.current) return;
+    recallInFlight.current = true;
+    setRecalling(true);
+    try {
+      await withdrawSigningRequest(contractId);
+      setConfirmRecall(false);
+      setToast({ type: 'success', message: t('contractPage.recallSuccess') });
+      await loadContract();
+    } catch (err) {
+      setConfirmRecall(false);
+      const apiErr = err instanceof ApiError ? err : null;
+      const code = apiErr?.code ?? '';
+      if (code === 'INVALID_ESIGN_STATUS_TRANSITION' && apiErr?.details.from === 'NOT_SENT') {
+        // Already recalled (e.g. a retry): just sync the UI.
+        await loadContract();
+      } else {
+        const message =
+          code === 'INVALID_ESIGN_STATUS_TRANSITION' ? t('contractPage.recallNotPending')
+            : code === 'CONTRACT_NOT_DRAFT' ? t('contractPage.recallNotDraft')
+              : code === 'CONTRACT_NOT_FOUND' ? t('contractPage.recallNotFound')
+                : code === 'INSUFFICIENT_ROLE' || code === 'NOT_PROJECT_STAFF' ? t('contractPage.recallNotStaff')
+                  : apiErr?.message ?? t('errors.unknownNoCode');
+        setToast({ type: 'error', message });
+        if (code === 'INVALID_ESIGN_STATUS_TRANSITION' || code === 'CONTRACT_NOT_DRAFT') await loadContract();
+      }
+    } finally {
+      recallInFlight.current = false;
+      setRecalling(false);
+    }
+  };
 
   const handleUpload = async (contractId: string, file: File) => {
     setFileError('');
@@ -317,7 +355,7 @@ export const ContractDetail: React.FC = () => {
       setOtpExpiresAt(start + expiresInMinutes * 60_000);
       setOtpCooldownUntil(start + OTP_RESEND_COOLDOWN_SECONDS * 1000);
       setOtpValue('');
-      setToast({ type: 'success', message: t('signatureOtp.success', { minutes: expiresInMinutes }) });
+      setToast({ type: 'success', message: t('contractPage.otpSent') });
     } catch (err) {
       const apiErr = err instanceof ApiError ? err : null;
       const code = apiErr?.code ?? '';
@@ -325,19 +363,19 @@ export const ContractDetail: React.FC = () => {
       if (code === 'OTP_RESEND_TOO_SOON' || status === 429) {
         const retry = Number(apiErr?.details.retryAfterSeconds);
         startCooldown(Number.isFinite(retry) && retry > 0 ? Math.ceil(retry) : OTP_RESEND_COOLDOWN_SECONDS);
-        fail(t('signatureOtp.tooSoon'));
+        setToast({ type: 'warning', message: t('contractPage.otpTooSoon') });
       } else if (code === 'CONTRACT_NOT_AWAITING_SIGNATURE' && status === 422) {
-        fail(t('signatureOtp.noLongerAwaiting'));
+        fail(t('contractPage.otpNotAwaiting'));
         setOtpExpiresAt(null);
         await loadContract();
       } else if (code === 'CONTRACT_NOT_AWAITING_SIGNATURE') fail(t('signatureOtp.notAwaitingState'));
       else if (code === 'USER_NOT_FOUND') {
         fail(t('signatureOtp.userNotFound'));
         window.setTimeout(() => { void logout().finally(() => window.location.replace('/login')); }, 2000);
-      } else if (code === 'CONTRACT_NOT_FOUND' || status === 404) fail(t('signatureOtp.contractNotFound'));
-      else if (status === 403) fail(t('signatureOtp.forbidden'));
+      } else if (code === 'CONTRACT_NOT_FOUND' || status === 404) fail(t('contractPage.otpNotFound'));
+      else if (code === 'INSUFFICIENT_ROLE' || status === 403) fail(t('contractPage.otpNotCustomer'));
       else if (status >= 500) {
-        fail(t('signatureOtp.emailFailed'));
+        fail(t('contractPage.otpEmailFailed'));
         startCooldown(OTP_RESEND_COOLDOWN_SECONDS);
       } else fail(apiErr?.message || t('errors.unknownNoCode'));
     } finally {
@@ -346,12 +384,43 @@ export const ContractDetail: React.FC = () => {
     }
   };
 
-  const handleSign = (contractId: string) => runAction('Ký hợp đồng thành công.', async () => {
-    const updated = await signContract(contractId, otpValue.trim());
-    setContract(updated);
-    setOtpExpiresAt(null);
-    setOtpValue('');
-  });
+  const signInFlight = useRef(false);
+
+  const handleSign = async (contractId: string) => {
+    const otp = otpValue.trim();
+    if (signInFlight.current || !/^\d{6}$/.test(otp)) return;
+    signInFlight.current = true;
+    setActionError(null);
+    setActionMessage(null);
+    setActionBusy(true);
+    try {
+      // The OTP stays a string so a leading zero is never lost.
+      const updated = await submitContractSignature(contractId, { otp });
+      setContract(updated);
+      setOtpExpiresAt(null);
+      setOtpValue('');
+      setToast({ type: 'success', message: t('contractPage.signSuccess') });
+    } catch (err) {
+      const apiErr = err instanceof ApiError ? err : null;
+      const code = apiErr?.code ?? '';
+      const fail = (message: string) => setToast({ type: 'error', message });
+      if (code === 'OTP_INVALID') {
+        const left = Number(apiErr?.details.remainingAttempts);
+        fail(apiErr?.details.remainingAttempts !== undefined && Number.isFinite(left)
+          ? t('contractPage.otpInvalidWithAttempts', { count: left })
+          : t('contractPage.otpInvalid'));
+      } else if (code === 'OTP_TOO_MANY_ATTEMPTS') fail(t('contractPage.otpTooManyAttempts'));
+      else if (code === 'OTP_EXPIRED') fail(t('contractPage.otpExpired'));
+      else if (code === 'CONTRACT_FILE_TAMPERED') fail(t('contractPage.fileTampered'));
+      else if (code === 'CONTRACT_ALREADY_SIGNED') {
+        setToast({ type: 'warning', message: t('contractPage.alreadySigned') });
+        await loadContract();
+      } else fail(apiErr?.message || t('errors.unknownNoCode'));
+    } finally {
+      signInFlight.current = false;
+      setActionBusy(false);
+    }
+  };
 
   // ---------------------------------------------------------------------
   // Loading / error states (not yet known whether a contract exists)
@@ -416,10 +485,8 @@ export const ContractDetail: React.FC = () => {
       <Shell role={role}>
         <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-slate-200 bg-white py-20 text-center">
           <FileText size={32} className="text-slate-300" />
-          <p className="text-sm font-bold text-slate-700">Dự án chưa có hợp đồng</p>
-          <p className="max-w-sm text-xs text-slate-500">
-            Nhân viên phụ trách sẽ soạn hợp đồng cho dự án này. Vui lòng quay lại sau.
-          </p>
+          <p className="text-sm font-bold text-slate-700">{t('contractPage.notAvailableTitle')}</p>
+          <p className="max-w-sm text-xs text-slate-500">{t('contractPage.notAvailableHint')}</p>
         </div>
       </Shell>
     );
@@ -491,11 +558,31 @@ export const ContractDetail: React.FC = () => {
         </Modal>
       )}
 
+      {confirmRecall && (
+        <Modal
+          title={t('contractPage.recallConfirmTitle')}
+          onClose={() => { if (!recalling) setConfirmRecall(false); }}
+          footer={(
+            <>
+              <Button variant="secondary" disabled={recalling} onClick={() => setConfirmRecall(false)}>
+                {t('contractPage.recallCancel')}
+              </Button>
+              <Button variant="primary" loading={recalling} onClick={() => void handleWithdrawSigning(contract.id)}>
+                {recalling ? t('contractPage.recalling') : t('contractPage.recallConfirm')}
+              </Button>
+            </>
+          )}
+        >
+          <p className="text-sm text-slate-600">{t('contractPage.recallConfirmBody')}</p>
+        </Modal>
+      )}
+
       {toast && (
         <div
           role={toast.type === 'error' ? 'alert' : 'status'}
           className={`fixed right-4 top-4 z-[80] max-w-sm rounded-xl border px-4 py-3 text-sm font-medium shadow-lg ${
-            toast.type === 'success' ? 'border-emerald-100 bg-emerald-50 text-emerald-800' : 'border-red-100 bg-red-50 text-red-700'
+            toast.type === 'success' ? 'border-emerald-100 bg-emerald-50 text-emerald-800'
+              : toast.type === 'warning' ? 'border-amber-200 bg-amber-50 text-amber-800' : 'border-red-100 bg-red-50 text-red-700'
           }`}
         >
           {toast.message}
@@ -596,10 +683,10 @@ export const ContractDetail: React.FC = () => {
           <button
             type="button"
             disabled={actionBusy}
-            onClick={() => void handleWithdrawSigning(contract.id)}
+            onClick={() => setConfirmRecall(true)}
             className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
           >
-            <Undo2 size={14} /> Rút lại yêu cầu ký
+            <Undo2 size={14} /> {t('contractPage.recallButton')}
           </button>
         </section>
       )}
@@ -682,7 +769,8 @@ export const ContractDetail: React.FC = () => {
         <section className="mb-6 rounded-2xl border border-slate-100 bg-white p-6">
           <button
             type="button"
-            disabled={actionBusy}
+            disabled={actionBusy || !(contract.unsignedFile || contract.signedFile)}
+            title={contract.unsignedFile || contract.signedFile ? undefined : t('contractPage.noPdfYet')}
             onClick={() => void handleDownload(contract.id)}
             className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
           >

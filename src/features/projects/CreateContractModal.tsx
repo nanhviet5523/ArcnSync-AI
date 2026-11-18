@@ -96,20 +96,29 @@ export function CreateContractModal({ projectId, onClose, onCreated, onAlreadyEx
       case 'VALIDATION_ERROR':
         setErrors(err.fieldErrors);
         setFormError(t('errors.VALIDATION_ERROR'));
+        onToast({ tone: 'error', message: t('newContract.validationToast') });
         return;
-      case 'NOT_PROJECT_STAFF': onToast({ tone: 'error', message: t('newContract.notProjectStaff') }); return;
+      case 'NOT_PROJECT_STAFF':
+      case 'INSUFFICIENT_ROLE': onToast({ tone: 'error', message: t('newContract.notProjectStaff') }); return;
+      case 'SITE_SURVEY_NOT_CONFIRMED': onToast({ tone: 'error', message: t('newContract.siteSurveyNotConfirmed') }); return;
       case 'PROJECT_NOT_FOUND': onToast({ tone: 'error', message: t('newContract.projectNotFound') }); return;
       case 'CONTRACT_ALREADY_EXISTS':
         onToast({ tone: 'warning', message: t('newContract.alreadyExists') });
         onAlreadyExists();
         return;
       case 'CONTRACT_NO_GENERATION_FAILED': onToast({ tone: 'error', message: t('newContract.numberFailed') }); return;
-      case 'INVALID_MILESTONES': setFormError(err.messages[0] ?? err.message); return;
+      case 'INVALID_MILESTONES': {
+        const message = err.messages[0] ?? err.message;
+        setFormError(message);
+        onToast({ tone: 'error', message });
+        return;
+      }
       case 'MILESTONE_TOTAL_MISMATCH':
         setFormError(t('newContract.mismatch', {
           sum: money(String(d.milestonesTotal ?? sum)),
           total: money(String(d.totalDesignFee ?? totalDesignFee)),
         }));
+        onToast({ tone: 'error', message: t('newContract.totalMismatchToast') });
         return;
       case 'INVALID_PROJECT_STATUS_TRANSITION': onToast({ tone: 'error', message: t('newContract.wrongStatus') }); return;
       default: setFormError(errorText(err));

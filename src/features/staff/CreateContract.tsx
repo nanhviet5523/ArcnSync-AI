@@ -7,9 +7,9 @@ import { t } from '@/i18n';
 import { ApiError } from '@/services/authService';
 import {
   createProjectContract,
-  getContract,
+  getContractById,
   isUuid,
-  updateContract,
+  updateContractDraft,
   type CreateContractPayload,
   type DueTrigger,
   type PaymentMilestoneInput,
@@ -81,6 +81,8 @@ export const CreateContract: React.FC<CreateContractProps> = ({ onAlreadyExists 
   const contractId = params.get('contractId') ?? '';
   const editing = contractId !== '';
   const [loadingContract, setLoadingContract] = useState(editing);
+  /** An unsigned PDF is already uploaded: it goes stale once the terms change. */
+  const [hasUnsignedFile, setHasUnsignedFile] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -98,9 +100,15 @@ export const CreateContract: React.FC<CreateContractProps> = ({ onAlreadyExists 
   useEffect(() => {
     if (!contractId) return;
     let cancelled = false;
-    getContract(contractId)
+    getContractById(contractId)
       .then((c) => {
         if (cancelled) return;
+        if (!c) {
+          // Quiet 404: nothing to edit, so go back with a neutral notice.
+          setToast({ tone: 'warning', message: t('contractPage.notAvailableTitle') });
+          window.setTimeout(() => navigate(-1), 1500);
+          return;
+        }
         if (c.status !== 'DRAFT' || c.esignStatus !== 'NOT_SENT') {
           setToast({ tone: 'error', message: t('editContract.notEditable') });
           window.setTimeout(() => navigate(`/project-contract?projectId=${encodeURIComponent(c.projectId)}`), 1500);
@@ -108,6 +116,7 @@ export const CreateContract: React.FC<CreateContractProps> = ({ onAlreadyExists 
         }
         const money = (v: string) => v.replace(/\.0+$/, ''); // "50000000.00" -> "50000000"
         setProjectId(c.projectId);
+        setHasUnsignedFile(c.unsignedFile !== null);
         setTotalDesignFee(money(c.totalDesignFee));
         setMaxRevisionsPerStage(String(c.maxRevisionsPerStage));
         setReviewWindowDays(String(c.reviewWindowDays));
@@ -119,7 +128,12 @@ export const CreateContract: React.FC<CreateContractProps> = ({ onAlreadyExists 
           dueTrigger: i === 0 ? 'ON_CONTRACT_ACTIVE' : 'ON_STAGE_APPROVED',
         })));
       })
-      .catch((err) => { if (!cancelled) handleError(err); })
+      .catch((err) => {
+        if (cancelled) return;
+        if (err instanceof ApiError && err.code === 'INSUFFICIENT_ROLE') setToast({ tone: 'error', message: t('contractPage.noContractAccess') });
+        else if (err instanceof ApiError && err.code === 'BAD_REQUEST') setToast({ tone: 'error', message: t('contractPage.invalidContractId') });
+        else handleError(err);
+      })
       .finally(() => { if (!cancelled) setLoadingContract(false); });
     return () => { cancelled = true; };
     // handleError only reads state setters and props; the load must run once per contract.
@@ -179,13 +193,15 @@ export const CreateContract: React.FC<CreateContractProps> = ({ onAlreadyExists 
       case 'VALIDATION_ERROR':
         setFieldErrors(err.fieldErrors);
         setError(t('errors.VALIDATION_ERROR'));
+        if (editing) setToast({ tone: 'error', message: t('contractPage.editValidation') });
         return;
       case 'NOT_PROJECT_STAFF':
-        setToast({ tone: 'error', message: t(editing ? 'editContract.notProjectStaff' : 'newContract.notProjectStaff') });
+      case 'INSUFFICIENT_ROLE':
+        setToast({ tone: 'error', message: t(editing ? 'contractPage.editNotStaff' : 'newContract.notProjectStaff') });
         return;
-      case 'CONTRACT_NOT_FOUND': setToast({ tone: 'error', message: t('editContract.notFound') }); return;
+      case 'CONTRACT_NOT_FOUND': setToast({ tone: 'error', message: t('contractPage.editNotFound') }); return;
       case 'CONTRACT_NOT_EDITABLE':
-        setToast({ tone: 'error', message: t('editContract.notEditable') });
+        setToast({ tone: 'error', message: t('contractPage.editNotEditable') });
         window.setTimeout(() => navigate(`/project-contract?projectId=${encodeURIComponent(projectId.trim())}`), 1500);
         return;
       case 'PROJECT_NOT_FOUND': setToast({ tone: 'error', message: t('newContract.projectNotFound') }); return;
@@ -195,8 +211,14 @@ export const CreateContract: React.FC<CreateContractProps> = ({ onAlreadyExists 
         else window.setTimeout(() => navigate(`/project-contract?projectId=${encodeURIComponent(projectId.trim())}`), 1200);
         return;
       case 'CONTRACT_NO_GENERATION_FAILED': setToast({ tone: 'error', message: t('newContract.numberFailed') }); return;
-      case 'INVALID_MILESTONES': setError(err.messages[0] ?? err.message); return;
+      case 'INVALID_MILESTONES': {
+        const message = err.messages[0] ?? err.message;
+        setError(message);
+        setToast({ tone: 'error', message });
+        return;
+      }
       case 'MILESTONE_TOTAL_MISMATCH':
+        if (editing) setToast({ tone: 'error', message: t('contractPage.editTotalMismatch') });
         setError(t('newContract.mismatch', {
           sum: vnd.format(Number(err.details.milestonesTotal ?? milestonesTotal)),
           total: vnd.format(Number(err.details.totalDesignFee ?? feeNumber)),
@@ -221,7 +243,7 @@ export const CreateContract: React.FC<CreateContractProps> = ({ onAlreadyExists 
       if (editing) {
         // Always send the fee and the whole schedule together so the backend compares matching values.
         const { totalDesignFee: fee, maxRevisionsPerStage: revisions, reviewWindowDays: days, milestones: rows } = buildPayload();
-        await updateContract(contractId, {
+        await updateContractDraft(contractId, {
           totalDesignFee: fee,
           maxRevisionsPerStage: revisions,
           reviewWindowDays: days,
@@ -229,7 +251,8 @@ export const CreateContract: React.FC<CreateContractProps> = ({ onAlreadyExists 
           milestones: rows,
         });
         setSuccess(t('editContract.success'));
-        window.setTimeout(() => navigate(`/project-contract?projectId=${encodeURIComponent(projectId.trim())}`), 1000);
+        if (hasUnsignedFile) setToast({ tone: 'warning', message: t('contractPage.stalePdf') });
+        window.setTimeout(() => navigate(`/project-contract?projectId=${encodeURIComponent(projectId.trim())}`), hasUnsignedFile ? 2500 : 1000);
         return;
       }
       const contract = await createProjectContract(projectId.trim(), buildPayload());
