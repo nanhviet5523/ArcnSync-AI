@@ -1,4 +1,4 @@
-import { apiFetch, apiRequest, buildApiError } from '@/services/authService';
+import { apiRequest } from '@/services/authService';
 import type { UserRole } from '@/types/role';
 import { errorText, t } from '@/i18n';
 
@@ -37,10 +37,21 @@ export interface GetProjectMembersResponse { items: ProjectMemberItem[] }
 export interface ProjectRoomRef { id: string; name: string; floorId: string }
 export interface RoomAssignment { roomId: string; roomName: string; floorId: string; designerId: string; designerName: string }
 
-/** One person of GET /projects/:id/team. The Lead has addedAt null. */
-export interface TeamPerson { userId: string; name: string; email: string; avatar: string | null; addedAt: string | null; assignedRooms: ProjectRoomRef[] }
-export interface ProjectTeam { lead: TeamPerson | null; members: TeamPerson[] }
+/** One person of GET /projects/:id/team. The Lead has addedAt null; avatar is always null (show initials). */
+export interface TeamPerson { userId: string; name: string; email: string; avatar: null; addedAt: string | null; assignedRooms: ProjectRoomRef[] }
+/** GET /projects/:id/team. */
+export interface ProjectTeamResponseDto { lead: TeamPerson | null; members: TeamPerson[] }
+export type ProjectTeam = ProjectTeamResponseDto;
+/** One item of GET /users/designers. */
 export interface DesignerOption { id: string; fullName: string; email: string; isAvailable: boolean; activeProjectCount: number }
+export type DesignerListItem = DesignerOption;
+
+/** PUT /projects/:id/team body: the whole team. The Lead is never repeated in memberIds. */
+export interface UpdateProjectTeamPayload { leadId: string; memberIds: string[] }
+/** A room of someone who left the team, handed to the Lead by PUT /projects/:id/team. */
+export interface ReassignedRoom { roomId: string; roomName: string; floorId: string; fromDesignerId: string; toDesignerId: string }
+/** PUT /projects/:id/team response. */
+export interface UpdateProjectTeamResponse extends ProjectTeamResponseDto { reassignedRooms: ReassignedRoom[] }
 
 export interface Project {
   id: string;
@@ -53,7 +64,8 @@ export interface Project {
   designer: Person | null;
   customer: Person;
   staff: Person;
-  apartment: Pick<Apartment, 'id' | 'buildingName' | 'address' | 'tower' | 'unitNo'> & Partial<Apartment>;
+  /** Null until the site survey is confirmed (a new project has no apartment yet). */
+  apartment: (Pick<Apartment, 'id' | 'buildingName' | 'address' | 'tower' | 'unitNo'> & Partial<Apartment>) | null;
   createdAt: string;
   updatedAt: string;
   /** Project detail only. The lead is `designer`. */
@@ -95,9 +107,10 @@ interface Page<T> { items: T[]; page: number; limit: number; total: number }
 // Backend DTOs (Swagger: /projects). They are structurally compatible with Project.
 // ---------------------------------------------------------------------------
 
-/** POST /projects body. The project's customer is the apartment owner. */
+/** POST /projects body. The apartment is attached later, once the site survey is confirmed. */
 export interface CreateProjectPayload {
-  apartmentId: string;
+  /** Email of a registered, active customer account. */
+  customerEmail: string;
   title: string;
   description?: string;
   /** People living in the home, 1..50. */
@@ -116,6 +129,7 @@ export interface ProjectPersonRef { id: string; fullName: string; email: string 
 export interface ProjectDesignerRef { id: string; fullName: string }
 export interface ProjectStyleRef { id: string; code: string; name: string }
 export interface ProjectApartmentSummary { id: string; buildingName: string; address: string; tower: string | null; unitNo: string }
+export type ProjectApartmentSummaryDto = ProjectApartmentSummary;
 
 export interface ProjectResponse {
   id: string;
@@ -136,7 +150,8 @@ export interface ProjectResponse {
   preferredStyle: ProjectStyleRef | null;
   customer: ProjectPersonRef;
   staff: ProjectPersonRef;
-  apartment: ProjectApartmentSummary;
+  /** Null until the site survey is confirmed. */
+  apartment: ProjectApartmentSummaryDto | null;
   createdAt: string;
   updatedAt: string;
   completedAt: string | null;
@@ -198,18 +213,18 @@ export function getProjects(params: ProjectQuery = {}): Promise<ProjectPageRespo
 }
 
 /**
- * POST /projects: Staff creates a DRAFT project on a customer's apartment.
+ * POST /projects: Staff creates a DRAFT project for a customer found by email. The project starts with
+ * `apartment: null` until the site survey is confirmed.
  * The body is rebuilt from the whitelisted fields only (the backend rejects unknown ones) and
  * empty optionals are left out.
- * - 400 `VALIDATION_ERROR` (details.fields), 404 `APARTMENT_NOT_FOUND` / `DESIGN_STYLE_NOT_FOUND`.
- * - 409 `APARTMENT_HAS_ACTIVE_PROJECT`: `details` is {@link ApartmentHasActiveProjectDetails}.
+ * - 400 `VALIDATION_ERROR` (details.fields), 404 `USER_NOT_FOUND` (customerEmail) / `DESIGN_STYLE_NOT_FOUND`.
  * - 409 `PROJECT_CODE_GENERATION_FAILED`.
- * - 422 `USER_NOT_ACTIVE` (the apartment owner), `DESIGN_STYLE_INACTIVE`, `INVALID_BUDGET_RANGE`.
+ * - 422 `USER_NOT_ACTIVE` (the customer), `DESIGN_STYLE_INACTIVE`, `INVALID_BUDGET_RANGE`.
  */
 export function createProject(payload: CreateProjectPayload): Promise<ProjectResponse> {
   const description = payload.description?.trim();
   const body: CreateProjectPayload = {
-    apartmentId: payload.apartmentId,
+    customerEmail: payload.customerEmail.trim(),
     title: payload.title,
     budgetMin: payload.budgetMin,
     budgetMax: payload.budgetMax,
@@ -223,9 +238,9 @@ export function createProject(payload: CreateProjectPayload): Promise<ProjectRes
 
 /**
  * PUT /projects/:id/designer: the project's Staff or an Admin sets (or changes) the Lead Designer.
- * The Lead being replaced leaves the project: their rooms become unassigned and their unmerged drafts are deleted.
- * - 400 `VALIDATION_ERROR`, 403 `INSUFFICIENT_ROLE`, 404 `DESIGNER_NOT_FOUND` / `PROJECT_NOT_FOUND`,
- *   422 `USER_NOT_ACTIVE` / `DESIGNER_NOT_AVAILABLE` / `PROJECT_CLOSED`.
+ * The Lead being replaced stays on the project as a Member. Refetch GET /projects/:id/team afterwards.
+ * - 400 `VALIDATION_ERROR`, 403 `INSUFFICIENT_ROLE` / `TEAM_MANAGED_BY_STAFF`, 404 `DESIGNER_NOT_FOUND` / `PROJECT_NOT_FOUND`,
+ *   422 `USER_NOT_ACTIVE` / `DESIGNER_NOT_AVAILABLE` / `PROJECT_CLOSED` / `INVALID_PROJECT_STATUS`.
  */
 export function assignLeadDesigner(projectId: string, payload: AssignLeadDesignerPayload): Promise<ProjectResponse> {
   return apiRequest<ProjectResponse>(`${path(projectId)}/designer`, json('PUT', { designerId: payload.designerId }));
@@ -263,6 +278,7 @@ export function kickoffProjectDesign(projectId: string): Promise<Project> {
 export function kickoffErrorText(e: unknown): string {
   const { code, details } = (e ?? {}) as { code?: string; details?: { from?: string } };
   if (code === 'DESIGNER_NOT_ASSIGNED') return t('kickoff.noDesigner');
+  if (code === 'APARTMENT_NOT_SURVEYED') return t('errors.APARTMENT_NOT_SURVEYED');
   if (code === 'INVALID_PROJECT_STATUS_TRANSITION') {
     const from = details?.from;
     return t(from === 'DRAFT' ? 'kickoff.fromDraft' : from === 'CONTRACT_PENDING' ? 'kickoff.fromContractPending' : from === 'IN_DESIGN' ? 'kickoff.alreadyStarted' : 'kickoff.wrongStatus');
@@ -295,101 +311,22 @@ export function getProjectMembers(projectId: string): Promise<GetProjectMembersR
   return apiRequest<GetProjectMembersResponse>(`${path(projectId)}/members`);
 }
 
-/** POST /projects/:id/members body. */
-export interface AddProjectMemberPayload {
-  /** user_id of the designer to add. */
-  designerId: string;
-}
-
-/**
- * POST /projects/:id/members: the Lead adds a Member. 201 with the new Member.
- * Errors: 400 VALIDATION_ERROR, 403 NOT_PROJECT_DESIGNER / INSUFFICIENT_ROLE, 404 DESIGNER_NOT_FOUND / PROJECT_NOT_FOUND,
- * 409 PROJECT_MEMBER_EXISTS, 422 USER_NOT_ACTIVE / PROJECT_CLOSED.
- */
-export function addProjectMember(projectId: string, payload: AddProjectMemberPayload): Promise<ProjectMemberItem> {
-  return apiRequest<ProjectMemberItem>(`${path(projectId)}/members`, json('POST', { designerId: payload.designerId }));
-}
-
-/**
- * DELETE /projects/:id/members/:designerId, no body: the Lead removes a Member. 204 No Content.
- * Their rooms become unassigned and their unmerged drafts are deleted.
- * Errors: 400 BAD_REQUEST, 403 NOT_PROJECT_DESIGNER / INSUFFICIENT_ROLE, 404 PROJECT_MEMBER_NOT_FOUND / PROJECT_NOT_FOUND,
- * 422 PROJECT_CLOSED.
- */
-export async function removeProjectMember(projectId: string, designerId: string): Promise<true> {
-  const response = await apiFetch(`${path(projectId)}/members/${encodeURIComponent(designerId)}`, { method: 'DELETE' });
-  // 204 has no body: never read it
-  if (response.status === 204 || response.ok) return true;
-  const data = await response.json().catch(() => null);
-  throw buildApiError(response.status, data, `Request failed (${response.status}). Please try again.`);
-}
-
-const REMOVE_MEMBER_ERRORS: Record<string, string> = {
-  PROJECT_MEMBER_NOT_FOUND: 'team.rmErrGone',
-  NOT_PROJECT_DESIGNER: 'team.rmErrNotLead',
-  PROJECT_CLOSED: 'team.rmErrClosed',
-  INVALID_PROJECT_STATUS: 'team.rmErrClosed',
-  LEAD_REPLACEMENT_REQUIRED: 'team.rmErrLead',
-  PROJECT_NOT_FOUND: 'team.errMembersNotFound',
-  INSUFFICIENT_ROLE: 'team.rmErrForbidden',
-  BAD_REQUEST: 'team.rmErrBadId',
+const TEAM_ERRORS: Record<string, string> = {
+  TEAM_MANAGED_BY_STAFF: 'errors.TEAM_MANAGED_BY_STAFF',
+  LEAD_REPLACEMENT_REQUIRED: 'errors.LEAD_REPLACEMENT_REQUIRED',
+  INVALID_PROJECT_STATUS: 'errors.INVALID_PROJECT_STATUS',
+  PROJECT_CLOSED: 'errors.INVALID_PROJECT_STATUS',
+  DESIGNER_NOT_ASSIGNED: 'errors.DESIGNER_NOT_ASSIGNED',
+  APARTMENT_NOT_SURVEYED: 'errors.APARTMENT_NOT_SURVEYED',
+  DESIGNER_NOT_FOUND: 'team.errDesignerNotFound',
+  USER_NOT_ACTIVE: 'team.errUserNotActive',
+  DESIGNER_NOT_AVAILABLE: 'team.errNotAvailable',
+  PROJECT_NOT_FOUND: 'team.errProjectNotFound',
 };
 
-/** Message for a failed DELETE /members/:designerId, chosen by the backend `code`. */
-export function removeMemberErrorText(e: unknown): string {
-  const key = REMOVE_MEMBER_ERRORS[(e as { code?: string } | null)?.code ?? ''];
-  return key ? t(key) : errorText(e);
-}
-
-/** A designer the Lead can add. Its `id` is the `designerId` of POST /projects/:id/members. */
-export interface InvitableDesignerItem {
-  id: string;
-  fullName: string;
-  email: string;
-  /** Always null: show initials. */
-  avatarUrl: null;
-}
-export interface GetInvitableDesignersResponse { items: InvitableDesignerItem[] }
-
-/**
- * GET /projects/:id/invitable-designers (Lead only): designers who are not on the team yet. Only `q` (max 100
- * characters) is sent, never page/limit.
- * Errors: 400 VALIDATION_ERROR, 403 NOT_PROJECT_DESIGNER / INSUFFICIENT_ROLE, 404 PROJECT_NOT_FOUND, 422 PROJECT_CLOSED.
- */
-export async function getInvitableDesigners(projectId: string, query?: string): Promise<InvitableDesignerItem[]> {
-  const res = await apiRequest<GetInvitableDesignersResponse>(`${path(projectId)}/invitable-designers${qs({ q: query?.trim().slice(0, 100) })}`);
-  return res.items;
-}
-
-const INVITABLE_ERRORS: Record<string, string> = {
-  PROJECT_CLOSED: 'team.invErrClosed',
-  NOT_PROJECT_DESIGNER: 'team.invErrNotLead',
-  PROJECT_NOT_FOUND: 'team.errMembersNotFound',
-  INSUFFICIENT_ROLE: 'team.invErrForbidden',
-  VALIDATION_ERROR: 'team.invErrQuery',
-};
-
-/** Message for a failed GET /invitable-designers, chosen by the backend `code`. */
-export function invitableErrorText(e: unknown): string {
-  const key = INVITABLE_ERRORS[(e as { code?: string } | null)?.code ?? ''];
-  return key ? t(key) : errorText(e);
-}
-
-const ADD_MEMBER_ERRORS: Record<string, string> = {
-  NOT_PROJECT_DESIGNER: 'team.addErrNotLead',
-  DESIGNER_NOT_FOUND: 'team.addErrDesignerNotFound',
-  USER_NOT_ACTIVE: 'team.addErrNotActive',
-  PROJECT_CLOSED: 'team.addErrClosed',
-  INVALID_PROJECT_STATUS: 'team.addErrClosed',
-  PROJECT_NOT_FOUND: 'team.errMembersNotFound',
-  INSUFFICIENT_ROLE: 'team.addErrForbidden',
-  VALIDATION_ERROR: 'team.addErrInvalidId',
-  PROJECT_MEMBER_EXISTS: 'team.addErrExists',
-};
-
-/** Message for a failed POST /members, chosen by the backend `code`. */
-export function addMemberErrorText(e: unknown): string {
-  const key = ADD_MEMBER_ERRORS[(e as { code?: string } | null)?.code ?? ''];
+/** Message for a failed PUT /team or PUT /designer, chosen by the backend `code`. */
+export function teamErrorText(e: unknown): string {
+  const key = TEAM_ERRORS[(e as { code?: string } | null)?.code ?? ''];
   return key ? t(key) : errorText(e);
 }
 
@@ -402,21 +339,26 @@ export function membersErrorText(e: unknown, role: string | undefined): string {
   return errorText(e);
 }
 
-/** The design team of a project, assembled from the project, its members and its room assignments. */
-async function getTeam(id: string): Promise<ProjectTeam> {
-  const [project, members, rooms] = await Promise.all([
-    apiRequest<Project>(path(id)),
-    getProjectMembers(id),
-    getRoomAssignments(id),
-  ]);
-  const roomsOf = (designerId: string): ProjectRoomRef[] =>
-    rooms.items.filter((a) => a.designerId === designerId).map((a) => ({ id: a.roomId, name: a.roomName, floorId: a.floorId }));
-  return {
-    lead: project.designer
-      ? { userId: project.designer.id, name: project.designer.fullName, email: project.designer.email ?? '', avatar: null, addedAt: null, assignedRooms: roomsOf(project.designer.id) }
-      : null,
-    members: members.items.map((m) => ({ userId: m.designerId, name: m.fullName, email: m.email, avatar: null, addedAt: m.addedAt, assignedRooms: roomsOf(m.designerId) })),
-  };
+/** GET /projects/:id/team: the Lead (null when none yet) and the Members, each with their assigned rooms. */
+export function getProjectTeam(projectId: string): Promise<ProjectTeamResponseDto> {
+  return apiRequest<ProjectTeamResponseDto>(`${path(projectId)}/team`);
+}
+
+/**
+ * PUT /projects/:id/team: Staff in charge or Admin sets the whole team. Rooms of people who leave are handed
+ * to the Lead (`reassignedRooms`). Refetch GET /projects/:id/team and GET /projects/:id afterwards.
+ * Errors: 403 TEAM_MANAGED_BY_STAFF / INSUFFICIENT_ROLE, 404 DESIGNER_NOT_FOUND / PROJECT_NOT_FOUND,
+ * 422 LEAD_REPLACEMENT_REQUIRED / INVALID_PROJECT_STATUS / USER_NOT_ACTIVE / DESIGNER_NOT_AVAILABLE.
+ */
+export function updateProjectTeam(projectId: string, payload: UpdateProjectTeamPayload): Promise<UpdateProjectTeamResponse> {
+  // the Lead is never also a Member
+  const memberIds = [...new Set(payload.memberIds)].filter((id) => id !== payload.leadId);
+  return apiRequest<UpdateProjectTeamResponse>(`${path(projectId)}/team`, json('PUT', { leadId: payload.leadId, memberIds }));
+}
+
+/** GET /users/designers: designers with their workload (`activeProjectCount`). */
+export function getDesigners(params: { available?: boolean; limit?: number } = {}): Promise<Page<DesignerListItem>> {
+  return apiRequest<Page<DesignerListItem>>(`/users/designers${qs({ available: params.available, limit: params.limit })}`);
 }
 
 export const projectApi = {
@@ -427,16 +369,14 @@ export const projectApi = {
   kickoff: kickoffProjectDesign,
   assignLeadDesigner,
 
-  /**
-   * Staff, Admin and the design team. There is no GET /projects/:id/team: the Lead is `designer` of the project,
-   * the Members come from GET /projects/:id/members, and the rooms from GET /projects/:id/room-assignments.
-   */
-  getTeam: getTeam,
+  /** Staff, Admin and the design team: GET /projects/:id/team. */
+  getTeam: getProjectTeam,
+  updateTeam: updateProjectTeam,
   listRoomAssignments: async (id: string) => (await getRoomAssignments(id)).items,
   updateRoomAssignments: (id: string, assignments: RoomAssignmentItem[]) => updateRoomAssignments(id, { assignments }),
 
   findCustomer: (email: string) => apiRequest<{ id: string; email: string; fullName: string; phone: string }>(`/users/customers${qs({ email })}`),
-  listDesigners: () => apiRequest<Page<DesignerOption>>('/users/designers?available=true&limit=100'),
+  listDesigners: () => getDesigners({ available: true, limit: 100 }),
   listApartments: (ownerId: string) => apiRequest<Page<Apartment>>(`/apartments${qs({ ownerId, limit: 100 })}`),
   createApartment: (body: {
     ownerEmail: string; propertyType: 'APARTMENT' | 'HOUSE'; buildingName: string; address: string; unitNo: string;

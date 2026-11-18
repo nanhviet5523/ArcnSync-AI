@@ -43,7 +43,7 @@ export function ProjectList() {
       if (requested.current.has(p.id)) continue;
       requested.current.add(p.id);
       projectApi.get(p.id).then(
-        (d) => setFloors((x) => ({ ...x, [p.id]: d.apartment.floors?.length ?? 0 })),
+        (d) => setFloors((x) => ({ ...x, [p.id]: d.apartment?.floors?.length ?? 0 })),
         () => setFloors((x) => ({ ...x, [p.id]: null })),
       );
     }
@@ -52,7 +52,7 @@ export function ProjectList() {
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return (items ?? []).filter((p) => (!status || p.status === status)
-      && (!q || [p.title, p.code, p.customer.fullName, p.apartment.buildingName].some((v) => v?.toLowerCase().includes(q))));
+      && (!q || [p.title, p.code, p.customer.fullName, p.apartment?.buildingName].some((v) => v?.toLowerCase().includes(q))));
   }, [items, search, status]);
 
   // Designer and Homeowner see cards; Staff and Admin keep the table below.
@@ -100,10 +100,10 @@ export function ProjectList() {
       ),
     },
     {
-      key: 'home', header: t('projects.col.home'), sort: (p) => p.apartment.buildingName.toLowerCase(),
+      key: 'home', header: t('projects.col.home'), sort: (p) => (p.apartment?.buildingName ?? "").toLowerCase(),
       cell: (p) => (
         <div className="min-w-0">
-          <p className="truncate text-slate-800">{p.apartment.buildingName}{p.apartment.unitNo ? `, ${p.apartment.unitNo}` : ''}</p>
+          <p className="truncate text-slate-800">{p.apartment ? `${p.apartment.buildingName}${p.apartment.unitNo ? `, ${p.apartment.unitNo}` : ''}` : t('projectDetail.pendingSurvey')}</p>
           <p className="text-xs text-slate-500">
             {floors[p.id] === undefined
               ? <span className="inline-block h-3 w-14 animate-pulse rounded bg-slate-100 align-middle" />

@@ -1,12 +1,23 @@
-import { Card, DetailList, initials } from '@/components/ui';
+import { Card, DetailList, StatusChip, initials } from '@/components/ui';
 import { formatMoney, formatNumber, t } from '@/i18n';
 import type { Person, Project } from './projectApi';
 import { unitLabel } from './projectView';
 
 /** Home, People and Budget blocks of a project, shared by the homeowner overview and the workspace "Project info" drawer. */
 
+/** No home on the project yet: it is attached once the site survey is confirmed. */
+export function PendingSurvey() {
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <StatusChip label={t('projectDetail.pendingSurvey')} tone="yellow" />
+      <p className="text-sm text-slate-500">{t('newProject.homePending')}</p>
+    </div>
+  );
+}
+
 export function HomeCard({ project, className = '' }: { project: Project; className?: string }) {
   const a = project.apartment;
+  if (!a) return <Card title={t('projectDetail.home')} className={className}><PendingSurvey /></Card>;
   const floors = [...(a.floors ?? [])].sort((x, y) => x.level - y.level);
   // only counts the backend actually has; never an invented 0
   const rooms = [a.bedroomCount != null && t('homeownerDetail.bedrooms', { n: a.bedroomCount }), a.bathroomCount != null && t('homeownerDetail.bathrooms', { n: a.bathroomCount })].filter(Boolean).join(', ');

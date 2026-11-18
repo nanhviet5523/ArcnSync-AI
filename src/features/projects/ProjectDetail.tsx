@@ -16,6 +16,7 @@ import { ReviewCard } from '@/features/reviews/ReviewCard';
 import { conceptStep, nextFor, useLatestVersions } from './projectView';
 import { CreateContractModal } from './CreateContractModal';
 import { EditProjectModal } from './EditProjectModal';
+import { PendingSurvey } from './ProjectInfoSections';
 import type { ContractToast } from './CreateContractModal';
 import { getProjectContract } from './services/contractsApi';
 import { isUuid } from './services/contractsApi';
@@ -43,7 +44,14 @@ export function ProjectDetail() {
   /** Bumped after the Lead changes, so the room assignments are fetched again. */
   const [roomsKey, setRoomsKey] = useState(0);
   const [contractCheckFailed, setContractCheckFailed] = useState(false);
-  const [toast, setToast] = useState<ContractToast | null>(null);
+  /** Toasts stack: saving the team may report the save and the rooms handed to the Lead at once. */
+  const [toasts, setToasts] = useState<(ContractToast & { id: number })[]>([]);
+  const toastSeq = useRef(0);
+  const setToast = useCallback((next: ContractToast) => {
+    const toastId = ++toastSeq.current;
+    setToasts((list) => [...list, { ...next, id: toastId }]);
+    setTimeout(() => setToasts((list) => list.filter((x) => x.id !== toastId)), 3500);
+  }, []);
 
   const load = useCallback(async () => {
     setError('');
@@ -73,12 +81,6 @@ export function ProjectDetail() {
     }
   }, [id, staff]);
   useEffect(() => { Promise.resolve().then(loadContract); }, [loadContract]);
-
-  useEffect(() => {
-    if (!toast) return;
-    const timer = setTimeout(() => setToast(null), 3500);
-    return () => clearTimeout(timer);
-  }, [toast]);
 
   const forVersions = useMemo(() => (designer && project ? [project] : null), [designer, project]);
   const { latest, ready } = useLatestVersions(forVersions, 'designer');
@@ -119,7 +121,7 @@ export function ProjectDetail() {
   if (!staff && !designer) return <HomeownerProjectView project={project} />;
 
   const a = project.apartment;
-  const floors = [...(a.floors ?? [])].sort((x, y) => x.level - y.level);
+  const floors = [...(a?.floors ?? [])].sort((x, y) => x.level - y.level);
   // The kickoff API only accepts REQUIREMENT_ANALYSIS (it answers 422 INVALID_PROJECT_STATUS_TRANSITION before the deposit is paid).
   const kickoffReady = project.status === 'REQUIREMENT_ANALYSIS';
   // The contract is signed (ACTIVE) but the deposit is not paid: the project is still CONTRACT_PENDING until it is.
@@ -189,6 +191,8 @@ export function ProjectDetail() {
 
       <div className="grid items-start gap-5 lg:grid-cols-2">
         <Card title={t('projectDetail.home')}>
+          {/* a new project has no home until the site survey is confirmed */}
+          {!a ? <PendingSurvey /> : <>
           <DetailList items={[
             { label: t('projectDetail.type'), value: a.propertyType ? t(`projectDetail.propertyType.${a.propertyType}`) : t('common.none') },
             { label: t('projectDetail.address'), value: a.address },
@@ -214,6 +218,7 @@ export function ProjectDetail() {
             ) : <p className="text-sm text-slate-500">{t('projectDetail.noFloors')}</p>}
             {staff && floors.length <= 1 && <p className="mt-2 text-xs text-slate-500">{t('projectDetail.floorsNote')}</p>}
           </div>
+          </>}
         </Card>
 
         <Card title={t('projectDetail.people')}>
@@ -226,12 +231,8 @@ export function ProjectDetail() {
 
           {(designer || staff) && project.designer && (
             <div className="mt-5 border-t border-slate-100 pt-4">
-              <TeamCard bare project={project} role={viewerRole} onToast={setToast}
-                onTeamChange={(added) => {
-                  // a new Member joins the room-assignment choices at once; otherwise reload the project
-                  if (added) setProject((p) => (p ? { ...p, members: [...(p.members ?? []), added] } : p));
-                  else { void load(); setRoomsKey((k) => k + 1); }
-                }} />
+              {/* read-only: Staff edit the team below (DesignTeamCard) */}
+              <TeamCard bare project={project} role={viewerRole} reloadKey={roomsKey} />
             </div>
           )}
 
@@ -244,7 +245,7 @@ export function ProjectDetail() {
         </Card>
       </div>
       <div className="mt-5">
-        <RoomAssignmentsTab projectId={project.id} leadDesignerId={project.designer?.id ?? null} apartmentRooms={project.apartment.rooms} floors={project.apartment.floors} leadName={project.designer?.fullName} members={project.members} closed={project.status === 'COMPLETED' || project.status === 'CANCELLED'} reloadKey={roomsKey} />
+        <RoomAssignmentsTab projectId={project.id} leadDesignerId={project.designer?.id ?? null} apartmentRooms={project.apartment?.rooms} floors={project.apartment?.floors} leadName={project.designer?.fullName} members={project.members} closed={project.status === 'COMPLETED' || project.status === 'CANCELLED'} reloadKey={roomsKey} />
       </div>
 
       {editOpen && (
@@ -264,13 +265,17 @@ export function ProjectDetail() {
           onAlreadyExists={() => { setContractOpen(false); void loadContract(); setTimeout(() => navigate(contractPage), 1200); }}
         />
       )}
-      {toast && (
-        <div role={toast.tone === 'success' ? 'status' : 'alert'}
-          className={`fixed right-4 top-4 z-[80] max-w-sm rounded-xl border px-4 py-3 text-sm font-medium shadow-lg ${
-            toast.tone === 'success' ? 'border-emerald-100 bg-emerald-50 text-emerald-800'
-              : toast.tone === 'warning' ? 'border-amber-200 bg-amber-50 text-amber-800'
-                : 'border-red-100 bg-red-50 text-red-700'}`}>
-          {toast.message}
+      {toasts.length > 0 && (
+        <div className="fixed right-4 top-4 z-[80] flex max-w-sm flex-col gap-2">
+          {toasts.map((toast) => (
+            <div key={toast.id} role={toast.tone === 'success' ? 'status' : 'alert'}
+              className={`max-w-sm rounded-xl border px-4 py-3 text-sm font-medium shadow-lg ${
+                toast.tone === 'success' ? 'border-emerald-100 bg-emerald-50 text-emerald-800'
+                  : toast.tone === 'warning' ? 'border-amber-200 bg-amber-50 text-amber-800'
+                    : 'border-red-100 bg-red-50 text-red-700'}`}>
+              {toast.message}
+            </div>
+          ))}
         </div>
       )}
 

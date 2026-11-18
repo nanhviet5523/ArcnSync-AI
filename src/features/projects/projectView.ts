@@ -147,7 +147,8 @@ export function budgetShort(min: string, max: string) {
 }
 
 export const shortAddress =(address: string | null | undefined) => address?.split(',')[0]?.trim() ?? '';
-export const unitLabel = (a: Project['apartment']) => [a.buildingName, a.tower, a.unitNo].filter(Boolean).join(', ');
+/** "Building, block, unit"; a project without a surveyed home yet says so. */
+export const unitLabel = (a: Project['apartment']) => (a ? [a.buildingName, a.tower, a.unitNo].filter(Boolean).join(', ') : t('projectDetail.pendingSurvey'));
 export const byUpdated = (a: Project, b: Project) => (b.updatedAt ?? b.createdAt).localeCompare(a.updatedAt ?? a.createdAt);
 
 /** "Good morning" etc. by the hour in Vietnam. */
@@ -167,7 +168,7 @@ export function useFloorCounts(projects: Project[] | null) {
       if (requested.current.has(p.id)) continue;
       requested.current.add(p.id);
       queued(() => projectApi.get(p.id)).then(
-        (d) => setFloors((x) => ({ ...x, [p.id]: d.apartment.floors?.length ?? 0 })),
+        (d) => setFloors((x) => ({ ...x, [p.id]: d.apartment?.floors?.length ?? 0 })),
         () => setFloors((x) => ({ ...x, [p.id]: null })),
       );
     }

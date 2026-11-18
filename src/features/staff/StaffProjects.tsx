@@ -55,7 +55,7 @@ const SEARCH_DEBOUNCE_MS = 400;
 const TABLE_COLUMNS = 8;
 
 const EMPTY_PROJECT_FORM = {
-  apartmentId: '',
+  customerEmail: '',
   title: '',
   description: '',
   householdSize: '',
@@ -143,13 +143,13 @@ export const StaffProjects: React.FC = () => {
     e.preventDefault();
     setFormError('');
 
-    const apartmentId = form.apartmentId.trim();
+    const customerEmail = form.customerEmail.trim();
     const title = form.title.trim();
     const budgetMin = form.budgetMin.trim();
     const budgetMax = form.budgetMax.trim();
 
-    if (!apartmentId || !title || !budgetMin || !budgetMax) {
-      setFormError('Vui lòng điền Mã căn hộ, Tên dự án, Ngân sách tối thiểu và tối đa.');
+    if (!customerEmail || !title || !budgetMin || !budgetMax) {
+      setFormError('Vui lòng điền Email khách hàng, Tên dự án, Ngân sách tối thiểu và tối đa.');
       return;
     }
     if (Number(budgetMax) < Number(budgetMin)) {
@@ -158,7 +158,7 @@ export const StaffProjects: React.FC = () => {
     }
 
     const payload: CreateProjectPayload = {
-      apartmentId,
+      customerEmail,
       title,
       budgetMin,
       budgetMax,
@@ -400,8 +400,9 @@ export const StaffProjects: React.FC = () => {
                       <td className="py-4 px-4">
                         <span className="block font-bold text-slate-900">{item.title}</span>
                         <span className="block mt-0.5 text-[11px] text-slate-400">
-                          {item.apartment.buildingName}
-                          {item.apartment.tower ? ` · ${item.apartment.tower}` : ''} · {item.apartment.unitNo}
+                          {item.apartment
+                            ? <>{item.apartment.buildingName}{item.apartment.tower ? ` · ${item.apartment.tower}` : ''} · {item.apartment.unitNo}</>
+                            : 'Pending site survey confirmation'}
                         </span>
                       </td>
                       <td className="py-4 px-4 text-slate-700 font-medium">{item.customer.fullName}</td>
@@ -495,12 +496,12 @@ export const StaffProjects: React.FC = () => {
               )}
 
               <div>
-                <label className="mb-1.5 block text-[11px] font-bold text-slate-500">Mã căn hộ (apartmentId, UUID)</label>
+                <label className="mb-1.5 block text-[11px] font-bold text-slate-500">Email khách hàng (customerEmail)</label>
                 <input
-                  type="text"
-                  value={form.apartmentId}
-                  onChange={(e) => setForm((f) => ({ ...f, apartmentId: e.target.value }))}
-                  placeholder="123e4567-e89b-12d3-a456-426614174000"
+                  type="email"
+                  value={form.customerEmail}
+                  onChange={(e) => setForm((f) => ({ ...f, customerEmail: e.target.value }))}
+                  placeholder="name@example.com"
                   disabled={creating}
                   className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600"
                 />
