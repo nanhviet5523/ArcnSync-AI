@@ -34,8 +34,12 @@ const STATUS: Record<string, Record<string, Tone>> = {
   flag: { NEEDS_ME: 'amber' },
   projectRole: { LEAD: 'blue', MEMBER: 'gray' },
   roomDraft: { DRAFT: 'gray', READY: 'green' },
+  quotation: { DRAFT: 'gray', SENT: 'yellow', APPROVED: 'green', REJECTED: 'amber' },
+  inquiry: { NEW: 'blue', IN_PROGRESS: 'yellow', RESOLVED: 'green', SPAM: 'struck' },
+  budget: { BELOW: 'sky', WITHIN: 'green', WITHIN_TOLERANCE: 'amber', OVER: 'red' },
+  siteSurvey: { REQUESTED: 'gray', SCHEDULED: 'blue', SUBMITTED: 'yellow', CONFIRMED: 'green', REJECTED: 'amber', CANCELLED: 'red' },
 };
-export type StatusKind = 'project' | 'version' | 'comment' | 'choice' | 'stage' | 'flag' | 'projectRole' | 'roomDraft';
+export type StatusKind = 'project' | 'version' | 'comment' | 'choice' | 'stage' | 'flag' | 'projectRole' | 'roomDraft' | 'quotation' | 'inquiry' | 'budget' | 'siteSurvey';
 
 export const statusInfo = (kind: StatusKind, value: string) => ({
   label: t(`status.${kind}.${value}`),

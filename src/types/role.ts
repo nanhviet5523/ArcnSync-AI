@@ -32,6 +32,8 @@ export const ROLE_CONFIG: Record<UserRole, { defaultPath: string; badge: string;
       { label: t('nav.apartments'), path: '/staff-apartments' },
       { label: t('nav.contracts'), path: '/staff-contracts' },
       { label: t('nav.customers'), path: '/customers' },
+      { label: t('nav.inquiries'), path: '/staff/inquiries' },
+      { label: t('nav.reviews'), path: '/reviews' },
       { label: t('nav.account'), path: '/settings' },
     ],
   },
@@ -42,6 +44,7 @@ export const ROLE_CONFIG: Record<UserRole, { defaultPath: string; badge: string;
       { label: t('nav.assignedProjects'), path: '/designer/projects' },
       { label: t('nav.aiStudio'), path: '/designer-ai-studio' },
       { label: t('nav.catalog'), path: '/designer-catalog' },
+      { label: t('nav.reviews'), path: '/reviews' },
       { label: t('nav.account'), path: '/settings' },
     ],
   },
@@ -60,6 +63,7 @@ export const ROLE_CONFIG: Record<UserRole, { defaultPath: string; badge: string;
     badge: 'Admin',
     navItems: [
       { label: 'Dashboard', path: '/admin-dashboard' },
+      { label: t('nav.projects'), path: '/staff/projects' },
       { label: 'Users & Roles', path: '/admin-users' },
       { label: t('nav.apartments'), path: '/admin-apartments' },
       { label: 'Products', path: '/admin-products' },
@@ -68,6 +72,8 @@ export const ROLE_CONFIG: Record<UserRole, { defaultPath: string; badge: string;
       { label: 'AI Settings', path: '/admin-ai-settings' },
       { label: 'Reports', path: '/admin-reports' },
       { label: 'Customers', path: '/customers' },
+      { label: t('nav.inquiries'), path: '/staff/inquiries' },
+      { label: t('nav.reviews'), path: '/reviews' },
     ],
   },
 };

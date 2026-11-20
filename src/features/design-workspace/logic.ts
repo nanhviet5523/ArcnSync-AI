@@ -1,4 +1,4 @@
-import { errorText, formatDateTime, formatMoney, t } from '../../i18n/index.ts';
+import { formatDateTime, formatMoney, t } from '../../i18n/index.ts';
 import type { DesignerOption, ProjectTeam } from '../projects/projectApi';
 import type { Comment, CommentReply, CommentTarget, DesignElement, DesignVersion, Product, Project, ProjectRole, Role, VersionSummary } from './types';
 
@@ -156,8 +156,12 @@ export function awaitingInScope(comments: Comment[], me: Role, project: Pick<Pro
  * The viewer's role on the design team. When the backend says nothing, only the project's own designer counts as Lead:
  * anyone else gets no team rights.
  */
-export const resolveProjectRole = (project: Pick<Project, 'myProjectRole' | 'designer'>, viewerId: string): ProjectRole | null =>
-  project.myProjectRole !== undefined ? project.myProjectRole : !!viewerId && project.designer?.id === viewerId ? 'LEAD' : null;
+export const resolveProjectRole = (project: Pick<Project, 'myProjectRole' | 'designer' | 'members'>, viewerId: string): ProjectRole | null => {
+  if (project.myProjectRole !== undefined) return project.myProjectRole;
+  if (!viewerId) return null;
+  if (project.designer?.id === viewerId) return 'LEAD';
+  return project.members?.some((m) => m.designerId === viewerId) ? 'MEMBER' : null;
+};
 
 /**
  * People Staff can pick for the team: the available designers, plus whoever is on the team now
@@ -171,26 +175,11 @@ export function teamOptions(available: readonly DesignerOption[], team: ProjectT
   return [...available, ...extra];
 }
 
-/** People on the team now who hold rooms and are not in the new team: their rooms and drafts go to the new Lead. */
-export function leavingWithRooms(team: ProjectTeam | null, leadId: string, memberIds: readonly string[]): { name: string; rooms: string[] }[] {
-  if (!team) return [];
-  const stays = new Set([leadId, ...memberIds]);
-  return [...(team.lead ? [team.lead] : []), ...team.members]
-    .filter((p) => !stays.has(p.userId) && p.assignedRooms.length)
-    .map((p) => ({ name: p.name, rooms: p.assignedRooms.map((r) => r.name) }));
-}
-
-/** Errors of PUT /projects/:id/team, worded for Staff. */
-export function teamErrorText(e: unknown): string {
-  const { code, status } = (e ?? {}) as { code?: string; status?: number };
-  if (code === 'INVALID_PROJECT_STATUS') return t('team.closed');
-  if (code === 'LEAD_REPLACEMENT_REQUIRED') return t('team.leadFirst');
-  if (status === 400) return t('team.bothRoles');
-  return errorText(e);
-}
-
 /** A designer opening a project they are not on (any more) gets 404: they were taken off the team. */
-export const isOffTeam = (e: unknown, role: Role) => role === 'designer' && (e as { status?: number } | null)?.status === 404;
+export const isOffTeam = (e: unknown, role: Role) => {
+  const err = e as { status?: number; code?: string } | null;
+  return role === 'designer' && err?.status === 404 && (!err.code || err.code === 'PROJECT_NOT_FOUND');
+};
 
 export type StatusFilter = 'UNRESOLVED' | 'ALL';
 export const statusMatches = (c: Comment, f: StatusFilter) => f === 'ALL' || c.status !== 'RESOLVED';
@@ -219,7 +208,7 @@ export type Action =
   | 'reviewDrafts'
   /** Lead takes a room from another designer, with their unmerged changes. */
   | 'takeOverRoom'
-  /** Staff/Admin choose the Lead and the Members (PUT /projects/:id/team). Designers, even the Lead, only see the team. */
+  /** Staff/Admin set or change the Lead (PUT /projects/:id/designer). Members and rooms are managed by the Lead. */
   | 'manageTeam'
   /** Lead gives rooms to people on the team. Work with no version yet. */
   | 'assignRooms'
@@ -296,7 +285,9 @@ export function can(action: Action, { role, version, project, projectRole = null
   if (action === 'manageTeam') return (role === 'staff' || role === 'admin') && !closed ? yes : no;
   if (action === 'assignRooms') return lead && !closed ? yes : no;
   if (action === 'uploadFirst') return lead && project.status === 'IN_DESIGN' ? yes : no;
-  if (action === 'download' || action === 'exportFiles') return lead || member ? yes : no;
+  // Backend GET /design-versions/:id/file: assigned designers and Admin (Customer / Staff → 403 DOWNLOAD_FORBIDDEN).
+  if (action === 'download') return lead || member || role === 'admin' ? yes : no;
+  if (action === 'exportFiles') return lead || member ? yes : no;
   if (action === 'majorRevision') return !lead ? no : revisionsLeft === 0 ? { ok: false, reason: t('reasons.noMajorLeft') } : yes;
   if (!version) return no;
   const layout = version.version_type === 'LAYOUT_2D', render = version.version_type === 'RENDER_3D';
@@ -316,8 +307,9 @@ export function can(action: Action, { role, version, project, projectRole = null
   };
   switch (action) {
     case 'upload': return lead && layout && project.status === 'IN_DESIGN' ? yes : no;
+    // Backend POST /design-versions/:id/comments: Customer, Designer, Staff of the project (Admin views only).
     case 'comment':
-    case 'reply': return lead || member || customer ? yes : no;
+    case 'reply': return lead || member || customer || role === 'staff' ? yes : no;
     case 'respond': return customer ? yes : no;
     case 'editItems': return lead && choosing ? yes : no;
     case 'reviewDrafts': return lead && drafting ? yes : no;

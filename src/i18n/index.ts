@@ -34,6 +34,8 @@ export const formatNumber = (v: number | string) => money.format(Number(v));
 const zone = 'Asia/Ho_Chi_Minh';
 export const formatDateTime = (iso: string) =>
   new Intl.DateTimeFormat('en-US', { timeZone: zone, dateStyle: 'medium', timeStyle: 'short' }).format(new Date(iso));
+export const formatTime = (iso: string) =>
+  new Intl.DateTimeFormat('en-US', { timeZone: zone, timeStyle: 'short' }).format(new Date(iso));
 export const formatDate = (iso: string) =>
   new Intl.DateTimeFormat('en-US', { timeZone: zone, dateStyle: 'medium' }).format(new Date(iso));
 

@@ -1,18 +1,77 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Bell, Plus } from 'lucide-react';
+import { Bell, Plus, UserCog } from 'lucide-react';
 import { Header } from '@/components/layout';
 import { Footer } from '@/components/layout';
 import { useDemoWorkspace } from '@/hooks/useDemoWorkspace';
+import { ApiError } from '@/services/authService';
+import { assignLeadDesigner, type ProjectDesignerRef } from '@/features/projects/projectApi';
+import { RoomAssignmentsTab } from '@/features/projects/RoomAssignmentsTab';
 
 export const StaffProjectDetail: React.FC = () => {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const workspace = useDemoWorkspace();
   const project = workspace.projects.find((item) => item.id === params.get('projectId')) ?? workspace.projects[0];
+  const projectId = params.get('projectId') ?? '';
+  const hasValidProjectId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(projectId);
+
+  // Lead Designer thật, được gán qua API — khi null thì hiển thị tên demo.
+  const [assignedDesigner, setAssignedDesigner] = useState<ProjectDesignerRef | null>(null);
+  const [showAssignForm, setShowAssignForm] = useState(false);
+  const [designerIdInput, setDesignerIdInput] = useState('');
+  const [assigning, setAssigning] = useState(false);
+  const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => setToast(null), 3500);
+    return () => clearTimeout(timer);
+  }, [toast]);
+
+  const handleAssignDesigner = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!hasValidProjectId) {
+      setToast({ type: 'error', message: 'Mã dự án không hợp lệ.' });
+      return;
+    }
+    const designerId = designerIdInput.trim();
+    if (!designerId) {
+      setToast({ type: 'error', message: 'Vui lòng nhập Designer ID (UUID).' });
+      return;
+    }
+
+    setAssigning(true);
+    try {
+      const updated = await assignLeadDesigner(projectId, { designerId });
+      setAssignedDesigner(updated.designer);
+      setShowAssignForm(false);
+      setDesignerIdInput('');
+      setToast({ type: 'success', message: 'Phân công Lead Designer thành công!' });
+    } catch (err) {
+      let message = 'Có lỗi xảy ra. Vui lòng thử lại.';
+      if (err instanceof ApiError) {
+        if (err.status === 404 && err.code === 'DESIGNER_NOT_FOUND') {
+          message = 'Không tìm thấy designer.';
+        } else if (err.status === 422 && err.code === 'USER_NOT_ACTIVE') {
+          message = 'Tài khoản Designer chưa active.';
+        } else if (err.status === 422 && err.code === 'DESIGNER_NOT_AVAILABLE') {
+          message = 'Designer hiện không nhận dự án mới.';
+        } else if (err.status === 422 && (err.code === 'PROJECT_CLOSED' || err.code === 'INVALID_PROJECT_STATUS')) {
+          message = 'Dự án đã kết thúc, không thể phân công.';
+        } else {
+          message = err.message;
+        }
+      }
+      setToast({ type: 'error', message });
+    } finally {
+      setAssigning(false);
+    }
+  };
+
   const members = [
     { role: 'Homeowner', person: project?.homeowner ?? 'Homeowner', type: 'External', typeBg: 'bg-slate-100 text-slate-600', access: 'View · Comment · Approve', hasAction: false, actionText: '' },
-    { role: 'Lead Designer', person: project?.designer ?? 'Unassigned', type: 'Company', typeBg: 'bg-blue-50 text-blue-600', access: 'Edit design · Versions', hasAction: true, actionText: 'Change' },
+    { role: 'Lead Designer', person: assignedDesigner?.fullName ?? project?.designer ?? 'Unassigned', type: 'Company', typeBg: 'bg-blue-50 text-blue-600', access: 'Edit design · Versions', hasAction: true, actionText: 'Change' },
     { role: 'Staff coordinator', person: project?.staff ?? 'Tran Nam', type: 'Company', typeBg: 'bg-blue-50 text-blue-600', access: 'Contract · Billing', hasAction: false, actionText: '' },
     { role: 'Supplier partner', person: 'Noi That Viet', type: 'Partner', typeBg: 'bg-purple-50 text-purple-600', access: 'Catalog · Quotes', hasAction: true, actionText: 'Remove' },
   ];
@@ -63,6 +122,19 @@ export const StaffProjectDetail: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-50/60 font-sans flex flex-col justify-between">
       <Header role="staff" />
+
+      {toast && (
+        <div
+          role={toast.type === 'error' ? 'alert' : 'status'}
+          className={`fixed right-4 top-4 z-[80] max-w-sm rounded-xl border px-4 py-3 text-sm font-medium shadow-lg ${
+            toast.type === 'success'
+              ? 'border-emerald-100 bg-emerald-50 text-emerald-800'
+              : 'border-red-100 bg-red-50 text-red-700'
+          }`}
+        >
+          {toast.message}
+        </div>
+      )}
 
       {/* Main Content */}
       <main className="w-full max-w-[1440px] mx-auto px-6 lg:px-12 py-10 flex-1">
@@ -146,6 +218,9 @@ export const StaffProjectDetail: React.FC = () => {
                           {item.hasAction && (
                             <button
                               type="button"
+                              onClick={() => {
+                                if (item.role === 'Lead Designer') setShowAssignForm((v) => !v);
+                              }}
                               className="px-3 py-1 border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-[11px] rounded-lg transition"
                             >
                               {item.actionText}
@@ -157,7 +232,52 @@ export const StaffProjectDetail: React.FC = () => {
                   </tbody>
                 </table>
               </div>
+
+              {showAssignForm && (
+                <form onSubmit={(e) => void handleAssignDesigner(e)} className="mt-5 rounded-xl border border-slate-100 bg-slate-50/60 p-4">
+                  <div className="mb-3 flex items-center gap-2 text-xs font-bold text-slate-700">
+                    <UserCog size={14} />
+                    <span>Phân công Lead Designer</span>
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <input
+                      type="text"
+                      value={designerIdInput}
+                      onChange={(e) => setDesignerIdInput(e.target.value)}
+                      placeholder="Designer ID (UUID)"
+                      disabled={assigning}
+                      className="flex-1 px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        type="submit"
+                        disabled={assigning}
+                        className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {assigning && (
+                          <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                        )}
+                        {assigning ? 'Đang lưu…' : 'Lưu phân công'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowAssignForm(false);
+                          setDesignerIdInput('');
+                        }}
+                        disabled={assigning}
+                        className="px-4 py-2.5 border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs rounded-xl transition"
+                      >
+                        Huỷ
+                      </button>
+                    </div>
+                  </div>
+                </form>
+              )}
             </div>
+
+            {/* Box 1b: Room assignments (view-only for Staff — chỉnh sửa chỉ dành cho Lead Designer) */}
+            {hasValidProjectId && <RoomAssignmentsTab projectId={projectId} leadDesignerId={assignedDesigner?.id ?? null} />}
 
             {/* Box 2: Add role to project */}
             <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">

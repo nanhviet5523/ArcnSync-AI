@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Avatar, Card, ErrorState, Skeleton, avatarLabels } from '@/components/ui';
-import { projectApi } from '@/features/projects/projectApi';
+import { membersErrorText, projectApi } from '@/features/projects/projectApi';
 import type { ProjectTeam } from '@/features/projects/projectApi';
-import { errorText, t } from '@/i18n';
+import { t } from '@/i18n';
 import type { Project, Role } from './types';
 
 export function TeamRow({ id, name, label, sub, action }: { id: string; name: string; label?: string; sub: ReactNode; action?: ReactNode }) {
@@ -33,19 +33,25 @@ interface Props {
   role: Role;
   /** Inside another card: a small heading instead of its own card. */
   bare?: boolean;
+  /** Bump to fetch GET /projects/:id/team again (after Staff saved the team). */
+  reloadKey?: number;
 }
 
-/** Design team of a project, view only. Staff choose the team on the project page (DesignTeamCard). */
-export function TeamCard({ project, role, bare = false }: Props) {
+/**
+ * Design team of a project, read-only for everyone: Staff and Admin choose the team on the project page
+ * (DesignTeamCard, PUT /projects/:id/team); designers, the Lead included, only see it.
+ */
+export function TeamCard({ project, role, bare = false, reloadKey = 0 }: Props) {
   const homeowner = role === 'homeowner';
   const [team, setTeam] = useState<ProjectTeam | null>(null);
   const [error, setError] = useState('');
   const load = useCallback(async () => {
     if (homeowner) return;
     setError('');
-    try { setTeam(await projectApi.getTeam(project.id)); } catch (e) { setError(errorText(e)); }
-  }, [homeowner, project.id]);
-  useEffect(() => { Promise.resolve().then(load); }, [load]);
+    try { setTeam(await projectApi.getTeam(project.id)); } catch (e) { setError(membersErrorText(e, role)); }
+  }, [homeowner, project.id, role]);
+  useEffect(() => { Promise.resolve().then(load); }, [load, reloadKey]);
+
   // the homeowner's list follows the project as before
   const shown = homeowner ? fromProject(project) : team;
 
@@ -59,11 +65,14 @@ export function TeamCard({ project, role, bare = false }: Props) {
           <>
             <ul className="divide-y divide-slate-100">
               {shown.lead && <TeamRow id={shown.lead.userId} name={shown.lead.name} label={avatars[shown.lead.userId]} sub={subOf(t('team.lead'), shown.lead.assignedRooms)} />}
-              {shown.members.map((m) => <TeamRow key={m.userId} id={m.userId} name={m.name} label={avatars[m.userId]} sub={subOf(t('team.member'), m.assignedRooms)} />)}
+              {shown.members.map((m) => (
+                <TeamRow key={m.userId} id={m.userId} name={m.name} label={avatars[m.userId]} sub={subOf(t('team.member'), m.assignedRooms)} />
+              ))}
             </ul>
             {!shown.members.length && <p className="mt-2 text-xs text-slate-500">{t('team.noMembers')}</p>}
           </>
         )}
+      {/* designers (the Lead included) never manage the team */}
       {role === 'designer' && <p className="mt-3 border-t border-slate-100 pt-3 text-xs text-slate-500">{t('team.managedByStaff')}</p>}
     </>
   );

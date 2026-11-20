@@ -72,6 +72,14 @@ export interface VerifyEmailResponse {
   user: RegisterResponse['user'];
 }
 
+export interface ResendOtpPayload {
+  email: string;
+}
+
+export interface ResendOtpResponse {
+  message: string;
+}
+
 export interface LoginPayload {
   email: string;
   password: string;
@@ -314,6 +322,20 @@ export function verifyEmail(
     '/auth/verify-email',
     payload,
     'Verification failed',
+  );
+}
+
+/**
+ * Gửi lại OTP kích hoạt tài khoản. POST /auth/resend-otp.
+ * Backend luôn trả cùng một message dù email có tồn tại hay không (tránh lộ thông tin).
+ */
+export function resendOtp(
+  payload: ResendOtpPayload,
+): Promise<ResendOtpResponse> {
+  return postJson<ResendOtpResponse>(
+    '/auth/resend-otp',
+    payload,
+    'Could not resend the OTP code',
   );
 }
 

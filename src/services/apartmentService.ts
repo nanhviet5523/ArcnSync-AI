@@ -20,8 +20,9 @@ export interface ApartmentRoom {
   floorId: string;
   name: string;
   roomType: string;
-  area: string | number;
-  purpose: string;
+  /** m², string with 2 decimals; null = not measured */
+  area: string | null;
+  purpose: string | null;
 }
 
 export interface Apartment {
@@ -29,10 +30,10 @@ export interface Apartment {
   propertyType: PropertyType;
   buildingName: string;
   address: string;
-  tower: string;
+  tower: string | null;
   unitNo: string;
-  floorNo: number;
-  layoutCode: string;
+  floorNo: number | null;
+  layoutCode: string | null;
   netArea: string | number;
   bedroomCount: number;
   bathroomCount: number;
@@ -49,31 +50,6 @@ export interface ApartmentPage {
   total: number;
 }
 
-export interface ApartmentPayload {
-  propertyType: PropertyType;
-  buildingName: string;
-  address: string;
-  tower: string;
-  unitNo: string;
-  floorNo: number;
-  layoutCode: string;
-  netArea: number;
-  bedroomCount: number;
-  bathroomCount: number;
-}
-
-export interface CreateApartmentPayload extends ApartmentPayload {
-  ownerEmail?: string;
-}
-
-export interface CreateRoomPayload {
-  name: string;
-  roomType: string;
-  floorId: string;
-  area: number;
-  purpose: string;
-}
-
 const queryString = (values: Record<string, string | number | undefined>) => {
   const query = new URLSearchParams();
   Object.entries(values).forEach(([key, value]) => {
@@ -83,6 +59,11 @@ const queryString = (values: Record<string, string | number | undefined>) => {
   return serialized ? `?${serialized}` : '';
 };
 
+/**
+ * Read-only: backend v13 has no POST /apartments, PATCH /apartments/:id or POST /apartments/:id/rooms any more.
+ * An apartment, its floors and rooms are created (or updated) when the homeowner confirms a site survey
+ * (see features/site-surveys).
+ */
 export const apartmentService = {
   list(params: { q?: string; ownerId?: string; page?: number; limit?: number } = {}) {
     return apiRequest<ApartmentPage>(`/apartments${queryString({ page: 1, limit: 20, ...params })}`);
@@ -90,28 +71,10 @@ export const apartmentService = {
   get(id: string) {
     return apiRequest<Apartment>(`/apartments/${encodeURIComponent(id)}`);
   },
-  create(payload: CreateApartmentPayload) {
-    return apiRequest<Apartment>('/apartments', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    });
-  },
-  update(id: string, payload: Partial<ApartmentPayload>) {
-    return apiRequest<Apartment>(`/apartments/${encodeURIComponent(id)}`, {
-      method: 'PATCH',
-      body: JSON.stringify(payload),
-    });
-  },
   listFloors(apartmentId: string) {
     return apiRequest<ApartmentFloor[]>(`/apartments/${encodeURIComponent(apartmentId)}/floors`);
   },
   listRooms(apartmentId: string) {
     return apiRequest<ApartmentRoom[]>(`/apartments/${encodeURIComponent(apartmentId)}/rooms`);
-  },
-  createRoom(apartmentId: string, payload: CreateRoomPayload) {
-    return apiRequest<ApartmentRoom>(`/apartments/${encodeURIComponent(apartmentId)}/rooms`, {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    });
   },
 };

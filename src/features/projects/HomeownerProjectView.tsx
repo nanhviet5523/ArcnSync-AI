@@ -1,19 +1,24 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight, Ban, CircleCheck, Clock, CreditCard } from 'lucide-react';
 
 import { AppShell, Button, Card, PageHeader, Skeleton, StatusChip, Stepper } from '@/components/ui';
 import { formatDate, formatDateTime, t, tList } from '@/i18n';
 import { canOpenWorkspace, stepIndex } from './projectApi';
+import { getProjectContract } from './services/contractsApi';
+import type { ContractResponse } from './services/contractsApi';
 import type { Project } from './projectApi';
 import { BudgetCard, HomeCard, PeopleCard } from './ProjectInfoSections';
 import { PlanThumb } from './PlanThumb';
 import { getCurrentUser } from '@/services/authService';
+import { QuotationSummaryCard } from '@/features/quotations/QuotationSummaryCard';
+import { ReviewCard } from '@/features/reviews/ReviewCard';
+import { SiteSurveyCard } from '@/features/site-surveys/SiteSurveyCard';
 import { conceptStep, designLabel, isClosed, knownVersion, needsAction, needsCheck, nextFor, useLatestVersions } from './projectView';
 
 /** Homeowner overview of one project (/homeowner/projects/:id). Staff keeps its own layout in ProjectDetail.
  * The only "Open design" button is inside the Next step card; the latest drawing sits beside it. */
-export function HomeownerProjectView({ project }: { project: Project }) {
+export function HomeownerProjectView({ project, onProjectChanged }: { project: Project; onProjectChanged: () => void }) {
   const navigate = useNavigate();
   const workspace = canOpenWorkspace(project.status);
   const list = useMemo(() => [project], [project]);
@@ -26,9 +31,38 @@ export function HomeownerProjectView({ project }: { project: Project }) {
   const failed = (raw === 'error' || raw === 'checking') && !isClosed(project.status);
   const retrying = raw === 'checking';
   const v = knownVersion(raw);
-  const next = nextFor('homeowner', project, raw);
-  // Blue card only when the homeowner really has to act (a version was sent to them).
-  const act = needsAction('homeowner', project, raw);
+  // While the project waits on its contract: the backend hides the contract from the homeowner until the staff send it
+  // for signing (404 CONTRACT_NOT_FOUND) and has no push notifications, so ask again when the tab is shown and every 45 s.
+  const waitingOnContract = project.status === 'CONTRACT_PENDING';
+  const [contract, setContract] = useState<ContractResponse | null | undefined>(undefined);
+  const [contractFailed, setContractFailed] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const checkContract = useCallback(async () => {
+    setChecking(true);
+    try { setContract(await getProjectContract(project.id)); setContractFailed(false); }
+    catch { setContractFailed(true); }
+    finally { setChecking(false); }
+  }, [project.id]);
+  useEffect(() => {
+    if (!waitingOnContract) return;
+    const refresh = () => { if (document.visibilityState === 'visible') void checkContract(); };
+    Promise.resolve().then(refresh);
+    const timer = window.setInterval(refresh, 45_000);
+    document.addEventListener('visibilitychange', refresh);
+    window.addEventListener('focus', refresh);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', refresh);
+      window.removeEventListener('focus', refresh);
+    };
+  }, [waitingOnContract, checkContract]);
+
+  // Signing happens while the project is still CONTRACT_PENDING, so read the contract, not just the project.
+  const signing = waitingOnContract && contract?.status === 'DRAFT' && contract.esignStatus === 'AWAITING_CUSTOMER';
+  const contractPage = `/project-contract?projectId=${encodeURIComponent(project.id)}`;
+  const next = signing ? t('homeownerDetail.signContractNext') : nextFor('homeowner', project, raw);
+  // Blue card only when the homeowner really has to act (a version was sent to them, or a contract needs signing).
+  const act = signing || needsAction('homeowner', project, raw);
   const open = () => navigate(`/projects/${project.id}/workspace`);
   // watermark on the drawing, as everywhere a plan is shown at readable size
   const [stamp] = useState(() => `${getCurrentUser()?.email ?? ''} ${formatDateTime(new Date().toISOString())}`);
@@ -38,10 +72,13 @@ export function HomeownerProjectView({ project }: { project: Project }) {
       <PageHeader
         back={{ to: '/homeowner/projects', label: t('projectDetail.back') }}
         title={project.title}
-        chip={<StatusChip kind="project" value={project.status} />}
+        chip={project.status === 'CONTRACT_PENDING' && contract?.status === 'ACTIVE'
+          ? <StatusChip label={t('projectDetail.waitingDeposit')} tone="yellow" />
+          : <StatusChip kind="project" value={project.status} />}
         description={t('homeownerDetail.meta', {
           designer: project.designer?.fullName ?? t('projectDetail.notAssigned'), staff: project.staff.fullName,
         })}
+        secondary={<Button onClick={() => navigate(`/project-contract?projectId=${encodeURIComponent(project.id)}`)}>{t('projectDetail.contract')}</Button>}
       />
 
       {project.status !== 'CANCELLED' && (
@@ -50,6 +87,8 @@ export function HomeownerProjectView({ project }: { project: Project }) {
         </Card>
       )}
 
+
+      {(project.status === 'QUOTING' || project.status === 'COMPLETED') && <QuotationSummaryCard projectId={project.id} homeowner />}
 
       <section className="mb-5 flex flex-col gap-4 rounded-card border border-blue-100 bg-white p-5 shadow-card sm:flex-row sm:items-center sm:justify-between sm:p-6">
         <div className="flex items-start gap-3">
@@ -88,8 +127,8 @@ export function HomeownerProjectView({ project }: { project: Project }) {
               <h2 id="next-step" className="text-[13px] font-medium text-brand">{t('nextStep.title')}</h2>
               <p className="mt-1 text-[15px] font-semibold leading-snug text-slate-900 sm:text-2xl sm:leading-tight">{next}</p>
             </div>
-            <Button variant="primary" onClick={open} className="self-start">
-              {t('homeownerDetail.openDesign')}<ArrowRight aria-hidden className="h-4 w-4" />
+            <Button variant="primary" onClick={signing ? () => navigate(contractPage) : open} className="self-start">
+              {signing ? t('homeownerDetail.signContract') : t('homeownerDetail.openDesign')}<ArrowRight aria-hidden className="h-4 w-4" />
             </Button>
           </section>
         ) : (
@@ -107,8 +146,12 @@ export function HomeownerProjectView({ project }: { project: Project }) {
               ) : (
                 <>
                   <p className="mt-1 text-[15px] font-semibold leading-snug text-slate-900">{next}</p>
+                  {waitingOnContract && contractFailed && <p role="alert" className="mt-1 text-sm font-semibold text-amber-800">{t('homeownerDetail.checkContractFailed')}</p>}
                   {project.status !== 'CANCELLED' && (
-                    <p className="mt-1 text-sm text-slate-600">{t(workspace ? 'homeownerDetail.browseNote' : 'homeownerDetail.waitingNote')}</p>
+                    // in the site survey the homeowner has things to do, so no "nothing to do yet"
+                    <p className="mt-1 text-sm text-slate-600">{t(workspace ? 'homeownerDetail.browseNote'
+                      : project.status === 'DRAFT' && project.apartment === null && project.designer ? 'nextStep.surveyHomeownerNote'
+                        : 'homeownerDetail.waitingNote')}</p>
                   )}
                 </>
               )}
@@ -121,6 +164,9 @@ export function HomeownerProjectView({ project }: { project: Project }) {
                 </Button>
               )}
               {workspace && <Button onClick={open}>{t('homeownerDetail.openDesign')}</Button>}
+              {waitingOnContract && (
+                <Button loading={checking} onClick={() => void checkContract()}>{t(contractFailed ? 'common.retry' : 'homeownerDetail.checkAgain')}</Button>
+              )}
             </div>
           </section>
         )}
@@ -128,8 +174,15 @@ export function HomeownerProjectView({ project }: { project: Project }) {
       )}
 
       <div className="grid items-start gap-5 lg:grid-cols-3">
-        <HomeCard project={project} className="lg:col-span-2" />
+        {/* no home until the site survey is confirmed: the survey takes its place; a confirmed survey stays beside it while DRAFT */}
+        <div className="space-y-5 lg:col-span-2">
+          {project.apartment && <HomeCard project={project} />}
+          {(!project.apartment || project.status === 'DRAFT') && (
+            <SiteSurveyCard project={project} viewer="homeowner" apartmentsRole="homeowner" onProjectChanged={onProjectChanged} />
+          )}
+        </div>
         <div className="space-y-5">
+          <ReviewCard projectId={project.id} completed={project.status === 'COMPLETED'} homeowner />
           <PeopleCard project={project} />
           <BudgetCard project={project} />
         </div>

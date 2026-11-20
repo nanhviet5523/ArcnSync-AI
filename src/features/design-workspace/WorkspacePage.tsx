@@ -507,7 +507,7 @@ export function WorkspacePage() {
   const goVersion = (id: string) => setParams((p) => { p.set('v', id); return p; });
   /** For moves the app makes itself after saving or approving: nothing is left to protect. */
   const goVersionNow = (id: string) => { allowNav.current = true; goVersion(id); };
-  const apartmentFloors: Floor[] = (project.apartment.floors ?? []).map((f) => ({ id: f.id, level: f.level, name: f.name, floor_height_mm: f.floorHeightMm }));
+  const apartmentFloors: Floor[] = (project.apartment?.floors ?? []).map((f) => ({ id: f.id, level: f.level, name: f.name, floor_height_mm: f.floorHeightMm }));
   const backTo = viewer.role === 'designer' ? '/designer/projects' : viewer.role === 'homeowner' ? '/homeowner/projects' : `/staff/projects/${project.id}`;
 
   // compare: default to the version just before the one being viewed, same stage
@@ -894,7 +894,7 @@ export function WorkspacePage() {
     </Button>
   ) : null;
 
-  const downloadDxf = canExport && floor && version ? {
+  const downloadDxf = allow('download').ok && floor && version ? {
     label: version.floors.length > 1 ? t('workspace.downloadDxfFloor', { floor: floor.name }) : t('workspace.downloadDxf'),
     run: () => downloadFile(floor.file_url, `${version.label}-${floor.name}.dxf`).catch((e) => setDialog({ kind: 'notice', title: t('workspace.downloadError'), body: errorText(e) })),
   } : null;

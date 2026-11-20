@@ -3,10 +3,13 @@ import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { HomePage } from '@/features/home/HomePage';
+import { getCurrentUser } from '@/services/authService';
+import { DEFAULT_ROLE_REDIRECT } from '@/routes/routes.config';
 import { LoginPage } from '@/features/auth/LoginPage';
 import { SignUpPage } from '@/features/auth/SignUpPage';
 import { VerifyOtpPage } from '@/features/auth/VerifyOtpPage';
 import { ForgotPasswordPage } from '@/features/auth/ForgotPasswordPage';
+import { NoApiPage } from '@/features/auth/NoApiPage';
 import { ResetPasswordPage } from '@/features/auth/ResetPasswordPage';
 import { AcceptInvitation } from '@/features/auth/AcceptInvitation';
 import { AcceptProjectInvitation } from '@/features/auth/AcceptProjectInvitation';
@@ -16,6 +19,8 @@ import { HomeownerPayments } from '@/features/homeowner/HomeownerPayments';
 import { ProfileSettings } from '@/features/shared/ProfileSettings';
 import { CustomerDirectory } from '@/features/shared/CustomerDirectory';
 import { ApartmentManagement } from '@/features/shared/ApartmentManagement';
+import { ContractDetail } from '@/features/projects/ContractDetail';
+import { BookConsultation } from '@/features/shared/BookConsultation';
 import { AdminUsersPage } from '@/features/admin/users/AdminUsersPage';
 import { AdminMasterData } from '@/features/admin/AdminMasterData';
 import { AdminProducts } from '@/features/admin/AdminProducts';
@@ -30,11 +35,14 @@ import { ProjectList } from '@/features/projects/ProjectList';
 import { ProjectDetail } from '@/features/projects/ProjectDetail';
 import { StaffProjectNew } from '@/features/projects/StaffProjectNew';
 import { AdminCategories } from '@/features/admin/AdminCategories';
+import { AdminDashboard } from '@/features/admin/AdminDashboard';
+import { QuotationPage } from '@/features/quotations/QuotationPage';
+import { ReviewsPage } from '@/features/reviews/ReviewsPage';
+import { InquiriesPage } from '@/features/inquiries/InquiriesPage';
 // Pages still running on sample data (demoWorkspaceService), kept until their API exists
 import { CreateContract } from '@/features/staff/CreateContract';
 import { StaffContracts } from '@/features/staff/StaffContracts';
 import { StaffContractDetail } from '@/features/staff/StaffContractDetail';
-import { AdminDashboard } from '@/features/admin/AdminDashboard';
 import { AdminReports } from '@/features/admin/AdminReports';
 import { AdminAISettings } from '@/features/admin/AdminAISettings';
 import { AdminPromptDetail } from '@/features/admin/AdminPromptDetail';
@@ -42,12 +50,16 @@ import { SupplierInquiries } from '@/features/supplier/SupplierInquiries';
 import { DesignerPortfolio } from '@/features/designer/DesignerPortfolio';
 import { DesignerAIStudio } from '@/features/designer/DesignerAIStudio';
 import { ProtectedRoute } from '@/routes/ProtectedRoute';
-import { DEFAULT_ROLE_REDIRECT } from '@/routes/routes.config';
-import { getCurrentUser } from '@/services/authService';
 import type { UserRole } from '@/types/role';
 import { t } from '@/i18n';
 
 const ALL_ROLES: UserRole[] = ['homeowner', 'designer', 'staff', 'supplier', 'admin'];
+
+/** Redirect that keeps the query string, so old /create-contract?projectId=... links land on the new route. */
+function RedirectKeepSearch({ to }: { to: string }) {
+  const { search } = useLocation();
+  return <Navigate to={{ pathname: to, search }} replace />;
+}
 
 /** Small strip on top of pages that still run on sample data. */
 function SampleData({ children }: { children: ReactNode }) {
@@ -126,12 +138,18 @@ function App() {
             <Route path="/staff/projects/new" element={<StaffProjectNew />} />
             <Route path="/staff/projects/:id" element={<ProjectDetail />} />
             <Route path="/customers" element={<CustomerDirectory />} />
+            <Route path="/staff/inquiries" element={<InquiriesPage />} />
+          </Route>
+          <Route element={<ProtectedRoute allowedRoles={['staff', 'admin', 'designer']} />}>
+            <Route path="/reviews" element={<ReviewsPage />} />
           </Route>
           <Route element={<ProtectedRoute allowedRoles={['staff']} />}>
             <Route path="/staff-apartments" element={<ApartmentManagement />} />
             <Route path="/staff-contracts" element={<SampleData><StaffContracts /></SampleData>} />
             <Route path="/staff-contract-detail" element={<SampleData><StaffContractDetail /></SampleData>} />
-            <Route path="/create-contract" element={<SampleData><CreateContract /></SampleData>} />
+            <Route path="/create-contract" element={<RedirectKeepSearch to="/staff-create-contract" />} />
+            <Route path="/staff-create-contract" element={<CreateContract />} />
+            <Route path="/staff-edit-contract" element={<CreateContract />} />
           </Route>
           <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
             <Route path="/admin-apartments" element={<ApartmentManagement />} />
@@ -143,9 +161,9 @@ function App() {
             <Route path="/admin/users" element={<AdminUsersPage />} />
             <Route path="/admin/roles" element={<AdminUsersPage />} />
             <Route path="/admin/master-data" element={<AdminMasterData />} />
-            <Route path="/admin-dashboard" element={<SampleData><AdminDashboard /></SampleData>} />
-            <Route path="/admin/overview" element={<SampleData><AdminDashboard /></SampleData>} />
-            <Route path="/admin/dashboard" element={<SampleData><AdminDashboard /></SampleData>} />
+            <Route path="/admin-dashboard" element={<AdminDashboard />} />
+            <Route path="/admin/overview" element={<AdminDashboard />} />
+            <Route path="/admin/dashboard" element={<AdminDashboard />} />
             <Route path="/admin-reports" element={<SampleData><AdminReports /></SampleData>} />
             <Route path="/admin-ai-settings" element={<SampleData><AdminAISettings /></SampleData>} />
             <Route path="/admin/ai-settings" element={<SampleData><AdminAISettings /></SampleData>} />
@@ -174,16 +192,17 @@ function App() {
             <Route path="/homeowner/payments" element={<HomeownerPayments />} />
             <Route path="/payments/result" element={<HomeownerPayments />} />
           </Route>
+          {/* Design workspace (design-versions APIs): every project role; actions gated by can() in design-workspace/logic.ts */}
           <Route element={<ProtectedRoute allowedRoles={['homeowner', 'designer', 'staff', 'admin']} />}>
             <Route path="/projects/:projectId/workspace" element={<WorkspacePage />} />
-            <Route path="/homeowner/projects" element={<ProjectList />} />
-            <Route path="/homeowner/projects/:id" element={<ProjectDetail />} />
+            <Route path="/projects/:projectId/quotation" element={<QuotationPage />} />
           </Route>
-          <Route element={<ProtectedRoute allowedRoles={['homeowner', 'designer', 'staff', 'admin']} />}>
-            <Route path="/projects/:projectId/workspace" element={<WorkspacePage />} />
+          <Route element={<ProtectedRoute allowedRoles={['homeowner']} />}>
+            <Route path="/consultation/book" element={<BookConsultation />} />
           </Route>
           <Route element={<ProtectedRoute allowedRoles={ALL_ROLES} />}>
             <Route path="/settings" element={<ProfileSettings />} />
+            <Route path="/project-contract" element={<ContractDetail />} />
           </Route>
           {/* Old paths of pages that now have a real replacement */}
           {[
@@ -227,6 +246,7 @@ function App() {
           <Route path="/verify-otp" element={<VerifyOtpPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/no-api" element={<NoApiPage />} />
           <Route path="/accept-project-invitation" element={<AcceptProjectInvitation />} />
           <Route path="/projects/invitation" element={<AcceptProjectInvitation />} />
           <Route path="/homeowner/project-requirements" element={<ProjectRequirementsForm />} />
