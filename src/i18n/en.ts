@@ -353,7 +353,8 @@ export const en = {
     waitingStaff: 'The staff team is preparing this project.',
     surveyStaffNoLead: 'Assign a Lead designer so the homeowner can book the site survey.',
     surveyStaff: 'Waiting for the site survey. The contract can be created once the homeowner confirms it.',
-    surveyHomeowner: 'Book a site survey so your designer can measure the home.',
+    surveyHomeowner: 'Complete the site survey: book a visit, then confirm the measurements your designer sends you.',
+    surveyHomeownerNote: 'Follow the site survey below. Your home is added once you confirm the result.',
     surveyLead: 'Arrange the site survey with the homeowner and record the measurements.',
     IN_DESIGN: {
       designer: 'Upload the layout and address comments.',

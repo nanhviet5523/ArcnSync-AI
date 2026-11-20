@@ -148,7 +148,10 @@ export function HomeownerProjectView({ project, onProjectChanged }: { project: P
                   <p className="mt-1 text-[15px] font-semibold leading-snug text-slate-900">{next}</p>
                   {waitingOnContract && contractFailed && <p role="alert" className="mt-1 text-sm font-semibold text-amber-800">{t('homeownerDetail.checkContractFailed')}</p>}
                   {project.status !== 'CANCELLED' && (
-                    <p className="mt-1 text-sm text-slate-600">{t(workspace ? 'homeownerDetail.browseNote' : 'homeownerDetail.waitingNote')}</p>
+                    // in the site survey the homeowner has things to do, so no "nothing to do yet"
+                    <p className="mt-1 text-sm text-slate-600">{t(workspace ? 'homeownerDetail.browseNote'
+                      : project.status === 'DRAFT' && project.apartment === null && project.designer ? 'nextStep.surveyHomeownerNote'
+                        : 'homeownerDetail.waitingNote')}</p>
                   )}
                 </>
               )}

@@ -172,7 +172,9 @@ export function SiteSurveyCard({ project, viewer, canCancel = viewer !== 'member
             </div>
           )}
 
-          {canBook && project.designer && <Button variant="primary" onClick={() => setDialog('book')}>{t('siteSurvey.bookAgain')}</Button>}
+          {canBook && (project.designer
+            ? <Button variant="primary" onClick={() => setDialog('book')}>{t('siteSurvey.bookAgain')}</Button>
+            : <Banner tone="amber">{t('siteSurvey.waitingLead')}</Banner>)}
         </div>
       )}
 
