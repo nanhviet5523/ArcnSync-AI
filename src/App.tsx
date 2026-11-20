@@ -172,6 +172,7 @@ function App() {
             <Route path="/homeowner/projects" element={<ProjectList />} />
             <Route path="/homeowner/projects/:id" element={<ProjectDetail />} />
             <Route path="/homeowner/payments" element={<HomeownerPayments />} />
+            <Route path="/payments/result" element={<HomeownerPayments />} />
           </Route>
           <Route element={<ProtectedRoute allowedRoles={['homeowner', 'designer', 'staff', 'admin']} />}>
             <Route path="/projects/:projectId/workspace" element={<WorkspacePage />} />
