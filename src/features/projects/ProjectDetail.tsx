@@ -6,7 +6,8 @@ import { getCurrentUser } from '@/services/authService';
 import { canOpenWorkspace, kickoffErrorText, kickoffProjectDesign, projectApi, stepIndex } from './projectApi';
 import type { DesignerOption, Project } from './projectApi';
 import { TeamCard } from '@/features/design-workspace/TeamCard';
-import { isOffTeam } from '@/features/design-workspace/logic';
+import { isOffTeam, resolveProjectRole } from '@/features/design-workspace/logic';
+import { SiteSurveyCard } from '@/features/site-surveys/SiteSurveyCard';
 import type { Role } from '@/features/design-workspace/types';
 import { DesignTeamCard } from './DesignTeamCard';
 import { NotOnTeam } from './NotOnTeam';
@@ -16,7 +17,6 @@ import { ReviewCard } from '@/features/reviews/ReviewCard';
 import { conceptStep, nextFor, useLatestVersions } from './projectView';
 import { CreateContractModal } from './CreateContractModal';
 import { EditProjectModal } from './EditProjectModal';
-import { PendingSurvey } from './ProjectInfoSections';
 import type { ContractToast } from './CreateContractModal';
 import { getProjectContract } from './services/contractsApi';
 import { isUuid } from './services/contractsApi';
@@ -118,7 +118,7 @@ export function ProjectDetail() {
     );
   }
 
-  if (!staff && !designer) return <HomeownerProjectView project={project} />;
+  if (!staff && !designer) return <HomeownerProjectView project={project} onProjectChanged={() => void load()} />;
 
   const a = project.apartment;
   const floors = [...(a?.floors ?? [])].sort((x, y) => x.level - y.level);
@@ -131,6 +131,15 @@ export function ProjectDetail() {
   const canKickoff = kickoffReady && !!project.designer && (role === 'admin' || (role === 'staff' && project.staff.id === userId));
   // PATCH /projects/:id: a DRAFT project, by Admin or the Staff member in charge
   const canEditProject = project.status === 'DRAFT' && (role === 'admin' || (role === 'staff' && project.staff.id === userId));
+  // Site survey: the Lead is per project (projectRole), not an account role; Staff in charge or Admin may cancel it
+  const surveyViewer = staff ? 'staff' : resolveProjectRole(project, userId) === 'LEAD' ? 'lead' : 'member';
+  const canCancelSurvey = surveyViewer === 'lead' || role === 'admin' || (role === 'staff' && project.staff.id === userId);
+  // DRAFT: the survey card stays until the contract stage, so a confirmed survey still says the home was created
+  const showSurvey = !a || project.status === 'DRAFT';
+  const surveyCard = (className = '') => (
+    <SiteSurveyCard project={project} viewer={surveyViewer} canCancel={canCancelSurvey} apartmentsRole={staff ? role : undefined}
+      onProjectChanged={() => void load()} className={className} />
+  );
   const open = () => navigate(`/projects/${project.id}/workspace`);
   // one sentence for this page and the project's card; a designer waits for the version check
   const next = designer && !ready ? '' : nextFor(role, project, designer ? latest(project.id) : undefined);
@@ -165,13 +174,18 @@ export function ProjectDetail() {
         secondary={<>
           {secondary}
           {canEditProject && <Button onClick={() => setEditOpen(true)}>{t('editProject.open')}</Button>}
-          {staff && project.status === 'DRAFT' && project.apartment !== null && contract === null && <Button onClick={() => setContractOpen(true)}>{t('projectDetail.createContract')}</Button>}
+          {/* POST /projects/:id/contract answers 422 SITE_SURVEY_NOT_CONFIRMED until the homeowner confirms the survey (which attaches the home) */}
+          {staff && project.status === 'DRAFT' && contract === null && (
+            <Button disabled={project.apartment === null} title={project.apartment === null ? t('projectDetail.createContractLocked') : undefined}
+              onClick={() => setContractOpen(true)}>{t('projectDetail.createContract')}</Button>
+          )}
           {staff && contractCheckFailed && <Button title={t('contractPage.contractStatusFailed')} onClick={() => void loadContract()}>{t('contractPage.retryCheck')}</Button>}
           {/* A staff member with no contract yet creates it with the button above; "Contract" has nothing to show until then. */}
           {!(staff && contract === null) && <Button onClick={() => navigate(contractPage)}>{t('projectDetail.contract')}</Button>}
         </>}
       />
       {staff && kickoffReady && !project.designer && <p className="-mt-4 mb-5 text-right text-xs text-amber-700">{t('projectDetail.startDesignHint')}</p>}
+      {staff && project.status === 'DRAFT' && project.apartment === null && contract === null && <p className="-mt-4 mb-5 text-right text-xs text-slate-500">{t('projectDetail.createContractLocked')}</p>}
 
       {project.status !== 'CANCELLED' && (
         <Card className="mb-5" bodyClassName="px-4 py-4 sm:px-6">
@@ -190,9 +204,9 @@ export function ProjectDetail() {
 
 
       <div className="grid items-start gap-5 lg:grid-cols-2">
-        <Card title={t('projectDetail.home')}>
-          {/* a new project has no home until the site survey is confirmed */}
-          {!a ? <PendingSurvey /> : <>
+        {/* a new project has no home until the site survey is confirmed: the survey takes the Home card's place */}
+        {!a ? surveyCard() : <Card title={t('projectDetail.home')}>
+          <>
           <DetailList items={[
             { label: t('projectDetail.type'), value: a.propertyType ? t(`projectDetail.propertyType.${a.propertyType}`) : t('common.none') },
             { label: t('projectDetail.address'), value: a.address },
@@ -216,10 +230,9 @@ export function ProjectDetail() {
                 </tbody>
               </table>
             ) : <p className="text-sm text-slate-500">{t('projectDetail.noFloors')}</p>}
-            {staff && floors.length <= 1 && <p className="mt-2 text-xs text-slate-500">{t('projectDetail.floorsNote')}</p>}
           </div>
-          </>}
-        </Card>
+          </>
+        </Card>}
 
         <Card title={t('projectDetail.people')}>
           <DetailList items={[
@@ -244,6 +257,7 @@ export function ProjectDetail() {
           )}
         </Card>
       </div>
+      {a && showSurvey && surveyCard('mt-5')}
       <div className="mt-5">
         <RoomAssignmentsTab projectId={project.id} leadDesignerId={project.designer?.id ?? null} apartmentRooms={project.apartment?.rooms} floors={project.apartment?.floors} leadName={project.designer?.fullName} members={project.members} closed={project.status === 'COMPLETED' || project.status === 'CANCELLED'} reloadKey={roomsKey} />
       </div>

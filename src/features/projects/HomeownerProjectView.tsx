@@ -13,11 +13,12 @@ import { PlanThumb } from './PlanThumb';
 import { getCurrentUser } from '@/services/authService';
 import { QuotationSummaryCard } from '@/features/quotations/QuotationSummaryCard';
 import { ReviewCard } from '@/features/reviews/ReviewCard';
+import { SiteSurveyCard } from '@/features/site-surveys/SiteSurveyCard';
 import { conceptStep, designLabel, isClosed, knownVersion, needsAction, needsCheck, nextFor, useLatestVersions } from './projectView';
 
 /** Homeowner overview of one project (/homeowner/projects/:id). Staff keeps its own layout in ProjectDetail.
  * The only "Open design" button is inside the Next step card; the latest drawing sits beside it. */
-export function HomeownerProjectView({ project }: { project: Project }) {
+export function HomeownerProjectView({ project, onProjectChanged }: { project: Project; onProjectChanged: () => void }) {
   const navigate = useNavigate();
   const workspace = canOpenWorkspace(project.status);
   const list = useMemo(() => [project], [project]);
@@ -170,7 +171,13 @@ export function HomeownerProjectView({ project }: { project: Project }) {
       )}
 
       <div className="grid items-start gap-5 lg:grid-cols-3">
-        <HomeCard project={project} className="lg:col-span-2" />
+        {/* no home until the site survey is confirmed: the survey takes its place; a confirmed survey stays beside it while DRAFT */}
+        <div className="space-y-5 lg:col-span-2">
+          {project.apartment && <HomeCard project={project} />}
+          {(!project.apartment || project.status === 'DRAFT') && (
+            <SiteSurveyCard project={project} viewer="homeowner" apartmentsRole="homeowner" onProjectChanged={onProjectChanged} />
+          )}
+        </div>
         <div className="space-y-5">
           <ReviewCard projectId={project.id} completed={project.status === 'COMPLETED'} homeowner />
           <PeopleCard project={project} />
