@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight, Ban, CircleCheck, Clock, CreditCard } from 'lucide-react';
-import { ArrowRight, Ban, CircleCheck, Clock } from 'lucide-react';
 
 import { AppShell, Button, Card, PageHeader, Skeleton, StatusChip, Stepper } from '@/components/ui';
 import { formatDate, formatDateTime, t, tList } from '@/i18n';
