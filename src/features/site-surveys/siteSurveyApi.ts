@@ -193,6 +193,29 @@ const SURVEY_OVERRIDES: Record<string, string> = {
   FORBIDDEN: 'siteSurvey.errors.cannotCancel',
 };
 
+/**
+ * 400 VALIDATION_ERROR → errors keyed like the form's own fields. `resolve` turns a backend path (`floors.0.rooms.1.area`;
+ * `floors[0]` is read the same) into a form key, or undefined when no field on the form matches. Backend messages are
+ * Vietnamese, so every matched field gets the same English hint. Returns null for any other error.
+ */
+export function surveyFieldErrors(e: unknown, resolve: (path: string) => string | undefined): { fields: Record<string, string>; formError: string } | null {
+  const err = (e ?? {}) as { code?: string; fieldErrors?: Record<string, string> };
+  const paths = Object.keys(err.fieldErrors ?? {});
+  if (err.code !== 'VALIDATION_ERROR' || !paths.length) return null;
+  const fields: Record<string, string> = {};
+  const unmatched: string[] = [];
+  for (const raw of paths) {
+    const path = raw.replace(/\[(\d+)\]/g, '.$1');
+    const key = resolve(path);
+    if (key) fields[key] = t('common.checkValue');
+    else unmatched.push(path);
+  }
+  const formError = unmatched.length
+    ? t('siteSurvey.v.serverFields', { fields: unmatched.join(', ') })
+    : t('siteSurvey.v.fix');
+  return { fields, formError };
+}
+
 /** English sentence for a failed survey call. SURVEY_INCOMPLETE names what is missing. */
 export function surveyErrorText(e: unknown): string {
   const err = (e ?? {}) as { code?: string; details?: Record<string, unknown> };

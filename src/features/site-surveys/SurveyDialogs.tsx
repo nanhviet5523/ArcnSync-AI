@@ -3,9 +3,9 @@ import type { FormEvent } from 'react';
 import { Button, Field, Input, Modal, Select, Textarea } from '@/components/ui';
 import { t } from '@/i18n';
 import type { PropertyType } from '@/services/apartmentService';
-import { MAX_SLOTS, siteSurveyApi, surveyErrorText } from './siteSurveyApi';
+import { MAX_SLOTS, siteSurveyApi, surveyErrorText, surveyFieldErrors } from './siteSurveyApi';
 import type { SchedulePayload, SiteSurvey, UpdateSurveyPayload } from './siteSurveyApi';
-import { blankSlot, isPast, localDate, sameSlots, slotLabel, toSlot, toSlotForm } from './surveyTime';
+import { blankSlot, isPast, sameSlots, slotLabel, toSlot, toSlotForm, vnDate } from './surveyTime';
 import type { SlotForm } from './surveyTime';
 
 /** Same rules as the backend: filled in, in the future, end after start, no time twice. */
@@ -21,7 +21,7 @@ function slotError(f: SlotForm, all: SlotForm[], index: number): string {
 function SlotRow({ value, onChange, error, label, onRemove, removeLabel }: {
   value: SlotForm; onChange: (v: SlotForm) => void; error?: string; label: string; onRemove?: () => void; removeLabel?: string;
 }) {
-  const [today] = useState(() => localDate(new Date()));
+  const [today] = useState(() => vnDate(new Date()));
   return (
     <fieldset className="rounded-lg border border-slate-200 p-3">
       <legend className="px-1 text-[13px] font-medium text-slate-700">{label}</legend>
@@ -117,7 +117,15 @@ export function BookingModal({ projectId, survey, onClose, onSaved }: {
       }
       onSaved(saved);
     } catch (e) {
-      setFormError(surveyErrorText(e));
+      const server = surveyFieldErrors(e, (path) => {
+        const slot = /^proposedSlots\.(\d+)\b/.exec(path);
+        if (slot) return Number(slot[1]) < slots.length ? `slot${slot[1]}` : undefined;
+        // propertyType has no error slot; tower is hidden for a house
+        if (path === 'propertyType' || (path === 'tower' && isHouse)) return undefined;
+        return path in form ? path : undefined;
+      });
+      if (server) { setErrors(server.fields); setFormError(server.formError); }
+      else setFormError(surveyErrorText(e));
     } finally {
       setSaving(false);
     }
@@ -133,7 +141,7 @@ export function BookingModal({ projectId, survey, onClose, onSaved }: {
         <FormError message={formError} />
         <section>
           <h3 className="text-[13px] font-semibold text-slate-800">{t('siteSurvey.booking.slots')}</h3>
-          <p className="mb-2 text-xs text-slate-500">{t('siteSurvey.booking.slotsHint')}</p>
+          <p className="mb-2 text-xs text-slate-500">{t('siteSurvey.booking.slotsHint')} {t('siteSurvey.booking.timeZone')}</p>
           {editing && survey?.status === 'SCHEDULED' && <p className="mb-2 text-xs text-amber-700">{t('siteSurvey.booking.slotsChangedNote')}</p>}
           <div className="space-y-2">
             {slots.map((s, i) => (
@@ -208,7 +216,12 @@ export function ScheduleModal({ survey, onClose, onSaved }: { survey: SiteSurvey
     } else body = { slotIndex: choice };
     setSaving(true);
     try { onSaved(await siteSurveyApi.schedule(survey.id, body)); }
-    catch (e) { setFormError(surveyErrorText(e)); }
+    catch (e) {
+      // startAt / endAt belong to the "Another time" row; anything else (slotIndex) goes on top
+      const server = surveyFieldErrors(e, (path) => (choice === 'other' && (path === 'startAt' || path === 'endAt') ? 'other' : undefined));
+      if (server) { setOtherError(server.fields.other ?? ''); setFormError(server.formError); }
+      else setFormError(surveyErrorText(e));
+    }
     finally { setSaving(false); }
   };
 
@@ -221,7 +234,7 @@ export function ScheduleModal({ survey, onClose, onSaved }: { survey: SiteSurvey
       <form id="survey-schedule" onSubmit={(e) => void submit(e)} noValidate>
         <FormError message={formError} />
         <fieldset className="space-y-2">
-          <legend className="mb-2 text-[13px] font-medium text-slate-700">{t('siteSurvey.schedule.offered')}</legend>
+          <legend className="mb-2 text-[13px] font-medium text-slate-700">{t('siteSurvey.schedule.offered')} <span className="font-normal text-slate-500">· {t('siteSurvey.booking.timeZone')}</span></legend>
           {survey.proposedSlots.map((slot, i) => (
             <label key={i} className={`flex items-center gap-3 rounded-lg border px-3 py-2.5 text-sm ${isPast(slot) ? 'border-slate-100 text-slate-400' : 'cursor-pointer border-slate-200 text-slate-800 hover:bg-slate-50'}`}>
               <input type="radio" name="slot" className="accent-blue-600" disabled={isPast(slot)} checked={choice === i} onChange={() => setChoice(i)} />
@@ -264,7 +277,12 @@ export function ReasonModal({ title, placeholder, confirmLabel, cancelLabel, dan
     setSaving(true);
     setFormError('');
     try { await onSubmit(value); }
-    catch (e) { setFormError(surveyErrorText(e)); setSaving(false); }
+    catch (e) {
+      const server = surveyFieldErrors(e, (path) => (path === 'reason' ? 'reason' : undefined));
+      if (server) { setError(server.fields.reason ?? ''); setFormError(server.formError); }
+      else setFormError(surveyErrorText(e));
+      setSaving(false);
+    }
   };
   return (
     <Modal title={title} onClose={onClose}

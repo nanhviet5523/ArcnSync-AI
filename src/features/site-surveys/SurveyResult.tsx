@@ -1,16 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
-import { Button, DetailList } from '@/components/ui';
+import { Button, DetailList, Modal } from '@/components/ui';
 import { formatNumber, t } from '@/i18n';
 import { roomTypeLabel } from './roomTypes';
 import { MAX_PHOTO_BYTES, MAX_PHOTOS_PER_FLOOR, MAX_PHOTOS_PER_UPLOAD, PHOTO_TYPES, siteSurveyApi, surveyErrorText } from './siteSurveyApi';
 import type { SiteSurvey, SurveyFloor, SurveyPhoto } from './siteSurveyApi';
 
 /** One photo, fetched with the bearer token and shown from an object URL. */
-function PhotoThumb({ floorId, photo, onDelete }: { floorId: string; photo: SurveyPhoto; onDelete?: () => Promise<void> }) {
+function PhotoThumb({ floorId, photo, onDelete }: { floorId: string; photo: SurveyPhoto; onDelete?: () => void }) {
   const [url, setUrl] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
-  const [deleting, setDeleting] = useState(false);
   useEffect(() => {
     let alive = true;
     let objectUrl: string | null = null;
@@ -32,9 +31,8 @@ function PhotoThumb({ floorId, photo, onDelete }: { floorId: string; photo: Surv
         <span className="grid h-full place-items-center px-1 text-center text-[11px] text-slate-500">{t('siteSurvey.photoFailed')}</span>
       ) : <span aria-hidden className="block h-full w-full animate-pulse" />}
       {onDelete && (
-        <button type="button" disabled={deleting} aria-label={t('siteSurvey.deletePhoto', { name: photo.fileName })}
-          onClick={() => { setDeleting(true); void onDelete().finally(() => setDeleting(false)); }}
-          className="absolute right-1 top-1 grid h-6 w-6 place-items-center rounded-full bg-white/90 text-xs font-bold text-rose-700 shadow hover:bg-white disabled:opacity-50">
+        <button type="button" aria-label={t('siteSurvey.deletePhoto', { name: photo.fileName })} onClick={onDelete}
+          className="absolute right-1 top-1 grid h-6 w-6 place-items-center rounded-full bg-white/90 text-xs font-bold text-rose-700 shadow hover:bg-white">
           ✕
         </button>
       )}
@@ -78,13 +76,20 @@ function FloorPhotos({ floor, editable, onChange, onMessage }: {
     }
   };
 
+  /** Photo waiting for the "Delete photo?" answer. */
+  const [pending, setPending] = useState<SurveyPhoto | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const remove = async (photo: SurveyPhoto) => {
+    setDeleting(true);
     try {
       await siteSurveyApi.deletePhoto(floor.id, photo.id);
       onChange(floor.photos.filter((p) => p.id !== photo.id));
       onMessage('success', t('siteSurvey.done.photoDeleted'));
     } catch (e) {
       onMessage('error', surveyErrorText(e));
+    } finally {
+      setDeleting(false);
+      setPending(null);
     }
   };
 
@@ -105,10 +110,19 @@ function FloorPhotos({ floor, editable, onChange, onMessage }: {
       </div>
       {floor.photos.length ? (
         <ul className="grid grid-cols-3 gap-2 sm:grid-cols-5">
-          {floor.photos.map((p) => <PhotoThumb key={p.id} floorId={floor.id} photo={p} onDelete={editable ? () => remove(p) : undefined} />)}
+          {floor.photos.map((p) => <PhotoThumb key={p.id} floorId={floor.id} photo={p} onDelete={editable ? () => setPending(p) : undefined} />)}
         </ul>
       ) : <p className={`text-xs ${editable ? 'text-amber-700' : 'text-slate-500'}`}>{editable ? t('siteSurvey.photosNeeded') : t('siteSurvey.noPhotos')}</p>}
       {editable && <p className="mt-1.5 text-[11px] text-slate-500">{t('siteSurvey.photoHint', { max: MAX_PHOTOS_PER_FLOOR })}</p>}
+      {pending && (
+        <Modal title={t('siteSurvey.deletePhotoTitle')} onClose={() => !deleting && setPending(null)}
+          footer={<>
+            <Button disabled={deleting} onClick={() => setPending(null)}>{t('common.cancel')}</Button>
+            <Button variant="danger" loading={deleting} onClick={() => void remove(pending)}>{t('siteSurvey.deletePhotoConfirm')}</Button>
+          </>}>
+          <p className="text-sm text-slate-700">{t('siteSurvey.deletePhotoBody', { name: pending.fileName, floor: floor.name })}</p>
+        </Modal>
+      )}
     </div>
   );
 }

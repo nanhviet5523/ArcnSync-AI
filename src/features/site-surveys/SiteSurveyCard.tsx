@@ -84,6 +84,13 @@ export function SiteSurveyCard({ project, viewer, canCancel = viewer !== 'member
   // a confirmed result stays folded once the home exists; the Home card shows it
   const resultOpen = status === 'SUBMITTED' || status === 'REJECTED' || photosEditable || showResult;
   // the Lead works on the result from the visit on; everyone else sees it once it has been submitted
+  // What the backend would refuse with 422 SURVEY_INCOMPLETE, worked out from data already loaded (the 422 is still handled)
+  const submitBlockers = !survey ? [] : [
+    ...(survey.floors.length === 0 ? [t('siteSurvey.submitBlocked.noResult')] : []),
+    ...(survey.floors.length > 0 && (survey.bedroomCount == null || survey.bathroomCount == null) ? [t('siteSurvey.submitBlocked.noCounts')] : []),
+    ...(survey.floors.some((f) => f.photos.length === 0)
+      ? [t('siteSurvey.submitBlocked.missingPhotos', { floors: survey.floors.filter((f) => f.photos.length === 0).map((f) => f.name).join(', ') })] : []),
+  ];
   const resultShown = !!survey && (lead
     ? status !== 'REQUESTED' && status !== 'CANCELLED'
     : (status === 'SUBMITTED' || status === 'CONFIRMED' || status === 'REJECTED') && survey.floors.length > 0);
@@ -97,8 +104,10 @@ export function SiteSurveyCard({ project, viewer, canCancel = viewer !== 'member
         {t(survey.floors.length ? 'siteSurvey.editResults' : 'siteSurvey.record')}
       </Button>
     )}
-    {lead && status && isMeasurable(status) && survey.floors.length > 0 && (
-      <Button size="sm" variant="primary" loading={busy === 'submit'} onClick={() => void run('submit', () => siteSurveyApi.submit(survey.id), 'submitted')}>{t('siteSurvey.submit')}</Button>
+    {lead && status && isMeasurable(status) && (
+      <Button size="sm" variant="primary" loading={busy === 'submit'} disabled={submitBlockers.length > 0}
+        aria-describedby={submitBlockers.length ? 'survey-submit-blockers' : undefined}
+        onClick={() => void run('submit', () => siteSurveyApi.submit(survey.id), 'submitted')}>{t('siteSurvey.submit')}</Button>
     )}
     {viewer === 'homeowner' && status === 'SUBMITTED' && <>
       <Button size="sm" onClick={() => setDialog('reject')}>{t('siteSurvey.reject')}</Button>
@@ -159,6 +168,11 @@ export function SiteSurveyCard({ project, viewer, canCancel = viewer !== 'member
           ]} />
 
           <div className="flex flex-wrap gap-2">{actions}</div>
+          {lead && status && isMeasurable(status) && submitBlockers.length > 0 && (
+            <p id="survey-submit-blockers" className="-mt-2 text-xs text-slate-500">
+              {t('siteSurvey.submitBlocked.lead')} {submitBlockers.join(' · ')}
+            </p>
+          )}
 
           {resultShown && (
             <div className="border-t border-line pt-4">
