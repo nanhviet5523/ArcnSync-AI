@@ -8,8 +8,8 @@ import { catalogService } from '@/services/catalogService';
 import type { CatalogCategory, CostCategory } from '@/services/catalogService';
 
 const COST: CostCategory[] = ['FURNITURE', 'FINISHING', 'LIGHTING', 'DECOR', 'OTHER'];
-type Form = { id: string | null; code: string; name: string; parentId: string; defaultModelUrl: string; costCategory: CostCategory | ''; isActive: boolean };
-const blank: Form = { id: null, code: '', name: '', parentId: '', defaultModelUrl: '', costCategory: 'FURNITURE', isActive: true };
+type Form = { id: string | null; code: string; name: string; parentId: string; defaultModelUrl: string | null; hasDefaultModel: boolean; modelFile: File | null; costCategory: CostCategory | ''; isActive: boolean };
+const blank: Form = { id: null, code: '', name: '', parentId: '', defaultModelUrl: null, hasDefaultModel: false, modelFile: null, costCategory: 'FURNITURE', isActive: true };
 
 /** Shared product categories: only the admin creates and edits them; suppliers pick one when adding a product. */
 export function AdminCategories() {
@@ -28,7 +28,7 @@ export function AdminCategories() {
 
   const openForm = (c?: CatalogCategory) => {
     setFormError(''); setFieldErrors({});
-    setForm(c ? { id: c.id, code: c.code, name: c.name, parentId: c.parentId ?? '', defaultModelUrl: c.defaultModelUrl ?? '', costCategory: c.costCategory ?? '', isActive: c.isActive } : blank);
+    setForm(c ? { id: c.id, code: c.code, name: c.name, parentId: c.parentId ?? '', defaultModelUrl: c.defaultModelUrl, hasDefaultModel: c.hasDefaultModel, modelFile: null, costCategory: c.costCategory ?? '', isActive: c.isActive } : { ...blank });
   };
   const set = (p: Partial<Form>) => setForm((f) => (f ? { ...f, ...p } : f));
 
@@ -42,24 +42,52 @@ export function AdminCategories() {
     if (Object.keys(local).length) return;
     setBusy(true);
     try {
+      let categoryId = form.id;
       if (form.id) {
         await catalogService.updateAdminCategory(form.id, {
           name: form.name.trim(), parentId: form.parentId || null, isActive: form.isActive,
-          defaultModelUrl: form.defaultModelUrl.trim() || null, costCategory: form.costCategory || null,
+          costCategory: form.costCategory || null,
         });
       } else {
-        await catalogService.createAdminCategory({
+        const created = await catalogService.createAdminCategory({
           code: form.code.trim().toUpperCase(), name: form.name.trim(), isActive: form.isActive,
           ...(form.parentId ? { parentId: form.parentId } : {}),
-          ...(form.defaultModelUrl.trim() ? { defaultModelUrl: form.defaultModelUrl.trim() } : {}),
           ...(form.costCategory ? { costCategory: form.costCategory } : {}),
         });
+        categoryId = created.id;
+        // Keep the created ID in the form if the separate model upload fails, so retry won't create a duplicate category.
+        if (form.modelFile) setForm((current) => current ? { ...current, id: created.id, defaultModelUrl: created.defaultModelUrl, hasDefaultModel: created.hasDefaultModel } : current);
       }
+      if (form.modelFile && categoryId) await catalogService.uploadCategoryModel(categoryId, form.modelFile);
       setForm(null); await load();
     } catch (e) {
       setFormError(errorText(e));
       if (e instanceof ApiError) setFieldErrors(fieldErrorsText(e.fieldErrors));
     } finally { setBusy(false); }
+  };
+
+  const removeModel = async () => {
+    if (!form?.id) return;
+    setBusy(true); setFormError('');
+    try {
+      await catalogService.removeCategoryModel(form.id);
+      setForm((current) => current ? { ...current, defaultModelUrl: null, hasDefaultModel: false, modelFile: null } : current);
+      await load();
+    } catch (e) { setFormError(errorText(e)); }
+    finally { setBusy(false); }
+  };
+
+  const downloadModel = async () => {
+    if (!form?.id) return;
+    setBusy(true); setFormError('');
+    try {
+      const blob = await catalogService.downloadCategoryModel(form.id);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url; link.download = `${form.code.toLowerCase()}-model-3d.glb`; link.click();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (e) { setFormError(errorText(e)); }
+    finally { setBusy(false); }
   };
 
   const parentName = (id: string | null) => items?.find((c) => c.id === id)?.name;
@@ -68,7 +96,7 @@ export function AdminCategories() {
     { key: 'name', header: t('categories.col.name'), sort: (c) => c.name.toLowerCase(), cell: (c) => <span className="font-medium text-slate-900">{c.name}</span> },
     { key: 'parent', header: t('categories.col.parent'), cell: (c) => <span className="text-slate-600">{parentName(c.parentId) ?? t('common.none')}</span> },
     { key: 'cost', header: t('categories.col.cost'), sort: (c) => c.costCategory ?? '~', cell: (c) => <span className="text-slate-600">{c.costCategory ? t(`categories.costGroup.${c.costCategory}`) : t('common.none')}</span> },
-    { key: 'model', header: t('categories.col.model'), hideOnMobile: true, className: 'max-w-56', cell: (c) => <span className="block truncate text-xs text-slate-500">{c.defaultModelUrl ?? t('common.none')}</span> },
+    { key: 'model', header: t('categories.col.model'), hideOnMobile: true, cell: (c) => <span className="text-xs text-slate-500">{c.hasDefaultModel ? (c.defaultModelUrl ?? 'Model available') : t('common.none')}</span> },
     { key: 'status', header: t('categories.col.status'), sort: (c) => (c.isActive ? 0 : 1), cell: (c) => <StatusChip tone={c.isActive ? 'green' : 'gray'} label={t(c.isActive ? 'categories.active' : 'categories.hidden')} /> },
   ];
 
@@ -110,8 +138,11 @@ export function AdminCategories() {
                 )}
               </Field>
             </div>
-            <Field label={t('categories.model')} hint={t('categories.modelHint')} error={fieldErrors.defaultModelUrl}>
-              {(f) => <Input {...f} maxLength={500} value={form.defaultModelUrl} onChange={(e) => set({ defaultModelUrl: e.target.value })} placeholder="/models/placeholders/ph-sofa.glb" />}
+            <Field label={t('categories.model')} hint="Upload a .glb file (maximum 50 MB). Model files are managed separately from category details.">
+              {(f) => <div className="space-y-2"><Input {...f} type="file" accept=".glb,model/gltf-binary" onChange={(e) => set({ modelFile: e.target.files?.[0] ?? null })} />
+                <p className="text-xs text-slate-500">{form.hasDefaultModel ? `A model is attached${form.defaultModelUrl ? `: ${form.defaultModelUrl}` : ''}.` : 'No model attached.'}</p>
+                {form.id && form.hasDefaultModel && <div className="flex gap-2">{form.defaultModelUrl?.startsWith('/product-categories/') && <Button size="sm" disabled={busy} onClick={downloadModel}>Download model</Button>}<Button size="sm" disabled={busy} onClick={removeModel}>Remove model</Button></div>}
+              </div>}
             </Field>
             <label className="flex items-center gap-2 text-sm text-slate-700">
               <input type="checkbox" checked={form.isActive} onChange={(e) => set({ isActive: e.target.checked })} className="h-4 w-4 rounded border-slate-300" />
