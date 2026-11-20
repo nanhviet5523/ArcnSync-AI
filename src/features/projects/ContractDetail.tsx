@@ -505,6 +505,7 @@ export const ContractDetail: React.FC = () => {
   const otpButtonLabel = otpRequesting
     ? t('signatureOtp.sending')
     : cooldownLeft > 0 ? t('signatureOtp.resendIn', { seconds: cooldownLeft }) : null;
+
   const depositMilestone = contract.milestones.find((m) => m.stageType === 'DEPOSIT');
   const canSendSigning = status === 'DRAFT' && esignStatus === 'NOT_SENT' && contract.unsignedFile !== null;
 
@@ -805,6 +806,14 @@ export const ContractDetail: React.FC = () => {
                       </span>
                     </td>
                     <td className="px-3 py-3">
+                      {isCustomer && (m.status === 'INVOICED' || m.status === 'OVERDUE') && (
+                        <button
+                          type="button"
+                          onClick={() => navigate(`/homeowner/payments?projectId=${encodeURIComponent(projectId)}&milestoneId=${encodeURIComponent(m.id)}`)}
+                          className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-blue-700"
+                        >
+                          Thanh toán
+
                       {isCustomer && m.stageType === 'DEPOSIT' && m.status === 'INVOICED' && (
                         <button
                           type="button"
@@ -821,6 +830,7 @@ export const ContractDetail: React.FC = () => {
               </tbody>
             </table>
           </div>
+
           {depositMilestone?.status === 'INVOICED' && isCustomer && (
             <p className="mt-3 text-[11px] text-slate-400">
               Nút thanh toán đặt cọc hiện chưa khả dụng — tính năng cổng thanh toán sẽ được bổ sung ở giai đoạn sau.
