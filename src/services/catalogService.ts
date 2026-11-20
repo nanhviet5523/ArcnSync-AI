@@ -1,4 +1,4 @@
-import { apiRequest } from '@/services/authService';
+import { apiFetch, apiRequest, buildApiError } from '@/services/authService';
 
 export type StockStatus = 'IN_STOCK' | 'OUT_OF_STOCK' | 'PRE_ORDER';
 export type ProductStatus = 'ACTIVE' | 'INACTIVE';
@@ -13,6 +13,7 @@ export interface CatalogCategory {
   code: string;
   name: string;
   isActive: boolean;
+  hasDefaultModel: boolean;
   defaultModelUrl: string | null;
   costCategory: CostCategory | null;
 }
@@ -58,7 +59,6 @@ export interface CategoryCreatePayload {
   code: string;
   name: string;
   isActive?: boolean;
-  defaultModelUrl?: string;
   costCategory?: CostCategory;
 }
 
@@ -66,7 +66,6 @@ export interface CategoryUpdatePayload {
   parentId?: string | null;
   name?: string;
   isActive?: boolean;
-  defaultModelUrl?: string | null;
   costCategory?: CostCategory | null;
 }
 
@@ -110,11 +109,30 @@ export const catalogService = {
   getAdminCategory(id: string) {
     return apiRequest<CatalogCategory>(`/admin/product-categories/${encodeURIComponent(id)}`);
   },
+  /** Tải model mẫu .glb của danh mục; endpoint yêu cầu access token. */
+  async downloadCategoryModel(id: string) {
+    const response = await apiFetch(`/product-categories/${encodeURIComponent(id)}/model-3d`);
+    if (!response.ok) {
+      const data = await response.json().catch(() => null);
+      throw buildApiError(response.status, data, `Request failed (${response.status}). Please try again.`);
+    }
+    return response.blob();
+  },
   createAdminCategory(payload: CategoryCreatePayload) {
     return apiRequest<CatalogCategory>('/admin/product-categories', { method: 'POST', body: JSON.stringify(payload) });
   },
   updateAdminCategory(id: string, payload: CategoryUpdatePayload) {
     return apiRequest<CatalogCategory>(`/admin/product-categories/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(payload) });
+  },
+  /** Upload hoặc thay model mẫu (.glb, tối đa 50 MB), multipart field `file`. */
+  uploadCategoryModel(id: string, file: File) {
+    const form = new FormData();
+    form.append('file', file);
+    return apiRequest<CatalogCategory>(`/admin/product-categories/${encodeURIComponent(id)}/model-3d`, { method: 'PUT', body: form });
+  },
+  /** Gỡ model mẫu khỏi danh mục. */
+  removeCategoryModel(id: string) {
+    return apiRequest<void>(`/admin/product-categories/${encodeURIComponent(id)}/model-3d`, { method: 'DELETE' });
   },
   listProducts(params: { q?: string; categoryId?: string; styleId?: string; supplierId?: string; minPrice?: string; maxPrice?: string; stockStatus?: StockStatus; status?: ProductStatus; page?: number; limit?: number } = {}) {
     return apiRequest<CatalogPage<CatalogProduct>>(`/products${queryString({ page: 1, limit: 100, ...params })}`);

@@ -378,12 +378,6 @@ export const projectApi = {
   findCustomer: (email: string) => apiRequest<{ id: string; email: string; fullName: string; phone: string }>(`/users/customers${qs({ email })}`),
   listDesigners: () => getDesigners({ available: true, limit: 100 }),
   listApartments: (ownerId: string) => apiRequest<Page<Apartment>>(`/apartments${qs({ ownerId, limit: 100 })}`),
-  createApartment: (body: {
-    ownerEmail: string; propertyType: 'APARTMENT' | 'HOUSE'; buildingName: string; address: string; unitNo: string;
-    netArea: number; bedroomCount: number; bathroomCount: number;
-    /** Block / tower: APARTMENT only, never sent for a HOUSE. */
-    tower?: string;
-  }) => apiRequest<Apartment>('/apartments', json('POST', body)),
 };
 
 /** Index into the 7 project steps (steps.project): Contract, Requirements, Concept, Layout, Products, Quotation, Handover.
@@ -400,6 +394,14 @@ export function nextStep(role: UserRole, p: Project): string {
   if (p.status === 'CANCELLED') return t('nextStep.cancelled');
   if (p.status === 'COMPLETED') return t(role === 'homeowner' ? 'nextStep.completedHomeowner' : 'nextStep.completed');
   if (isPreparing(p.status)) {
+    // A DRAFT project without a home is in the site survey: booked by the homeowner once a Lead is assigned.
+    // `apartment === null` only: callers that pass a partial project (no apartment field) keep the old sentence.
+    if (p.status === 'DRAFT' && p.apartment === null) {
+      if (role === 'staff' || role === 'admin') return t(p.designer ? 'nextStep.surveyStaff' : 'nextStep.surveyStaffNoLead');
+      if (role === 'homeowner' && p.designer) return t('nextStep.surveyHomeowner');
+      if (role === 'designer' && p.myProjectRole === 'LEAD') return t('nextStep.surveyLead');
+      return t('nextStep.waitingStaff');
+    }
     if (role === 'staff' || role === 'admin') {
       // Kickoff is only possible once the deposit is paid (REQUIREMENT_ANALYSIS); before that the staff wait on the contract.
       if (p.status === 'REQUIREMENT_ANALYSIS') return t(p.designer ? 'nextStep.staffKickoff' : 'nextStep.staffAssign');
