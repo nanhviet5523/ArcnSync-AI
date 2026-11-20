@@ -88,6 +88,8 @@ export function HomeownerProjectView({ project }: { project: Project }) {
 
 
       {(project.status === 'QUOTING' || project.status === 'COMPLETED') && <QuotationSummaryCard projectId={project.id} homeowner />}
+      {/* back in product selection after asking for changes: say Lead is updating the products */}
+      {project.status === 'PRODUCT_SELECTION' && <QuotationSummaryCard projectId={project.id} homeowner onlyAfterChangeRequest />}
 
       <section className="mb-5 flex flex-col gap-4 rounded-card border border-blue-100 bg-white p-5 shadow-card sm:flex-row sm:items-center sm:justify-between sm:p-6">
         <div className="flex items-start gap-3">
