@@ -506,7 +506,6 @@ export const ContractDetail: React.FC = () => {
     ? t('signatureOtp.sending')
     : cooldownLeft > 0 ? t('signatureOtp.resendIn', { seconds: cooldownLeft }) : null;
 
-  const depositMilestone = contract.milestones.find((m) => m.stageType === 'DEPOSIT');
   const canSendSigning = status === 'DRAFT' && esignStatus === 'NOT_SENT' && contract.unsignedFile !== null;
 
   return (
@@ -813,15 +812,6 @@ export const ContractDetail: React.FC = () => {
                           className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-blue-700"
                         >
                           Thanh toán
-
-                      {isCustomer && m.stageType === 'DEPOSIT' && m.status === 'INVOICED' && (
-                        <button
-                          type="button"
-                          disabled
-                          title="Tính năng thanh toán trực tuyến sẽ được bổ sung sau"
-                          className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-bold text-white opacity-50 cursor-not-allowed"
-                        >
-                          Thanh toán đặt cọc
                         </button>
                       )}
                     </td>
@@ -831,11 +821,6 @@ export const ContractDetail: React.FC = () => {
             </table>
           </div>
 
-          {depositMilestone?.status === 'INVOICED' && isCustomer && (
-            <p className="mt-3 text-[11px] text-slate-400">
-              Nút thanh toán đặt cọc hiện chưa khả dụng — tính năng cổng thanh toán sẽ được bổ sung ở giai đoạn sau.
-            </p>
-          )}
         </section>
       )}
     </Shell>
