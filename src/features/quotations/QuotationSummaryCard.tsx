@@ -3,31 +3,36 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowRight, Receipt } from 'lucide-react';
 import { Button, ErrorState, Skeleton, StatusChip } from '@/components/ui';
 import { errorText, formatMoney, t } from '@/i18n';
-import { quotationApi } from './quotationApi';
-import type { Quotation } from './quotationApi';
+import { budgetStatusFromFlag, quotationApi, todayVn } from './quotationApi';
+import type { QuotationSummary } from './quotationApi';
 
 /**
- * Latest quotation the viewer may see, on the project overview (quotation stage and after). Highlighted when it
- * waits for the homeowner's answer; a quiet line while staff is still preparing it.
+ * Latest quotation the viewer may see, on the project overview (the homeowner never gets drafts). Highlighted when it
+ * waits for the homeowner's answer. After a change request it says Lead is updating the products.
  */
-export function QuotationSummaryCard({ projectId, homeowner }: { projectId: string; homeowner: boolean }) {
+export function QuotationSummaryCard({ projectId, homeowner, onlyAfterChangeRequest = false }: {
+  projectId: string; homeowner: boolean;
+  /** Render nothing unless the latest quotation is CHANGES_REQUESTED (product selection stage). */
+  onlyAfterChangeRequest?: boolean;
+}) {
   const navigate = useNavigate();
-  const [quotation, setQuotation] = useState<Quotation | null | undefined>(undefined);
+  const [quotation, setQuotation] = useState<QuotationSummary | null | undefined>(undefined);
   const [error, setError] = useState('');
 
   const load = useCallback(async () => {
     setError('');
-    try { setQuotation(await quotationApi.current(projectId)); } catch (e) {
-      if ((e as { status?: number }).status === 404) setQuotation(null); else setError(errorText(e));
-    }
+    try { setQuotation((await quotationApi.list(projectId))[0] ?? null); } catch (e) { setError(errorText(e)); }
   }, [projectId]);
   useEffect(() => { Promise.resolve().then(load); }, [load]);
 
   const open = () => navigate(`/projects/${projectId}/quotation`);
+  if (onlyAfterChangeRequest && quotation?.status !== 'CHANGES_REQUESTED') return null;
   if (error) return <div className="mb-5"><ErrorState message={error} onRetry={load} /></div>;
   if (quotation === undefined) return <Skeleton className="mb-5 h-24 w-full rounded-card" />;
 
-  const waiting = homeowner && quotation?.status === 'SENT';
+  const expired = quotation?.status === 'SENT' && !!quotation.validUntil && quotation.validUntil < todayVn();
+  const waiting = homeowner && quotation?.status === 'SENT' && !expired;
+  const changing = quotation?.status === 'CHANGES_REQUESTED';
   return (
     <section aria-labelledby="quotation-summary"
       className={`mb-5 flex flex-col gap-4 rounded-card border p-5 shadow-card sm:flex-row sm:items-center sm:justify-between sm:p-6 ${waiting ? 'border-blue-100 bg-brand-soft' : 'border-line bg-surface'}`}>
@@ -36,17 +41,18 @@ export function QuotationSummaryCard({ projectId, homeowner }: { projectId: stri
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <h2 id="quotation-summary" className="text-[15px] font-semibold text-slate-900">{t('quotation.title')}</h2>
-            {quotation && <StatusChip kind="quotation" value={quotation.status} size="sm" />}
+            {quotation && <StatusChip kind="quotation" value={expired ? 'EXPIRED' : quotation.status} size="sm" />}
           </div>
           {quotation ? (
             <>
-              <p className="mt-1 text-2xl font-bold tabular-nums text-slate-900">{formatMoney(quotation.total)}</p>
+              <p className="mt-1 text-2xl font-bold tabular-nums text-slate-900">{formatMoney(quotation.totalAmount)}</p>
               <p className="mt-0.5 flex flex-wrap items-center gap-2 text-sm text-slate-600">
-                {t('quotation.revision', { n: quotation.revisionNo })} · {t('quotation.lines', { n: quotation.items.length })}
-                <StatusChip kind="budget" value={quotation.budget.status} size="sm" />
+                {quotation.quotationNo} · {t('quotation.revision', { n: quotation.revisionNo })}
+                <StatusChip kind="budget" value={budgetStatusFromFlag(quotation.withinBudget)} size="sm" />
               </p>
+              {changing && <p className="mt-1 text-sm text-slate-600">{t(homeowner ? 'quotation.changesRequestedHomeowner' : 'quotation.changesRequestedTeam')}</p>}
             </>
-          ) : <p className="mt-1 text-sm text-slate-600">{t(homeowner ? 'quotation.empty.waitingStaff' : 'quotation.empty.staff')}</p>}
+          ) : <p className="mt-1 text-sm text-slate-600">{t(homeowner ? 'quotation.empty.waitingStaff' : 'quotation.empty.waitingTeam')}</p>}
         </div>
       </div>
       {(quotation || !homeowner) && (

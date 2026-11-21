@@ -751,10 +751,12 @@ export function revokeBlobUrls() {
   blobCache.clear();
 }
 
-export async function downloadFile(path: string, fallbackName: string) {
+/** Downloads with the token. The server's file name wins unless `preferFallbackName` is set. */
+export async function downloadFile(path: string, fallbackName: string, opts: { preferFallbackName?: boolean } = {}) {
   const res = await apiFetch(path);
   if (!res.ok) throw buildApiError(res.status, await res.json().catch(() => null), 'Không tải được file');
-  const name = /filename="?([^";]+)"?/.exec(res.headers.get('Content-Disposition') ?? '')?.[1] ?? fallbackName;
+  const name = opts.preferFallbackName ? fallbackName
+    : /filename="?([^";]+)"?/.exec(res.headers.get('Content-Disposition') ?? '')?.[1] ?? fallbackName;
   const a = document.createElement('a');
   a.href = URL.createObjectURL(await res.blob());
   a.download = name;

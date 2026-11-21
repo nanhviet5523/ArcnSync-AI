@@ -34,7 +34,7 @@ const STATUS: Record<string, Record<string, Tone>> = {
   flag: { NEEDS_ME: 'amber' },
   projectRole: { LEAD: 'blue', MEMBER: 'gray' },
   roomDraft: { DRAFT: 'gray', READY: 'green' },
-  quotation: { DRAFT: 'gray', SENT: 'yellow', APPROVED: 'green', REJECTED: 'amber' },
+  quotation: { DRAFT: 'gray', SENT: 'yellow', ACCEPTED: 'green', CHANGES_REQUESTED: 'amber', EXPIRED: 'struck' },
   inquiry: { NEW: 'blue', IN_PROGRESS: 'yellow', RESOLVED: 'green', SPAM: 'struck' },
   budget: { BELOW: 'sky', WITHIN: 'green', WITHIN_TOLERANCE: 'amber', OVER: 'red' },
   siteSurvey: { REQUESTED: 'gray', SCHEDULED: 'blue', SUBMITTED: 'yellow', CONFIRMED: 'green', REJECTED: 'amber', CANCELLED: 'red' },

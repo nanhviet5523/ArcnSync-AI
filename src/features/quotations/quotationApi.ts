@@ -1,81 +1,69 @@
 import { apiRequest, downloadFile } from '@/services/authService';
 import { formatMoney } from '@/i18n';
-import type { ProjectStatus } from '@/features/projects/projectApi';
 
-export type QuotationStatus = 'DRAFT' | 'SENT' | 'APPROVED' | 'REJECTED';
+/**
+ * Quotation / BOM API (backend module `quotations`). The backend creates a DRAFT itself when the homeowner approves the
+ * products of a RENDER_3D version; staff in charge (or admin) sets the expiry and sends it; the homeowner accepts it or
+ * asks for changes. ACCEPTED, CHANGES_REQUESTED and EXPIRED are final: the next approval creates revision n + 1.
+ */
+export type QuotationStatus = 'DRAFT' | 'SENT' | 'ACCEPTED' | 'CHANGES_REQUESTED' | 'EXPIRED';
+/** Computed on the frontend from the budget snapshot; WITHIN and WITHIN_TOLERANCE are the backend's `withinBudget = true`. */
 export type BudgetStatus = 'BELOW' | 'WITHIN' | 'WITHIN_TOLERANCE' | 'OVER';
+
+/** Keys of `costBreakdown`, in display order. */
+export const COST_GROUPS = ['FURNITURE', 'FINISHING', 'LIGHTING', 'DECOR', 'OTHER', 'DESIGN_FEE'] as const;
+export type CostGroup = (typeof COST_GROUPS)[number];
+/** Cost group of a product line (every group except the design fee). */
+export type CostCategory = Exclude<CostGroup, 'DESIGN_FEE'>;
 
 export interface QuotationItem {
   id: string;
-  lineNo: number;
-  categoryId: string | null;
-  categoryName: string;
+  productSelectionId: string;
   productId: string;
-  productName: string;
-  sku: string;
+  supplierId: string;
   supplierName: string | null;
+  productName: string;
+  costCategory: CostCategory;
+  /** PIECE / SET / M2 / M / LITER / KG */
   unit: string;
   /** Money and quantities are strings ("12500000.00"); convert only to display or to estimate. */
   quantity: string;
+  /** Price when the product was selected. */
   unitPrice: string;
   lineTotal: string;
-  /** Design items using this product: their product options feed "Try options". */
-  elementIds: string[];
 }
 
-export interface QuotationGroup {
-  categoryId: string | null;
-  categoryName: string;
-  lineCount: number;
-  quantity: string;
-  subtotal: string;
-  sharePercent: string;
-}
-
+/** Project budget when the quotation was created. `limit` = max × (1 + tolerancePercent / 100). */
 export interface QuotationBudget {
   min: string;
   max: string;
   tolerancePercent: string;
-  ceiling: string;
-  status: BudgetStatus;
-  differenceFromMax: string;
-}
-
-export interface RequestedChange {
-  itemId: string;
-  currentProductName: string;
-  productId: string;
-  productName: string;
-  unitPrice: string;
+  limit: string;
 }
 
 export interface QuotationSummary {
   id: string;
-  projectId: string;
+  /** Q-<project code>-<revisionNo> */
+  quotationNo: string;
   revisionNo: number;
+  designVersionId: string;
   status: QuotationStatus;
-  subtotal: string;
-  discountAmount: string;
-  total: string;
+  productsSubtotal: string;
+  designFee: string;
+  totalAmount: string;
+  /** totalAmount ≤ budget.limit */
+  withinBudget: boolean;
+  /** YYYY-MM-DD */
   validUntil: string | null;
-  itemCount: number;
-  sentAt: string | null;
-  respondedAt: string | null;
   createdAt: string;
+  acceptedAt: string | null;
 }
 
 export interface Quotation extends QuotationSummary {
-  project: { id: string; code: string; title: string; status: ProjectStatus };
-  designVersion: { id: string; label: string };
-  note: string | null;
-  rejectionReason: string | null;
-  requestedChanges: RequestedChange[];
-  createdBy: { id: string; fullName: string } | null;
-  respondedBy: { id: string; fullName: string } | null;
-  updatedAt: string;
-  items: QuotationItem[];
-  groups: QuotationGroup[];
+  projectId: string;
+  costBreakdown: Record<CostGroup, string>;
   budget: QuotationBudget;
+  items: QuotationItem[];
 }
 
 /** One alternative product of a design item (GET /design-elements/:id/product-options). */
@@ -90,7 +78,7 @@ export interface ProductOption {
   fit: string;
 }
 
-export interface Replacement { itemId: string; productId: string }
+export type QuotationFileFormat = 'csv' | 'pdf';
 
 const json = (method: string, body?: unknown): RequestInit => ({ method, body: body === undefined ? undefined : JSON.stringify(body) });
 
@@ -101,57 +89,65 @@ const option = (o: any): ProductOption => ({
 });
 
 export const quotationApi = {
-  list: async (projectId: string) => (await apiRequest<{ items: QuotationSummary[] }>(`/projects/${projectId}/quotations`)).items,
-  /** Latest quotation the viewer may see; 404 QUOTATION_NOT_FOUND when there is none. */
-  current: (projectId: string) => apiRequest<Quotation>(`/projects/${projectId}/quotation`),
+  /** Newest revision first; the homeowner never gets DRAFTs. */
+  list: (projectId: string) => apiRequest<QuotationSummary[]>(`/projects/${projectId}/quotations`),
+  /** 404 QUOTATION_NOT_FOUND when the viewer may not see it (homeowner + DRAFT). */
   get: (id: string) => apiRequest<Quotation>(`/quotations/${id}`),
-  create: (projectId: string, body: { discountAmount?: string; note?: string; validUntil?: string; applyRequestedChanges?: boolean }) =>
-    apiRequest<Quotation>(`/projects/${projectId}/quotations`, json('POST', body)),
-  update: (id: string, body: { discountAmount?: string; note?: string | null; validUntil?: string | null; replacements?: Replacement[] }) =>
-    apiRequest<Quotation>(`/quotations/${id}`, json('PATCH', body)),
+  /** Staff in charge / admin, DRAFT only. `null` clears it: sending then sets today + 14 days. */
+  updateValidUntil: (id: string, validUntil: string | null) => apiRequest<Quotation>(`/quotations/${id}`, json('PATCH', { validUntil })),
   send: (id: string) => apiRequest<Quotation>(`/quotations/${id}/sending`, json('POST')),
-  withdraw: (id: string) => apiRequest<Quotation>(`/quotations/${id}/sending`, json('DELETE')),
-  approve: (id: string) => apiRequest<Quotation>(`/quotations/${id}/approval`, json('POST')),
-  reject: (id: string, reason: string, changes: Replacement[]) =>
-    apiRequest<Quotation>(`/quotations/${id}/rejection`, json('POST', { reason, changes })),
-  exportCsv: (q: Pick<Quotation, 'id' | 'revisionNo' | 'project'>) =>
-    downloadFile(`/quotations/${q.id}/export.csv`, `quotation-${q.project.code}-r${q.revisionNo}.csv`),
+  accept: (id: string) => apiRequest<Quotation>(`/quotations/${id}/acceptance`, json('POST')),
+  /** SENT → CHANGES_REQUESTED; the approved 3D version reopens and the project goes back to PRODUCT_SELECTION. */
+  requestChanges: (id: string, reason: string) => apiRequest<Quotation>(`/quotations/${id}/revision-requests`, json('POST', { reason })),
+  /** BOM generated on download. */
+  download: (q: Pick<Quotation, 'id' | 'revisionNo'>, projectCode: string, format: QuotationFileFormat) =>
+    downloadFile(`/quotations/${q.id}/file?format=${format}`, `quotation-${projectCode}-r${q.revisionNo}.${format}`, { preferFallbackName: true }),
   /** Products of the same category as the design item, cheapest first. */
   options: async (elementId: string) =>
     (await apiRequest<{ items: any[] }>(`/design-elements/${elementId}/product-options?limit=100`)).items.map(option),
 };
 
-/** Estimate with swapped products: each swapped line uses the option price × the line quantity. */
-export function estimateWith(q: Pick<Quotation, 'items' | 'discountAmount'>, tried: Record<string, ProductOption>) {
-  let subtotal = 0;
+/** Estimate with swapped products: each swapped line uses the option price × the line quantity; the design fee stays. */
+export function estimateWith(q: Pick<Quotation, 'items' | 'designFee'>, tried: Record<string, ProductOption>) {
+  let productsSubtotal = 0;
   for (const item of q.items) {
     const pick = tried[item.id];
-    subtotal += pick ? Number(pick.price) * Number(item.quantity) : Number(item.lineTotal);
+    productsSubtotal += pick ? Number(pick.price) * Number(item.quantity) : Number(item.lineTotal);
   }
-  return { subtotal, total: Math.max(0, subtotal - Number(q.discountAmount)) };
+  return { productsSubtotal, total: productsSubtotal + Number(q.designFee) };
 }
 
 /** Today in Vietnam as YYYY-MM-DD (the backend checks validUntil the same way). */
 export const todayVn = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date());
 
-/**
- * Money typed by a person → backend string, or null when it can't be read. Accepts "500000", "500,000", "500.000",
- * "500 000 ₫" (dots in groups of three are thousands separators, as Vietnamese users write them) and "1500.5".
- */
-export function parseMoneyInput(raw: string): string | null {
-  let s = raw.replace(/[\s₫đ,]/gi, '');
-  if (s === '') return '0';
-  if (/^\d{1,3}(\.\d{3})+$/.test(s)) s = s.replaceAll('.', '');
-  return /^\d{1,13}(\.\d{1,2})?$/.test(s) ? s : null;
-}
-
 /** "+1,200,000 ₫" / "−300,000 ₫" for a price difference. */
 export const signedMoney = (v: number) => `${v > 0 ? '+' : v < 0 ? '−' : ''}${formatMoney(Math.abs(v))}`;
 
-/** Budget status for an estimated total, same rule as the backend (Quotation.budgetCheck). */
-export function budgetStatusOf(total: number, b: Pick<QuotationBudget, 'min' | 'max' | 'ceiling'>): BudgetStatus {
+/** Budget status of a total against the snapshot; within the limit matches the backend's `withinBudget`. */
+export function budgetStatusOf(total: number, b: Pick<QuotationBudget, 'min' | 'max' | 'limit'>): BudgetStatus {
   if (total < Number(b.min)) return 'BELOW';
   if (total <= Number(b.max)) return 'WITHIN';
-  if (total <= Number(b.ceiling)) return 'WITHIN_TOLERANCE';
+  if (total <= Number(b.limit)) return 'WITHIN_TOLERANCE';
   return 'OVER';
+}
+
+/** Lists (summaries) only carry the flag. */
+export const budgetStatusFromFlag = (withinBudget: boolean): BudgetStatus => (withinBudget ? 'WITHIN' : 'OVER');
+
+/** Most the backend accepts for a change request's reason. */
+export const REASON_MAX = 2000;
+
+/**
+ * The backend only takes a text reason, so the products tried on the page go into it as lines Lead can read:
+ * "Sofa A → Sofa B (12,500,000 ₫)". Lines that don't fit in REASON_MAX are dropped.
+ */
+export function reasonWithTried(reason: string, header: string, lines: string[]): string {
+  if (!lines.length) return reason.slice(0, REASON_MAX);
+  let out = `${reason}\n\n${header}`;
+  for (const line of lines) {
+    const next = `${out}\n- ${line}`;
+    if (next.length > REASON_MAX) break;
+    out = next;
+  }
+  return out.slice(0, REASON_MAX);
 }
