@@ -79,7 +79,8 @@ export function SiteSurveyCard({ project, viewer, canCancel = viewer !== 'member
 
   const canBook = viewer === 'homeowner' && (!survey || status === 'CANCELLED') && !project.apartment && project.status === 'DRAFT';
   const lead = viewer === 'lead';
-  const photosEditable = lead && !!status && isMeasurable(status);
+  const canMeasure = lead && !!status && isMeasurable(status);
+  const photosEditable = canMeasure;
   const homeLink = status === 'CONFIRMED' && apartmentsRole ? APARTMENTS_PAGE[apartmentsRole] : undefined;
   // a confirmed result stays folded once the home exists; the Home card shows it
   const resultOpen = status === 'SUBMITTED' || status === 'REJECTED' || photosEditable || showResult;
@@ -99,12 +100,12 @@ export function SiteSurveyCard({ project, viewer, canCancel = viewer !== 'member
     {viewer === 'homeowner' && status && isBooked(status) && <Button size="sm" onClick={() => setDialog('edit')}>{t('siteSurvey.changeBooking')}</Button>}
     {lead && status === 'REQUESTED' && <Button size="sm" variant="primary" onClick={() => setDialog('schedule')}>{t('siteSurvey.pickTime')}</Button>}
     {lead && status === 'SCHEDULED' && <Button size="sm" onClick={() => setDialog('schedule')}>{t('siteSurvey.reschedule')}</Button>}
-    {lead && status && isMeasurable(status) && (
+    {canMeasure && (
       <Button size="sm" variant={survey.floors.length ? 'secondary' : 'primary'} onClick={() => setDialog('measure')}>
         {t(survey.floors.length ? 'siteSurvey.editResults' : 'siteSurvey.record')}
       </Button>
     )}
-    {lead && status && isMeasurable(status) && (
+    {canMeasure && (
       <Button size="sm" variant="primary" loading={busy === 'submit'} disabled={submitBlockers.length > 0}
         aria-describedby={submitBlockers.length ? 'survey-submit-blockers' : undefined}
         onClick={() => void run('submit', () => siteSurveyApi.submit(survey.id), 'submitted')}>{t('siteSurvey.submit')}</Button>
@@ -195,7 +196,7 @@ export function SiteSurveyCard({ project, viewer, canCancel = viewer !== 'member
       {dialog === 'book' && <BookingModal projectId={project.id} onClose={() => setDialog('')} onSaved={(s) => done(s, 'booked')} />}
       {dialog === 'edit' && survey && <BookingModal projectId={project.id} survey={survey} onClose={() => setDialog('')} onSaved={(s) => done(s, 'updated')} />}
       {dialog === 'schedule' && survey && <ScheduleModal survey={survey} onClose={() => setDialog('')} onSaved={(s) => done(s, 'scheduled')} />}
-      {dialog === 'measure' && survey && <MeasurementModal survey={survey} onClose={() => setDialog('')} onSaved={(s) => done(s, 'saved')} />}
+      {dialog === 'measure' && survey && canMeasure && <MeasurementModal survey={survey} onClose={() => setDialog('')} onSaved={(s) => done(s, 'saved')} />}
       {dialog === 'cancel' && survey && (
         <ReasonModal danger title={t('siteSurvey.reason.cancelTitle')} placeholder={t('siteSurvey.reason.cancelPlaceholder')}
           confirmLabel={t('siteSurvey.reason.cancelConfirm')} cancelLabel={t('siteSurvey.reason.keep')} onClose={() => setDialog('')}
