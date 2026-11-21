@@ -112,8 +112,21 @@ export const designLabel = (label: string) => versionLabel(label, 'homeowner');
 /** Completed or cancelled: nothing left to act on, so never "needs action" or "couldn't check". */
 export const isClosed = (s: Project['status']) => s === 'COMPLETED' || s === 'CANCELLED';
 
-/** The AI concept stage is not built yet: shown as an optional step, never auto-checked. index = its position in the step list. */
+/**
+ * Concept as an optional step. Only the workspace stepper (WorkspaceBar) still uses it; the project pages show Concept
+ * as a real step through projectStepIndex. index = its position in the step list.
+ */
 export const conceptStep = (index: number) => ({ index, tag: t('steps.conceptTag'), hint: t('steps.conceptHint') });
+
+/** Index of Concept in steps.project. */
+const CONCEPT_STEP = 2;
+
+/**
+ * Current step on the project pages. In design, the project sits on Concept until a concept is chosen (or a layout already
+ * exists, for projects made before concepts); conceptDone undefined = not known yet, so it keeps the status-based step.
+ */
+export const projectStepIndex = (status: Project['status'], conceptDone: boolean | undefined) =>
+  status === 'IN_DESIGN' && conceptDone === false ? CONCEPT_STEP : stepIndex(status);
 
 /**
  * Progress along the 7 project steps; null for a cancelled project.

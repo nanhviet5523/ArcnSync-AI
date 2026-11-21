@@ -4,7 +4,10 @@ import { ArrowRight, Ban, CircleCheck, Clock, CreditCard } from 'lucide-react';
 
 import { AppShell, Button, Card, PageHeader, Skeleton, StatusChip, Stepper } from '@/components/ui';
 import { formatDate, formatDateTime, t, tList } from '@/i18n';
-import { canOpenWorkspace, stepIndex } from './projectApi';
+import { canOpenWorkspace } from './projectApi';
+import { ConceptCard } from '@/features/concepts/ConceptCard';
+import { useProjectConcepts } from '@/features/concepts/useProjectConcepts';
+import { conceptSummary } from '@/features/concepts/conceptApi';
 import { getProjectContract } from './services/contractsApi';
 import type { ContractResponse } from './services/contractsApi';
 import type { Project } from './projectApi';
@@ -14,7 +17,7 @@ import { getCurrentUser } from '@/services/authService';
 import { QuotationSummaryCard } from '@/features/quotations/QuotationSummaryCard';
 import { ReviewCard } from '@/features/reviews/ReviewCard';
 import { SiteSurveyCard } from '@/features/site-surveys/SiteSurveyCard';
-import { conceptStep, designLabel, isClosed, knownVersion, needsAction, needsCheck, nextFor, useLatestVersions } from './projectView';
+import { designLabel, isClosed, knownVersion, needsAction, needsCheck, nextFor, projectStepIndex, useLatestVersions } from './projectView';
 
 /** Homeowner overview of one project (/homeowner/projects/:id). Staff keeps its own layout in ProjectDetail.
  * The only "Open design" button is inside the Next step card; the latest drawing sits beside it. */
@@ -60,10 +63,14 @@ export function HomeownerProjectView({ project, onProjectChanged }: { project: P
   // Signing happens while the project is still CONTRACT_PENDING, so read the contract, not just the project.
   const signing = waitingOnContract && contract?.status === 'DRAFT' && contract.esignStatus === 'AWAITING_CUSTOMER';
   const contractPage = `/project-contract?projectId=${encodeURIComponent(project.id)}`;
-  const next = signing ? t('homeownerDetail.signContractNext') : nextFor('homeowner', project, raw);
-  // Blue card only when the homeowner really has to act (a version was sent to them, or a contract needs signing).
-  const act = signing || needsAction('homeowner', project, raw);
+  const conceptData = useProjectConcepts(project);
+  // concepts were sent and none is chosen yet: choosing one is the homeowner's next step
+  const choosingConcept = conceptData.conceptDone === false && !!conceptData.concepts && conceptSummary(conceptData.concepts).submittedCount > 0;
+  const next = signing ? t('homeownerDetail.signContractNext') : choosingConcept ? t('concepts.nextHomeowner') : nextFor('homeowner', project, raw);
+  // Blue card only when the homeowner really has to act (a version was sent to them, a concept to choose, or a contract needs signing).
+  const act = signing || choosingConcept || needsAction('homeowner', project, raw);
   const open = () => navigate(`/projects/${project.id}/workspace`);
+  const showConcepts = () => document.getElementById('concept')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   // watermark on the drawing, as everywhere a plan is shown at readable size
   const [stamp] = useState(() => `${getCurrentUser()?.email ?? ''} ${formatDateTime(new Date().toISOString())}`);
 
@@ -83,7 +90,7 @@ export function HomeownerProjectView({ project, onProjectChanged }: { project: P
 
       {project.status !== 'CANCELLED' && (
         <Card className="mb-5" bodyClassName="px-4 py-5 sm:px-6">
-          <Stepper steps={tList('steps.project')} current={stepIndex(project.status)} emphasis optional={conceptStep(2)} />
+          <Stepper steps={tList('steps.project')} current={projectStepIndex(project.status, conceptData.conceptDone)} emphasis />
         </Card>
       )}
 
@@ -129,8 +136,8 @@ export function HomeownerProjectView({ project, onProjectChanged }: { project: P
               <h2 id="next-step" className="text-[13px] font-medium text-brand">{t('nextStep.title')}</h2>
               <p className="mt-1 text-[15px] font-semibold leading-snug text-slate-900 sm:text-2xl sm:leading-tight">{next}</p>
             </div>
-            <Button variant="primary" onClick={signing ? () => navigate(contractPage) : open} className="self-start">
-              {signing ? t('homeownerDetail.signContract') : t('homeownerDetail.openDesign')}<ArrowRight aria-hidden className="h-4 w-4" />
+            <Button variant="primary" onClick={signing ? () => navigate(contractPage) : choosingConcept ? showConcepts : open} className="self-start">
+              {signing ? t('homeownerDetail.signContract') : choosingConcept ? t('concepts.viewConcepts') : t('homeownerDetail.openDesign')}<ArrowRight aria-hidden className="h-4 w-4" />
             </Button>
           </section>
         ) : (
@@ -178,6 +185,8 @@ export function HomeownerProjectView({ project, onProjectChanged }: { project: P
       <div className="grid items-start gap-5 lg:grid-cols-3">
         {/* no home until the site survey is confirmed: the survey takes its place; a confirmed survey stays beside it while DRAFT */}
         <div className="space-y-5 lg:col-span-2">
+          <ConceptCard projectId={project.id} projectStatus={project.status} role="homeowner" projectRole={null}
+            data={conceptData} onChanged={onProjectChanged} />
           {project.apartment && <HomeCard project={project} />}
           {(!project.apartment || project.status === 'DRAFT') && (
             <SiteSurveyCard project={project} viewer="homeowner" apartmentsRole="homeowner" onProjectChanged={onProjectChanged} />

@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { AppShell, Banner, Button, Card, DetailList, ErrorState, PageHeader, Skeleton, StatusChip, Stepper } from '@/components/ui';
 import { errorText, formatDate, formatMoney, formatNumber, t, tList } from '@/i18n';
 import { getCurrentUser } from '@/services/authService';
-import { canOpenWorkspace, kickoffErrorText, kickoffProjectDesign, projectApi, stepIndex } from './projectApi';
+import { canOpenWorkspace, kickoffErrorText, kickoffProjectDesign, projectApi } from './projectApi';
 import type { DesignerOption, Project } from './projectApi';
 import { TeamCard } from '@/features/design-workspace/TeamCard';
 import { isOffTeam, resolveProjectRole } from '@/features/design-workspace/logic';
@@ -14,7 +14,10 @@ import { NotOnTeam } from './NotOnTeam';
 import { HomeownerProjectView } from './HomeownerProjectView';
 import { RoomAssignmentsTab } from './RoomAssignmentsTab';
 import { ReviewCard } from '@/features/reviews/ReviewCard';
-import { conceptStep, nextFor, useLatestVersions } from './projectView';
+import { nextFor, projectStepIndex, useLatestVersions } from './projectView';
+import { ConceptCard } from '@/features/concepts/ConceptCard';
+import { useProjectConcepts } from '@/features/concepts/useProjectConcepts';
+import { conceptSummary } from '@/features/concepts/conceptApi';
 import { CreateContractModal } from './CreateContractModal';
 import { EditProjectModal } from './EditProjectModal';
 import type { ContractToast } from './CreateContractModal';
@@ -84,6 +87,8 @@ export function ProjectDetail() {
 
   const forVersions = useMemo(() => (designer && project ? [project] : null), [designer, project]);
   const { latest, ready } = useLatestVersions(forVersions, 'designer');
+  // the homeowner's view loads its own concepts
+  const conceptData = useProjectConcepts(staff || designer ? project : null);
 
   // The kickoff is not idempotent: the ref blocks a second click before the loading state renders.
   const kickoffRunning = useRef(false);
@@ -141,8 +146,13 @@ export function ProjectDetail() {
       onProjectChanged={() => void load()} className={className} />
   );
   const open = () => navigate(`/projects/${project.id}/workspace`);
+  const projectRole = designer ? resolveProjectRole(project, userId) : null;
+  // In design before a concept is chosen, the Lead's next step is the concept, not the layout.
+  const conceptNext = projectRole === 'LEAD' && conceptData.conceptDone === false && conceptData.concepts
+    ? t(conceptSummary(conceptData.concepts).submittedCount ? 'concepts.nextLeadWaiting' : 'concepts.nextLead')
+    : '';
   // one sentence for this page and the project's card; a designer waits for the version check
-  const next = designer && !ready ? '' : nextFor(role, project, designer ? latest(project.id) : undefined);
+  const next = conceptNext || (designer && !ready ? '' : nextFor(role, project, designer ? latest(project.id) : undefined));
 
   // quotation stage: staff's next step is the quotation, the workspace stays one click away
   const quoting = project.status === 'QUOTING' || project.status === 'COMPLETED';
@@ -189,7 +199,7 @@ export function ProjectDetail() {
 
       {project.status !== 'CANCELLED' && (
         <Card className="mb-5" bodyClassName="px-4 py-4 sm:px-6">
-          <Stepper steps={tList('steps.project')} current={stepIndex(project.status)} optional={conceptStep(2)} />
+          <Stepper steps={tList('steps.project')} current={projectStepIndex(project.status, conceptData.conceptDone)} />
         </Card>
       )}
 
@@ -258,6 +268,8 @@ export function ProjectDetail() {
         </Card>
       </div>
       {a && showSurvey && surveyCard('mt-5')}
+      <ConceptCard className="mt-5" projectId={project.id} projectStatus={project.status} role={role} projectRole={projectRole}
+        data={conceptData} />
       <div className="mt-5">
         <RoomAssignmentsTab projectId={project.id} leadDesignerId={project.designer?.id ?? null} apartmentRooms={project.apartment?.rooms} floors={project.apartment?.floors} leadName={project.designer?.fullName} members={project.members} closed={project.status === 'COMPLETED' || project.status === 'CANCELLED'} reloadKey={roomsKey} />
       </div>

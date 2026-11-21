@@ -381,7 +381,8 @@ export const projectApi = {
 };
 
 /** Index into the 7 project steps (steps.project): Contract, Requirements, Concept, Layout, Products, Quotation, Handover.
- * The concept stage is not built yet, so a project in design is on Layout. Completed = every step done. */
+ * IN_DESIGN maps to Layout here; the project pages move it back to Concept until a concept is chosen
+ * (projectView.projectStepIndex). Completed = every step done. */
 const STEP_OF: Record<ProjectStatus, number> = {
   DRAFT: 0, CONTRACT_PENDING: 0, REQUIREMENT_ANALYSIS: 1, IN_DESIGN: 3, PRODUCT_SELECTION: 4, QUOTING: 5, COMPLETED: 7, CANCELLED: -1,
 };

@@ -120,6 +120,8 @@ function UploadDialog({ floors, first, latest, limit, major, wallHeight, threads
   const patch = (key: string, p: Partial<UploadRow<File>>) => setRows((list) => list.map((r) => (r.key === key ? { ...r, ...p } : r)));
   const [ticked, setTicked] = useState<string[]>([]);
   const [error, setError] = useState('');
+  // 422 CONCEPT_NOT_APPROVED on the first layout: also link to the project's concept card
+  const [conceptMissing, setConceptMissing] = useState(false);
   const [busy, setBusy] = useState(false);
   // A missing file is only reported after trying to submit: a new row always starts without one.
   const [tried, setTried] = useState(false);
@@ -136,7 +138,7 @@ function UploadDialog({ floors, first, latest, limit, major, wallHeight, threads
     try {
       const v = await designApi.uploadDxf(projectId, { title: title.trim(), revision_type: first ? null : revision, wall_height_m: wall, files: list, addressed_comment_ids: ticked });
       onDone(v, list.filter((r) => !r.floor_id).at(-1)?.level ?? null);
-    } catch (e) { setError(errorText(e)); setBusy(false); }
+    } catch (e) { setError(errorText(e)); setConceptMissing((e as { code?: string }).code === 'CONCEPT_NOT_APPROVED'); setBusy(false); }
   };
   return (
     <Modal title={t('upload.title')} size="md" onClose={onClose} footer={<>
@@ -174,6 +176,7 @@ function UploadDialog({ floors, first, latest, limit, major, wallHeight, threads
         </div>
         <AddressedPicker threads={threads} value={ticked} onChange={setTicked} />
         {error && <ErrorState message={error} />}
+        {error && conceptMissing && <Link to={`/designer/projects/${projectId}#concept`} className="text-sm font-semibold text-brand underline">{t('concepts.goToConcepts')}</Link>}
       </div>
     </Modal>
   );
