@@ -51,7 +51,7 @@ export const Messages: React.FC = () => {
     },
     {
       id: '4',
-      title: 'ArchSync Support',
+      title: 'ArcnSync Support',
       subtitle: 'How can we help you today?',
       time: '20 Sep',
       unread: 0,

@@ -139,9 +139,6 @@ export function UserMenus({ role, showBadge = true }: { role: UserRole; showBadg
               {role === 'supplier' && (
                 <button type="button" className={menuItem} onClick={() => { setAccountOpen(false); navigate('/supplier-application'); }}>Application status</button>
               )}
-              {role === 'designer' && (
-                <button type="button" className={menuItem} onClick={() => { setAccountOpen(false); navigate('/designer-portfolio'); }}>My Portfolio</button>
-              )}
             </div>
             <div className="border-t border-line pt-1">
               <button
@@ -219,13 +216,10 @@ export const Header: React.FC<HeaderProps> = ({ role, activeTab, onLoginClick, o
       if (itemLabel === 'Dashboard' && (path === '/admin-dashboard' || path === '/admin/overview' || path === '/admin/dashboard')) return true;
       if (itemLabel === 'Users & Roles' && (path === '/admin-users' || path === '/admin/users' || path === '/admin/roles' || path === '/admin')) return true;
       if (itemLabel === 'Master Data' && (path === '/admin-master-data' || path === '/admin/master-data')) return true;
-      if (itemLabel === 'AI Settings' && (path === '/admin-ai-settings' || path === '/admin/ai-settings' || path.startsWith('/admin-prompts/'))) return true;
-      if (itemLabel === 'Reports' && path === '/admin-reports') return true;
     }
 
     // Supplier & Designer sub-routes
     return (
-      (itemPath === '/admin-ai-settings' && path.startsWith('/admin-prompts/')) ||
       (itemPath === '/supplier-catalog' && (path.startsWith('/supplier-products/') || path === '/supplier-catalog/import')) ||
       (itemPath === '/designer-projects' && /^\/designer-projects\//.test(path))
     );

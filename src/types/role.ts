@@ -21,7 +21,6 @@ export const ROLE_CONFIG: Record<UserRole, { defaultPath: string; badge: string;
     navItems: [
       { label: t('nav.myProjects'), path: '/homeowner/projects' },
       { label: t('nav.myProperties'), path: '/homeowner-apartments' },
-      { label: t('nav.account'), path: '/settings' },
     ],
   },
   staff: {
@@ -30,11 +29,9 @@ export const ROLE_CONFIG: Record<UserRole, { defaultPath: string; badge: string;
     navItems: [
       { label: t('nav.projects'), path: '/staff/projects' },
       { label: t('nav.apartments'), path: '/staff-apartments' },
-      { label: t('nav.contracts'), path: '/staff-contracts' },
       { label: t('nav.customers'), path: '/customers' },
       { label: t('nav.inquiries'), path: '/staff/inquiries' },
       { label: t('nav.reviews'), path: '/reviews' },
-      { label: t('nav.account'), path: '/settings' },
     ],
   },
   designer: {
@@ -42,10 +39,8 @@ export const ROLE_CONFIG: Record<UserRole, { defaultPath: string; badge: string;
     badge: t('role.designer'),
     navItems: [
       { label: t('nav.assignedProjects'), path: '/designer/projects' },
-      { label: t('nav.aiStudio'), path: '/designer-ai-studio' },
       { label: t('nav.catalog'), path: '/designer-catalog' },
       { label: t('nav.reviews'), path: '/reviews' },
-      { label: t('nav.account'), path: '/settings' },
     ],
   },
   supplier: {
@@ -54,8 +49,6 @@ export const ROLE_CONFIG: Record<UserRole, { defaultPath: string; badge: string;
     navItems: [
       { label: t('nav.dashboard'), path: '/supplier-dashboard' },
       { label: t('nav.products'), path: '/supplier-catalog' },
-      { label: t('nav.inquiries'), path: '/supplier-inquiries' },
-      { label: t('nav.account'), path: '/settings' },
     ],
   },
   admin: {
@@ -69,8 +62,6 @@ export const ROLE_CONFIG: Record<UserRole, { defaultPath: string; badge: string;
       { label: 'Products', path: '/admin-products' },
       { label: 'Product categories', path: '/admin/categories' },
       { label: 'Master Data', path: '/admin-master-data' },
-      { label: 'AI Settings', path: '/admin-ai-settings' },
-      { label: 'Reports', path: '/admin-reports' },
       { label: 'Customers', path: '/customers' },
       { label: t('nav.inquiries'), path: '/staff/inquiries' },
       { label: t('nav.reviews'), path: '/reviews' },

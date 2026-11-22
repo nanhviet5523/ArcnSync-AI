@@ -39,7 +39,7 @@ export const BookConsultation: React.FC = () => {
             <CheckCircle2 size={36} className="text-emerald-600" />
             <h1 className="text-xl font-extrabold text-slate-900">Đã ghi nhận yêu cầu tư vấn</h1>
             <p className="text-sm text-slate-500">
-              Đội ngũ ArchSync AI sẽ liên hệ với bạn qua số điện thoại {phone || 'đã cung cấp'} trong vòng 24 giờ.
+              Đội ngũ ArcnSync AI sẽ liên hệ với bạn qua số điện thoại {phone || 'đã cung cấp'} trong vòng 24 giờ.
             </p>
             <button
               type="button"

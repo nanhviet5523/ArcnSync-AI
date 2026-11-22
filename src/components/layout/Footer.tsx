@@ -1,65 +1,67 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { Logo } from '@/components/common';
-const FOOTER_SECTIONS = [
+import { t } from '@/i18n';
+
+const COLUMNS: { title: string; links: { label: string; to: string }[] }[] = [
   {
-    title: 'Platform',
-    links: ['How It Works', 'Designers', 'Pricing'],
+    title: t('footer.platform'),
+    links: [
+      { label: t('footer.howItWorks'), to: '/how-it-works' },
+      { label: t('footer.pricing'), to: '/pricing' },
+      { label: t('footer.aiStudio'), to: '/login' },
+    ],
   },
   {
-    title: 'Company',
-    links: ['About', 'Blog', 'Careers'],
+    title: t('footer.company'),
+    links: [
+      { label: t('footer.about'), to: '/about' },
+    ],
   },
   {
-    title: 'Support',
-    links: ['Help Center', 'Contact', 'Privacy Policy'],
+    title: t('footer.support'),
+    links: [
+      { label: t('footer.help'), to: '/help' },
+      { label: t('footer.terms'), to: '/terms' },
+      { label: t('footer.privacy'), to: '/privacy' },
+      { label: t('footer.contact'), to: '/#contact' },
+    ],
   },
 ];
 
-export const Footer: React.FC = () => {
-  return (
-    <footer className="w-full bg-white border-t border-gray-200 px-6 lg:px-12 py-10 text-slate-900">
-      <div className="max-w-7xl mx-auto flex flex-col lg:flex-row justify-between items-start gap-8">
-        
-        {/* Column 1: Logo and tagline */}
-        <div className="max-w-xs">
-          <Logo size={32} />
-          <p className="text-xs text-gray-500 mt-3 leading-relaxed">
-            Generative AI-powered interior design collaboration platform.
-          </p>
-        </div>
+const linkClass = 'cursor-pointer text-left text-slate-500 transition-colors hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-brand';
 
-        {/* Columns 2, 3, and 4: Navigation links */}
-        <div className="flex flex-wrap gap-12 lg:gap-16">
-          {FOOTER_SECTIONS.map((section) => (
-            <div key={section.title}>
-              <h4 className="text-sm font-bold text-gray-900 mb-3.5">
-                {section.title}
-              </h4>
-              <ul className="space-y-2.5 text-xs text-gray-500">
-                {section.links.map((link) => (
-                  <li key={link}>
-                    <a
-                      // the contact form lives on the homepage, so that link works from every page
-                      href={link === 'Contact' ? '/#contact' : `#${link.toLowerCase().replace(/\s+/g, '-')}`}
-                      className="hover:text-gray-900 transition-colors"
-                    >
-                      {link}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
-
-        {/* Column 5: Copyright aligned to the right */}
-        <div className="text-xs text-gray-400 whitespace-nowrap self-start lg:self-auto">
-          © 2026 ArchSync AI
-        </div>
-
+export const Footer: React.FC = () => (
+  <footer className="w-full border-t border-line bg-surface px-6 py-12 text-slate-900 lg:px-12">
+    <div className="mx-auto grid max-w-7xl gap-10 sm:grid-cols-2 lg:grid-cols-4">
+      {/* Column 1: brand */}
+      <div className="max-w-xs">
+        <Logo size={32} to="/" />
+        <p className="mt-3 text-xs leading-relaxed text-slate-500">{t('footer.slogan')}</p>
       </div>
-    </footer>
-  );
-};
+
+      {/* Columns 2–4: navigation */}
+      {COLUMNS.map((col) => (
+        <nav key={col.title} aria-label={col.title}>
+          <h4 className="mb-3.5 text-sm font-bold text-slate-900">{col.title}</h4>
+          <ul className="space-y-2.5 text-xs">
+            {col.links.map((link) => (
+              <li key={link.label}>
+                {/* /#contact is a plain anchor so the homepage can scroll to the section once it renders */}
+                {link.to.includes('#')
+                  ? <a href={link.to} className={linkClass}>{link.label}</a>
+                  : <Link to={link.to} className={linkClass}>{link.label}</Link>}
+              </li>
+            ))}
+          </ul>
+        </nav>
+      ))}
+    </div>
+
+    <div className="mx-auto mt-10 max-w-7xl border-t border-line pt-6 text-xs text-slate-400">
+      {t('footer.copyright')}
+    </div>
+  </footer>
+);
 
 export default Footer;

@@ -58,7 +58,7 @@ export const Logo: React.FC<LogoProps> = ({
             fontSize: `${size * 0.55}px`,
           }}
         >
-          ArchSync AI
+          ArcnSync AI
         </span>
       )}
     </div>
@@ -69,7 +69,7 @@ export const Logo: React.FC<LogoProps> = ({
   return (
     <Link
       to={to}
-      aria-label="ArchSync AI home"
+      aria-label="ArcnSync AI home"
       className="inline-flex shrink-0 cursor-pointer rounded-lg transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
     >
       {mark}

@@ -278,7 +278,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSignUpClick }) => {
 
       {/* Footer Copyright */}
       <div className="text-xs text-slate-400">
-        © 2026 ArchSync AI
+        © 2026 ArcnSync AI
       </div>
     </div>
   );
