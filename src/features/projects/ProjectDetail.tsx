@@ -14,6 +14,7 @@ import { NotOnTeam } from './NotOnTeam';
 import { HomeownerProjectView } from './HomeownerProjectView';
 import { RoomAssignmentsTab } from './RoomAssignmentsTab';
 import { ReviewCard } from '@/features/reviews/ReviewCard';
+import { HandoverCard } from '@/features/quotations/HandoverCard';
 import { nextFor, projectStepIndex, useLatestVersions } from './projectView';
 import { ConceptCard } from '@/features/concepts/ConceptCard';
 import { useProjectConcepts } from '@/features/concepts/useProjectConcepts';
@@ -217,6 +218,8 @@ export function ProjectDetail() {
         </div>
       )}
 
+      {/* after the homeowner accepts the quotation: Lead prepares the package, staff and members follow it */}
+      {quoting && <HandoverCard className="mb-5" project={project} role={role} projectRole={projectRole} onChanged={() => void load()} />}
 
       <div className="grid items-start gap-5 lg:grid-cols-2">
         {/* a new project has no home until the site survey is confirmed: the survey takes the Home card's place */}

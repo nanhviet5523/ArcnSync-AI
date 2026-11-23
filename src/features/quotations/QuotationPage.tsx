@@ -134,7 +134,7 @@ export function QuotationPage() {
   const workspaceLink = <Link to={`/projects/${projectId}/workspace`} className="font-semibold underline">{t('quotation.openWorkspace')}</Link>;
   const banner = !isLatest ? <Banner>{t('quotation.oldRevision', { n: latest?.revisionNo ?? q.revisionNo })}</Banner>
     : expired || q.status === 'EXPIRED' ? <Banner tone="amber">{q.validUntil ? t('quotation.expired', { date: formatDate(q.validUntil) }) : t('quotation.expiredNoDate')}</Banner>
-    : q.status === 'ACCEPTED' ? <Banner>{t('quotation.acceptedBanner')}</Banner>
+    : q.status === 'ACCEPTED' ? <Banner>{t('quotation.acceptedBanner')} <Link to={back.to} className="font-semibold underline">{t('quotation.openHandover')}</Link></Banner>
     : q.status === 'CHANGES_REQUESTED' ? <Banner tone="amber">{homeowner ? t('quotation.changesRequestedHomeowner') : <>{t('quotation.changesRequestedTeam')} {workspaceLink}</>}</Banner>
     : q.status === 'SENT' && !homeowner ? <Banner tone="amber">{t('quotation.sentBanner')}</Banner>
     : q.status === 'DRAFT' ? <Banner tone="amber">{t('quotation.draftBanner')}</Banner>

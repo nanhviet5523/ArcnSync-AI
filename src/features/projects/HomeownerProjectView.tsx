@@ -15,6 +15,7 @@ import { BudgetCard, HomeCard, PeopleCard } from './ProjectInfoSections';
 import { PlanThumb } from './PlanThumb';
 import { getCurrentUser } from '@/services/authService';
 import { QuotationSummaryCard } from '@/features/quotations/QuotationSummaryCard';
+import { HandoverCard } from '@/features/quotations/HandoverCard';
 import { ReviewCard } from '@/features/reviews/ReviewCard';
 import { SiteSurveyCard } from '@/features/site-surveys/SiteSurveyCard';
 import { designLabel, isClosed, knownVersion, needsAction, needsCheck, nextFor, projectStepIndex, useLatestVersions } from './projectView';
@@ -96,6 +97,10 @@ export function HomeownerProjectView({ project, onProjectChanged }: { project: P
 
 
       {(project.status === 'QUOTING' || project.status === 'COMPLETED') && <QuotationSummaryCard projectId={project.id} homeowner />}
+      {/* after the quotation is accepted: review, approve and download the handover package (renders nothing before) */}
+      {(project.status === 'QUOTING' || project.status === 'COMPLETED') && (
+        <HandoverCard className="mb-5" project={project} role="homeowner" projectRole={null} onChanged={onProjectChanged} />
+      )}
       {/* back in product selection after asking for changes: say Lead is updating the products */}
       {project.status === 'PRODUCT_SELECTION' && <QuotationSummaryCard projectId={project.id} homeowner onlyAfterChangeRequest />}
 

@@ -1,0 +1,257 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Box, Download, FileText, Image as ImageIcon, PackageCheck, Trash2 } from 'lucide-react';
+import { Button, Card, ErrorState, Field, Modal, Skeleton, StatusChip, Textarea } from '@/components/ui';
+import { errorText, formatDate, formatDateTime, formatMoney, t } from '@/i18n';
+import type { UserRole } from '@/types/role';
+import type { Project, ProjectRole } from '@/features/projects/projectApi';
+import { designApi } from '@/features/design-workspace/designApi';
+import { quotationApi } from './quotationApi';
+import { acceptOf, fileSize, HANDOVER_ASSET_TYPES, HANDOVER_REASON_MAX, handoverApi, isEditable, validateHandoverFiles } from './handoverApi';
+import type { Handover, HandoverAsset, HandoverAssetType } from './handoverApi';
+import { ConfirmDialog } from './QuotationDialogs';
+
+type Dialog = { kind: 'submit' } | { kind: 'approve' } | { kind: 'changes' } | { kind: 'delete'; asset: HandoverAsset };
+
+const TYPE_ICON: Record<HandoverAssetType, typeof ImageIcon> = { RENDER_IMAGE: ImageIcon, MODEL_3D: Box, DOCUMENT: FileText };
+
+/**
+ * Handover package of the final version (the one the accepted quotation points to), on the project overview.
+ * - Lead uploads / deletes files and submits while NOT_SUBMITTED or CHANGES_REQUESTED.
+ * - The homeowner approves the submitted package or asks for changes; after approving they download the package and DXF.
+ * - Staff, admin and members read it and download the files.
+ * Renders nothing until the homeowner accepts a quotation.
+ */
+export function HandoverCard({ project, role, projectRole, className = '', onChanged }: {
+  project: Pick<Project, 'id' | 'code' | 'status'>; role: UserRole; projectRole: ProjectRole | null; className?: string;
+  /** Called after approving, so the page reloads the project (payment, status). */
+  onChanged?: () => void;
+}) {
+  const navigate = useNavigate();
+  /** undefined = loading, null = no accepted quotation yet (no handover). */
+  const [handover, setHandover] = useState<Handover | null | undefined>(undefined);
+  const [floors, setFloors] = useState<{ id: string; name: string }[]>([]);
+  const [error, setError] = useState('');
+  const [actionError, setActionError] = useState('');
+  const [dialog, setDialog] = useState<Dialog | null>(null);
+  const [progress, setProgress] = useState<{ type: HandoverAssetType; fraction: number } | null>(null);
+  const inputs = useRef<Partial<Record<HandoverAssetType, HTMLInputElement | null>>>({});
+
+  const load = useCallback(async () => {
+    setError('');
+    try {
+      const accepted = (await quotationApi.list(project.id)).find((q) => q.status === 'ACCEPTED');
+      setHandover(accepted ? await handoverApi.get(accepted.designVersionId) : null);
+    } catch (e) { setError(errorText(e)); }
+  }, [project.id]);
+  useEffect(() => { Promise.resolve().then(load); }, [load]);
+
+  // the DXF is part of what is handed over: list the floors once the package is approved
+  const approved = handover?.status === 'APPROVED';
+  const versionId = handover?.designVersionId;
+  useEffect(() => {
+    if (!approved || !versionId) return;
+    let alive = true;
+    designApi.getVersion(versionId).then(
+      (v) => alive && setFloors([...v.floors].sort((a, b) => a.level - b.level).map((f) => ({ id: f.id, name: f.name }))),
+      () => alive && setFloors([]),
+    );
+    return () => { alive = false; };
+  }, [approved, versionId]);
+
+  if (handover === null) return null;
+  if (error) return <div className={className}><ErrorState message={error} onRetry={load} /></div>;
+  if (handover === undefined) return <Skeleton className={`h-40 w-full rounded-card ${className}`} />;
+
+  const h = handover;
+  const homeowner = role === 'homeowner';
+  const quoting = project.status === 'QUOTING';
+  const lead = role === 'designer' && projectRole === 'LEAD';
+  const editable = lead && quoting && isEditable(h);
+  const reviewing = homeowner && quoting && h.status === 'SUBMITTED';
+  // the homeowner downloads only after approving; the team always
+  const canDownload = !homeowner || approved;
+  const renders = h.assets.filter((a) => a.assetType === 'RENDER_IMAGE').length;
+  const unpaid = h.milestone.status === 'INVOICED' || h.milestone.status === 'OVERDUE';
+
+  /** Runs an action that returns the updated package. */
+  const act = async (fn: () => Promise<Handover>) => {
+    setActionError('');
+    setHandover(await fn());
+  };
+
+  const upload = async (type: HandoverAssetType, files: File[]) => {
+    if (!files.length) return;
+    setActionError('');
+    const existing = h.assets.filter((a) => a.assetType === type).length;
+    const problem = validateHandoverFiles(type, files, existing);
+    if (problem) { setActionError(problem); return; }
+    setProgress({ type, fraction: 0 });
+    try {
+      setHandover(await handoverApi.upload(h.designVersionId, type, files, (fraction) => setProgress({ type, fraction })));
+    } catch (e) { setActionError(errorText(e)); }
+    finally { setProgress(null); }
+  };
+
+  const download = async (fn: () => Promise<void>) => {
+    setActionError('');
+    try { await fn(); } catch (e) { setActionError(errorText(e)); }
+  };
+
+  const who = homeowner ? 'homeowner' : lead ? 'lead' : 'team';
+  const message = t(`handover.say.${h.status}.${who}`, { date: h.milestone.reviewDeadline ? formatDateTime(h.milestone.reviewDeadline) : '—' });
+
+  const actions = editable ? (
+    <Button variant="primary" size="sm" disabled={renders === 0 || progress !== null} title={renders === 0 ? t('handover.needRender') : undefined}
+      onClick={() => setDialog({ kind: 'submit' })}>{t(h.status === 'CHANGES_REQUESTED' ? 'handover.resubmit' : 'handover.submit')}</Button>
+  ) : reviewing ? (
+    <>
+      <Button size="sm" onClick={() => setDialog({ kind: 'changes' })}>{t('handover.requestChanges')}</Button>
+      <Button variant="primary" size="sm" onClick={() => setDialog({ kind: 'approve' })}>{t('handover.approve')}</Button>
+    </>
+  ) : homeowner && approved && unpaid ? (
+    <Button variant="primary" size="sm" onClick={() => navigate(`/homeowner/payments?projectId=${encodeURIComponent(project.id)}`)}>{t('handover.pay')}</Button>
+  ) : undefined;
+
+  return (
+    <Card className={className} bodyClassName="p-0"
+      title={<span className="inline-flex flex-wrap items-center gap-2"><PackageCheck aria-hidden className="h-4 w-4 text-emerald-700" />{t('handover.title')}<StatusChip kind="handover" value={h.status} size="sm" /></span>}
+      description={t('handover.milestone', { name: h.milestone.name, amount: formatMoney(h.milestone.amount) })}
+      actions={actions}>
+      <div className="space-y-3 border-b border-line px-5 py-4">
+        <p className={`text-sm ${reviewing || (editable && h.status === 'CHANGES_REQUESTED') ? 'font-medium text-slate-900' : 'text-slate-700'}`}>{message}</p>
+        {h.latestRevisionRequest && (
+          <div className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
+            <p className="text-[13px] font-semibold">{t('handover.changesAsked', { date: formatDateTime(h.latestRevisionRequest.createdAt) })}</p>
+            <p className="mt-0.5 whitespace-pre-line">{h.latestRevisionRequest.content}</p>
+          </div>
+        )}
+        <p className="text-xs text-slate-500">
+          <StatusChip kind="milestone" value={h.milestone.status} size="sm" />
+          {h.milestone.approvedAt && <span className="ml-2">{t('handover.approvedOn', { date: formatDate(h.milestone.approvedAt) })}</span>}
+          {h.milestone.paidAt && <span className="ml-2">{t('handover.paidOn', { date: formatDate(h.milestone.paidAt) })}</span>}
+        </p>
+        {actionError && <ErrorState message={actionError} />}
+      </div>
+
+      <div className="divide-y divide-slate-100">
+        {HANDOVER_ASSET_TYPES.map((type) => {
+          const files = h.assets.filter((a) => a.assetType === type);
+          const Icon = TYPE_ICON[type];
+          const uploading = progress?.type === type;
+          // empty groups only matter to the Lead, who fills them
+          if (!editable && files.length === 0) return null;
+          return (
+            <section key={type} aria-labelledby={`handover-${type}`} className="px-5 py-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h3 id={`handover-${type}`} className="inline-flex items-center gap-2 text-[13px] font-semibold text-slate-700">
+                  <Icon aria-hidden className="h-4 w-4 text-slate-500" />{t(`handover.type.${type}`)}
+                  <span className="font-normal text-slate-500">({files.length})</span>
+                </h3>
+                {editable && (
+                  <>
+                    <input ref={(el) => { inputs.current[type] = el; }} type="file" multiple accept={acceptOf(type)} className="hidden"
+                      aria-label={t(`handover.add.${type}`)}
+                      onChange={(e) => { const picked = [...(e.target.files ?? [])]; e.target.value = ''; void upload(type, picked); }} />
+                    <Button size="sm" disabled={progress !== null} onClick={() => inputs.current[type]?.click()}>
+                      {uploading ? t('handover.uploading', { pct: Math.round((progress?.fraction ?? 0) * 100) }) : `+ ${t(`handover.add.${type}`)}`}
+                    </Button>
+                  </>
+                )}
+              </div>
+              {editable && <p className="mt-0.5 text-[11px] text-slate-500">{t(`handover.rules.${type}`)}</p>}
+              {files.length > 0 && (
+                <ul className="mt-2 space-y-1">
+                  {files.map((a) => (
+                    <li key={a.id} className="flex items-center gap-3 rounded-lg px-2 py-1.5 text-sm hover:bg-slate-50">
+                      <span className="min-w-0 flex-1 truncate text-slate-800" title={a.fileName}>{a.fileName}</span>
+                      <span className="shrink-0 text-xs tabular-nums text-slate-500">{fileSize(a.sizeBytes)}</span>
+                      {canDownload && (
+                        <button type="button" aria-label={t('handover.download', { name: a.fileName })} onClick={() => void download(() => handoverApi.download(a))}
+                          className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-brand focus-visible:outline-2 focus-visible:outline-brand">
+                          <Download aria-hidden className="h-4 w-4" />
+                        </button>
+                      )}
+                      {editable && (
+                        <button type="button" aria-label={t('handover.delete', { name: a.fileName })} disabled={progress !== null} onClick={() => setDialog({ kind: 'delete', asset: a })}
+                          className="rounded p-1 text-slate-500 hover:bg-rose-50 hover:text-rose-700 focus-visible:outline-2 focus-visible:outline-brand disabled:opacity-50">
+                          <Trash2 aria-hidden className="h-4 w-4" />
+                        </button>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          );
+        })}
+
+        {approved && floors.length > 0 && (
+          <section aria-labelledby="handover-dxf" className="px-5 py-3">
+            <h3 id="handover-dxf" className="inline-flex items-center gap-2 text-[13px] font-semibold text-slate-700">
+              <FileText aria-hidden className="h-4 w-4 text-slate-500" />{t('handover.dxf')}
+            </h3>
+            <ul className="mt-2 flex flex-wrap gap-2">
+              {floors.map((f) => (
+                <li key={f.id}>
+                  <Button size="sm" onClick={() => void download(() => handoverApi.downloadDxf(h.designVersionId, f.id, `${project.code}-${f.name}.dxf`))}>
+                    <Download aria-hidden className="h-4 w-4" />{f.name}
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        {h.assets.length === 0 && !editable && <p className="px-5 py-4 text-sm text-slate-500">{t('handover.empty')}</p>}
+      </div>
+
+      {dialog?.kind === 'submit' && (
+        <ConfirmDialog title={t('handover.submit')} confirm={t(h.status === 'CHANGES_REQUESTED' ? 'handover.resubmit' : 'handover.submit')} onClose={() => setDialog(null)}
+          body={t('handover.submitConfirm', { n: h.assets.length })}
+          onConfirm={() => act(() => handoverApi.submit(h.designVersionId))} />
+      )}
+      {dialog?.kind === 'approve' && (
+        <ConfirmDialog title={t('handover.approve')} confirm={t('handover.approve')} onClose={() => setDialog(null)}
+          body={t('handover.approveConfirm', { amount: formatMoney(h.milestone.amount) })}
+          onConfirm={async () => { await act(() => handoverApi.approve(h.designVersionId)); onChanged?.(); }} />
+      )}
+      {dialog?.kind === 'delete' && (
+        <ConfirmDialog danger title={t('handover.deleteTitle')} confirm={t('handover.deleteButton')} onClose={() => setDialog(null)}
+          body={t('handover.deleteConfirm', { name: dialog.asset.fileName })}
+          onConfirm={async () => { await handoverApi.remove(dialog.asset.id); await load(); }} />
+      )}
+      {dialog?.kind === 'changes' && (
+        <HandoverChangesDialog onClose={() => setDialog(null)}
+          onSubmit={(reason) => act(() => handoverApi.requestChanges(h.designVersionId, reason))} />
+      )}
+    </Card>
+  );
+}
+
+/** Homeowner asks for changes to the submitted package (reason required). */
+function HandoverChangesDialog({ onSubmit, onClose }: { onSubmit: (reason: string) => Promise<void>; onClose: () => void }) {
+  const [reason, setReason] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const submit = async () => {
+    setBusy(true); setError('');
+    try { await onSubmit(reason.trim()); onClose(); } catch (e) { setError(errorText(e)); setBusy(false); }
+  };
+  return (
+    <Modal title={t('handover.requestChanges')} size="md" onClose={onClose} footer={<>
+      <Button onClick={onClose}>{t('common.cancel')}</Button>
+      <Button variant="primary" loading={busy} disabled={!reason.trim()} onClick={submit}>{t('handover.requestChanges')}</Button>
+    </>}>
+      <div className="space-y-4">
+        <p className="text-sm text-slate-600">{t('handover.requestChangesHint')}</p>
+        <Field label={t('handover.reason')}>
+          {(p) => <Textarea {...p} autoFocus rows={4} maxLength={HANDOVER_REASON_MAX} placeholder={t('handover.reasonPlaceholder')} value={reason} onChange={(e) => setReason(e.target.value)} />}
+        </Field>
+        {error && <ErrorState message={error} />}
+      </div>
+    </Modal>
+  );
+}
+
+export default HandoverCard;
