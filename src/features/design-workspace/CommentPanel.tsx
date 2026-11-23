@@ -3,8 +3,10 @@ import type { ReactNode } from 'react';
 import { X } from 'lucide-react';
 import { Button, StatusChip, Tabs, Textarea, initials } from '@/components/ui';
 import { t } from '@/i18n';
-import { commentKind, elementName, formatTime, statusMatches, versionLabel, waitingForMe } from './logic';
+import { commentKind, elementName, formatTime, formatVnd, proposalDelta, statusMatches, versionLabel, waitingForMe } from './logic';
 import type { CommentThread, StatusFilter } from './logic';
+import { Thumb } from './ItemPanel';
+import { signedVnd } from './roomDrafts';
 import type { CommentTarget, Floor, Role } from './types';
 
 interface Props {
@@ -32,6 +34,33 @@ interface Props {
   onReply: (id: string, text: string) => Promise<void>;
   onAccept: (id: string) => Promise<void>;
   onNotYet: (id: string, text: string) => Promise<void>;
+  /** Product the homeowner is suggesting with the next item comment ("Suggest this"). current: the item's current price. */
+  proposal?: { name: string; price: string; supplier_name: string; thumbnail_url: string | null; current: string | null } | null;
+  onClearProposal?: () => void;
+  /** Designer: put the suggested product in the draft. can() decides per thread. */
+  apply?: { can: (x: CommentThread) => boolean; onApply: (x: CommentThread) => Promise<void> };
+}
+
+/** Suggested product: small image, name, price and the difference with the item's current product. */
+function ProposalChip({ name, price, supplier, thumb, current, unavailable, action }: {
+  name: string; price: string; supplier: string; thumb: string | null; current: string | null | undefined; unavailable?: boolean; action?: ReactNode;
+}) {
+  const delta = proposalDelta(price, current);
+  return (
+    <div className="flex items-center gap-2 rounded-lg border border-line bg-slate-50 p-1.5">
+      <Thumb path={unavailable ? null : thumb} className="h-9 w-9" />
+      <div className="min-w-0 flex-1 text-xs">
+        <p className="truncate font-medium text-slate-900" title={name}>{name}</p>
+        <p className="flex flex-wrap gap-x-1.5 tabular-nums text-slate-600">
+          <span className="font-semibold text-slate-900">{formatVnd(price)}</span>
+          {delta && <span>{t('comments.vsCurrent', { delta: signedVnd(delta) })}</span>}
+          {supplier && <span className="truncate text-slate-500">{supplier}</span>}
+        </p>
+        {unavailable && <span className="mt-0.5 inline-block rounded-full bg-rose-50 px-1.5 text-[11px] font-medium text-rose-700">{t('drafts.noLongerAvailable')}</span>}
+      </div>
+      {action}
+    </div>
+  );
 }
 
 const Tag = ({ children }: { children: ReactNode }) => <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] text-slate-600">{children}</span>;
@@ -138,6 +167,13 @@ export function CommentPanel(p: Props) {
                       <span>{formatTime(root.created_at)}</span>
                     </p>
                     <p className="mt-1 whitespace-pre-line break-words text-[13px] leading-5 text-slate-800">{root.content}</p>
+                    {root.proposed_product && (
+                      <div className="mt-1.5">
+                        <p className="mb-1 text-[11px] font-medium text-slate-500">{t('comments.suggested')}</p>
+                        <ProposalChip name={root.proposed_product.name} price={root.proposed_product.price} supplier={root.proposed_product.supplier_name}
+                          thumb={root.proposed_product.thumbnail_url} current={element?.product?.unit_price} unavailable={!root.proposed_product.available} />
+                      </div>
+                    )}
                     {p.allow.respond && root.status === 'ADDRESSED' && !open && <p className="mt-1 text-xs font-medium text-amber-800">{t('comments.yourTurn')}</p>}
                     <div className="mt-2 flex flex-wrap gap-1">
                       {element ? <Tag>{elementName(element, p.me)}</Tag> : kind === 'element' ? <Tag>{t('comments.removedItem', { name: root.element?.name ?? t('comments.kind.element') })}</Tag> : kind === 'general' && <Tag>{t('comments.kind.general')}</Tag>}
@@ -161,6 +197,12 @@ export function CommentPanel(p: Props) {
                     <div className="flex gap-2">
                       <Button size="sm" variant="primary" className="flex-1" onClick={() => p.onAccept(root.id)}>{t('comments.accept')}</Button>
                       <Button size="sm" className="flex-1" onClick={() => setNotYet(root.id)}>{t('comments.notYet')}</Button>
+                    </div>
+                  )}
+                  {p.apply?.can(thread) && (
+                    <div className="space-y-1">
+                      <Button size="sm" variant="primary" block onClick={() => p.apply!.onApply(thread)}>{t('comments.apply')}</Button>
+                      <p className="text-[11px] leading-4 text-slate-500">{t('comments.applyHint')}</p>
                     </div>
                   )}
                   {p.allow.address && root.status === 'OPEN' && (
@@ -197,8 +239,19 @@ export function CommentPanel(p: Props) {
               </button>
             )}
           </div>
-          <Composer key={target ? JSON.stringify(target.kind === 'element' ? target.element.id : target) : 'general'}
-            compact hint={target ? undefined : t('comments.hint')} placeholder={p.composerPlaceholder} onSend={p.onCreate} />
+          {p.proposal && target?.kind === 'element' && (
+            <div className="mb-2">
+              <ProposalChip name={p.proposal.name} price={p.proposal.price} supplier={p.proposal.supplier_name} thumb={p.proposal.thumbnail_url} current={p.proposal.current}
+                action={p.onClearProposal && (
+                  <button type="button" onClick={p.onClearProposal} aria-label={t('comments.clearSuggestion')} title={t('comments.clearSuggestion')} className="shrink-0 self-start rounded p-0.5 text-slate-500 hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-2 focus-visible:outline-brand">
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )} />
+            </div>
+          )}
+          {/* a new suggestion remounts the composer focused, so the homeowner can write the message right away */}
+          <Composer key={`${target ? JSON.stringify(target.kind === 'element' ? target.element.id : target) : 'general'}|${p.proposal?.name ?? ''}`}
+            autoFocus={!!p.proposal} compact hint={target ? undefined : t('comments.hint')} placeholder={p.composerPlaceholder} onSend={p.onCreate} />
         </div>
       )}
     </div>

@@ -7,7 +7,6 @@ import { StatusChip, Stepper, Z } from '@/components/ui';
 import { t, tList } from '@/i18n';
 import type { UserRole } from '@/types/role';
 import { formatTime, versionLabel } from './logic';
-import { conceptStep } from '@/features/projects/projectView';
 import type { VersionSummary, VersionType } from './types';
 
 /** Small dropdown: closes on outside click, Escape, or after an item runs. */
@@ -67,9 +66,13 @@ interface Props {
   onOpenLeft: () => void;
   onOpenRight: () => void;
   openComments: number;
+  /** Designer: when the homeowner's review window ends. */
+  reviewNote?: { text: string; soon: boolean } | null;
+  /** Versions the scheduler approved when the review window ran out. */
+  autoApproved?: (id: string) => boolean;
 }
 
-export function WorkspaceBar({ role, backTo, title, stage, versions, current, onVersion, canCompare, onCompare, download, step, primary, secondary, onOpenLeft, onOpenRight, openComments }: Props) {
+export function WorkspaceBar({ role, backTo, title, stage, versions, current, onVersion, canCompare, onCompare, download, step, primary, secondary, onOpenLeft, onOpenRight, openComments, reviewNote, autoApproved }: Props) {
   const iconBtn = 'rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-brand';
   return (
     <header className="flex h-14 min-w-0 items-center gap-3 border-b border-line bg-surface px-3 lg:px-4">
@@ -99,6 +102,7 @@ export function WorkspaceBar({ role, backTo, title, stage, versions, current, on
                         <span className="flex items-center gap-2">
                           <span className={`text-[13px] font-semibold ${v.status === 'SUPERSEDED' ? 'text-slate-500 line-through' : 'text-slate-900'}`}>{versionLabel(v.label, role)}</span>
                           <StatusChip kind="version" value={v.status} size="sm" />
+                          {v.status === 'APPROVED' && autoApproved?.(v.id) && <StatusChip tone="gray" label={t('workspace.autoApproved')} size="sm" />}
                         </span>
                         <span className="mt-0.5 block truncate text-xs text-slate-600">{v.title}</span>
                         <span className="block text-[11px] tabular-nums text-slate-500">{t(`status.stage.${v.version_type}`)} · {formatTime(v.created_at)}</span>
@@ -125,8 +129,11 @@ export function WorkspaceBar({ role, backTo, title, stage, versions, current, on
           )}
         </Dropdown>
       )}
+      {reviewNote && (
+        <span className={`hidden shrink-0 whitespace-nowrap text-xs lg:inline ${reviewNote.soon ? 'font-medium text-amber-800' : 'text-slate-600'}`}>{reviewNote.text}</span>
+      )}
 
-      <Stepper size="sm" steps={tList('steps.workspace')} current={step} optional={conceptStep(0)} className="mx-auto hidden min-w-[300px] max-w-[420px] flex-1 xl:flex" />
+      <Stepper size="sm" steps={tList('steps.workspace')} current={step} className="mx-auto hidden min-w-[300px] max-w-[420px] flex-1 xl:flex" />
       <div className="ml-auto flex shrink-0 items-center gap-2 xl:ml-0">
         {secondary}
         {primary}

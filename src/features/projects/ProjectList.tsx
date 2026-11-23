@@ -8,7 +8,7 @@ import { getCurrentUser } from '@/services/authService';
 import { canOpenWorkspace, getProjects, isPreparing, projectApi } from './projectApi';
 import type { Project, ProjectStatus } from './projectApi';
 import { GreetingLine, ProjectCards } from './ProjectCards';
-import { awaitingCount, draftNote, isClosed, knownVersion, needsAction, useFloorCounts, useLatestVersions, versionUnknown } from './projectView';
+import { awaitingCount, draftNote, isClosed, knownVersion, needsAction, useConceptGates, useFloorCounts, useLatestVersions, versionUnknown } from './projectView';
 
 type ListRole = 'staff' | 'admin' | 'designer' | 'homeowner';
 const STATUSES: ProjectStatus[] = ['DRAFT', 'CONTRACT_PENDING', 'REQUIREMENT_ANALYSIS', 'IN_DESIGN', 'PRODUCT_SELECTION', 'QUOTING', 'COMPLETED', 'CANCELLED'];
@@ -61,9 +61,16 @@ export function ProjectList() {
   // versions first: they decide the groups, floor counts only fill a badge
   const { latest, ready, retry, retryAll } = useLatestVersions(cardItems, role === 'designer' ? 'designer' : 'homeowner');
   const cardFloors = useFloorCounts(cardItems);
+  // in design with no layout: has a concept been chosen? (only those projects ask)
+  const gate = useConceptGates(cardItems, latest);
 
   const open = (p: Project) => {
-    if (role === 'designer') { if (canOpenWorkspace(p.status)) navigate(`/projects/${p.id}/workspace`); return; }
+    if (role === 'designer') {
+      // no concept chosen yet: the Lead works on the concepts first (a Member keeps the workspace)
+      if (p.myProjectRole === 'LEAD' && gate(p.id)) navigate(`/designer/projects/${p.id}#concept`);
+      else if (canOpenWorkspace(p.status)) navigate(`/projects/${p.id}/workspace`);
+      return;
+    }
     navigate(role === 'homeowner' ? `/homeowner/projects/${p.id}` : `/staff/projects/${p.id}`);
   };
 
@@ -145,7 +152,7 @@ export function ProjectList() {
 
   if (cards) {
     const loading = !items && !error;
-    const needs = (all: Project[]) => all.filter((p) => needsAction(role, p, latest(p.id))).length;
+    const needs = (all: Project[]) => all.filter((p) => needsAction(role, p, latest(p.id), gate(p.id))).length;
     const icon = 'h-5 w-5';
     // The needs-action count lives in the header line and the group heading; tiles only add workload by stage (designer).
     const cardStats = role === 'designer' ? [
@@ -173,7 +180,7 @@ export function ProjectList() {
           description={error ? t(`projects.description.${role}`) : <GreetingLine name={getCurrentUser()?.name} count={needs(all)} replies={all.reduce((n, p) => n + awaitingCount(p, latest(p.id)), 0)}
             draftNote={draftNote(all.flatMap((p) => knownVersion(latest(p.id))?.draftRooms ?? []))} unknown={all.filter((p) => !isClosed(p.status) && versionUnknown(latest(p.id))).length} onRetryAll={() => retryAll(all.filter((p) => !isClosed(p.status)).map((p) => p.id))} loading={loading || !ready} />} />
         {!error && !loading && all.length > 3 && cardStats.length > 0 && <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-3">{cardStats}</div>}
-        <ProjectCards role={role} projects={items && filtered} latest={latest} floors={cardFloors} error={error} onRetry={load}
+        <ProjectCards role={role} projects={items && filtered} latest={latest} gate={gate} floors={cardFloors} error={error} onRetry={load}
           filteredOut={filteredOut} onClearFilters={() => { setSearch(''); setStatus(''); }}
           onWorkspace={(p) => navigate(`/projects/${p.id}/workspace`)} onDetails={(p) => navigate(`/${role === 'designer' ? 'designer' : 'homeowner'}/projects/${p.id}`)} onRetryVersion={retry} filtering={!!search.trim() || !!status}
           large={role === 'homeowner' && items?.length === 1} />

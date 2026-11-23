@@ -159,13 +159,18 @@ export function ProjectDetail() {
   const quotationFirst = staff && project.status === 'QUOTING';
   const openQuotation = () => navigate(`/projects/${project.id}/quotation`);
   const workspaceLabel = t(role === 'admin' ? 'projectDetail.openViewOnly' : 'projectDetail.openWorkspace');
-  const secondary = quotationFirst
+  // In design before a concept is chosen the Lead's main action is the concept card on this page; the workspace stays one click away.
+  const conceptFirst = projectRole === 'LEAD' && project.status === 'IN_DESIGN' && conceptData.conceptDone === false;
+  const toConcepts = () => document.getElementById('concept')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const secondary = quotationFirst || conceptFirst
     ? (workspace ? <Button onClick={open}>{workspaceLabel}</Button> : undefined)
     : quoting ? <Button onClick={openQuotation}>{t('projectDetail.openQuotation')}</Button> : undefined;
 
   // exactly one primary action, following the next step
   const primary = quotationFirst
     ? <Button variant="primary" onClick={openQuotation}>{t('projectDetail.openQuotation')}</Button>
+    : conceptFirst
+    ? <Button variant="primary" onClick={toConcepts}>{t('projectDetail.workOnConcepts')}</Button>
     : workspace
     ? <Button variant="primary" onClick={open}>{workspaceLabel}</Button>
     : canKickoff

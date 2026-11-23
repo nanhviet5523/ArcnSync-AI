@@ -8,6 +8,7 @@ import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
 import { ApiError, fetchBlobUrl } from '@/services/authService';
 import { t } from '@/i18n';
 import { designApi } from './designApi';
+import { isApiModelPath } from './logic';
 import { ceilingHeight, MAX_ZOOM, MIN_ZOOM, STAGE_BG, wheelFactor } from './view';
 import type { ClickPoint } from './Plan2D';
 import type { DesignElement, Opening, Pt, VersionFloor } from './types';
@@ -243,7 +244,12 @@ function loadModel(models: Ctx['models'], e: DesignElement, report: (id: string,
     if (!models.has(key)) models.set(key, get());
     return models.get(key)!;
   };
-  const fallback = () => (e.default_model_url ? load(e.default_model_url, () => loader.loadAsync(e.default_model_url!)) : Promise.reject(new Error('no model')));
+  // Category model: an Admin upload comes from the API (token), a placeholder from the frontend. A failure draws the plain box.
+  const fallback = () => {
+    const url = e.default_model_url;
+    if (!url) return Promise.reject(new Error('no model'));
+    return load(url, () => (isApiModelPath(url) ? fetchBlobUrl(url).then((u) => loader.loadAsync(u)) : loader.loadAsync(url)));
+  };
   if (!e.product) return e.default_model_url ? fallback() : null;
   const path = designApi.elementModelPath(e.id, e.product.id);
   return load(path, () => fetchBlobUrl(path).then((url) => loader.loadAsync(url))).catch((err) => {

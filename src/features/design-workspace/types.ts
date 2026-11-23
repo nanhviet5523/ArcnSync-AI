@@ -122,6 +122,11 @@ export interface DesignVersion {
   elements: DesignElement[];
   unchosen_count: number | null;
   provisional_total: string | null;
+  /**
+   * The first RENDER_3D version, made by the system when the homeowner approved the layout, before the Lead's first
+   * save. The homeowner can comment but not approve or ask for changes; the Lead's first save is always Minor.
+   */
+  awaiting_designer: boolean;
 }
 
 export type VersionSummary = Omit<DesignVersion, 'floors' | 'elements' | 'unchosen_count' | 'provisional_total'> & { floors: Floor[] };
@@ -165,7 +170,20 @@ export interface Comment extends CommentReply {
   element: ElementRef | null;
   current_element: ElementRef | null;
   addressed_in_version_id: string | null;
+  /** The homeowner suggests this product for the item (Products only); null = no suggestion. */
+  proposed_product: ProposedProduct | null;
   replies: CommentReply[];
+}
+
+/** Product a homeowner suggested in a comment. Price is the current price, as a string. */
+export interface ProposedProduct {
+  id: string;
+  name: string;
+  price: string;
+  supplier_name: string;
+  thumbnail_url: string | null;
+  /** False: no longer sold, or the supplier stopped. */
+  available: boolean;
 }
 
 /** What a new comment attaches to. */

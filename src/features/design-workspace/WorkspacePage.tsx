@@ -1,13 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import type { KeyboardEvent } from 'react';
-import { Link, useBlocker, useParams, useSearchParams } from 'react-router-dom';
-import { Box, Image as ImageIcon, Info, PanelLeftOpen, Upload } from 'lucide-react';
-import { Avatar, Banner, Button, ErrorState, Field, Input, Modal, Skeleton, Textarea, Z, avatarLabels } from '@/components/ui';
+import { Link, useBlocker, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Box, Image as ImageIcon, Info, PanelLeftOpen, Upload, X } from 'lucide-react';
+import { Avatar, Banner, Button, ErrorState, Field, Input, Modal, Skeleton, StatusChip, Textarea, Z, avatarLabels } from '@/components/ui';
 import { downloadFile, revokeBlobUrls } from '@/services/authService';
-import { errorText, isNetworkError, t } from '@/i18n';
+import { errorText, formatDate, formatDateTime, formatMoney, isNetworkError, t } from '@/i18n';
+import { getProjectContract } from '@/features/projects/services/contractsApi';
+import type { PaymentMilestoneResponse } from '@/features/projects/services/contractsApi';
 import { projectApi } from '@/features/projects/projectApi';
+import { useProjectConcepts } from '@/features/concepts/useProjectConcepts';
 import { designApi } from './designApi';
-import { approveBlockers, can, CLEAR_CANVAS, commentPlaceholder, commentThreads, compareCandidates, newUploadRow, pickCompareTarget, resolveProjectRole, isOffTeam, uploadRowErrors, elementName, formatTime, latestVersion, targetInVersion, versionLabel, isNotChosenItem, isUnknownItem, pinPoint, pinsToShow } from './logic';
+import { approveBlockers, awaitingNotice, can, CLEAR_CANVAS, discardErrorText, draftAddressedNotes, revisionMode, commentPlaceholder, commentThreads, compareCandidates, newUploadRow, pickCompareTarget, resolveProjectRole, isOffTeam, uploadRowErrors, elementName, formatTime, latestVersion, targetInVersion, versionLabel, isNotChosenItem, isUnknownItem, pinPoint, pinsToShow, isAutoApproved, paymentState, payUrl, reviewDue, stageMilestone } from './logic';
 import type { Action, CanvasUi, CommentThread, UploadRow } from './logic';
 import { NotOnTeam } from '@/features/projects/NotOnTeam';
 import { CommentPanel } from './CommentPanel';
@@ -29,11 +32,11 @@ import { RoomOwnerMenu } from './RoomOwnerMenu';
 import { ChangeSummary, MemberDraftBar, RoomDraftsBlock } from './RoomDraftBars';
 import { IgnoredList, MemberDxfUploadDialog, UploadResultModal } from './MemberDxfUpload';
 import { useRoomWork } from './useRoomWork';
-import { applyLayout, draftChangeCount, draftPatches, droppedItemNames, foldOwnDrafts, hasLayoutChanges, isAddedItem, layoutLines, layoutTarget, localChangesInRoom, skippedRoomNames, mergePatches, mergeSummary, olderVersionDraftSource, previewHighlight, signedVnd, suggestedAddressed, withPatches } from './roomDrafts';
+import { applyLayout, draftChangeCount, draftPatches, droppedItemNames, foldOwnDrafts, hasLayoutChanges, isAddedItem, layoutLines, layoutTarget, localChangesInRoom, skippedRoomNames, mergePatches, mergeSummary, olderVersionDraftSource, previewHighlight, signedVnd, withPatches } from './roomDrafts';
 import type { ChangeLine, MemberDraftRow, Patches } from './roomDrafts';
 import { boxOf, elementRoom, floorRooms, roomAt } from './rooms';
 import type { RoomInfo } from './rooms';
-import type { AcceptedLayoutChange, Comment, CommentTarget, DesignElement, DesignVersion, Floor, IgnoredLayoutChange, Project, RevisionLimit, RevisionType, Role, RoomDraft, VersionSummary } from './types';
+import type { AcceptedLayoutChange, Comment, CommentTarget, DesignElement, DesignVersion, Floor, IgnoredLayoutChange, Project, ProductOption, RevisionLimit, RevisionType, Role, RoomDraft, VersionSummary, VersionType } from './types';
 
 /** Workspace steps (steps.workspace): Concept, Layout, Products, Quotation, Approved. Completed = all done. */
 const STEP_OF: Partial<Record<Project['status'], number>> = { IN_DESIGN: 1, PRODUCT_SELECTION: 2, QUOTING: 3, COMPLETED: 5 };
@@ -184,7 +187,7 @@ function UploadDialog({ floors, first, latest, limit, major, wallHeight, threads
 
 type Dialog =
   | { kind: 'notice'; title: string; body: string; action?: { label: string; run: () => void } }
-  | { kind: 'confirm'; title: string; body: string; label: string; run: () => void }
+  | { kind: 'confirm'; title: string; body: string; label: string; run: () => void; cancelLabel?: string; danger?: boolean }
   | { kind: 'request' }
   | { kind: 'save' }
   | { kind: 'assignUnsaved'; roomId: string; roomName: string; designerId: string; designerName: string; n: number }
@@ -225,7 +228,10 @@ export function WorkspacePage() {
   // replace: flipping Compare should not add steps to the browser's Back
   const setCompareParam = (id: string | null) => setParams((p) => { if (id) p.set('compare', id); else p.delete('compare'); return p; }, { replace: true });
   const viewer = useMemo(() => designApi.getViewer(), []);
+  const navigate = useNavigate();
   const [project, setProject] = useState<Project | null>(null);
+  // the first layout needs a chosen concept (backend: 422 CONCEPT_NOT_APPROVED)
+  const conceptData = useProjectConcepts(project);
   const [versions, setVersions] = useState<VersionSummary[]>([]);
   const [limits, setLimits] = useState<Record<string, RevisionLimit>>({});
   const [version, setVersion] = useState<DesignVersion | null>(null);
@@ -242,6 +248,18 @@ export function WorkspacePage() {
     const id = setTimeout(() => setNotice(''), 6000);
     return () => clearTimeout(id);
   }, [notice]);
+  /** Payment milestones of the project's contract; empty when there is none (dev data) or it can't be read. */
+  const [milestones, setMilestones] = useState<PaymentMilestoneResponse[]>([]);
+  /** Stage the homeowner just approved: its banner carries the payment request, so it stays until closed. */
+  const [approvedStage, setApprovedStage] = useState<VersionType | null>(null);
+  const approvedMilestone = approvedStage ? stageMilestone(milestones, approvedStage) : null;
+  const approvedPay = paymentState(approvedMilestone, viewer.role);
+  // with nothing to pay it is a plain notice and goes away like one
+  useEffect(() => {
+    if (!approvedStage || approvedPay) return;
+    const id = setTimeout(() => setApprovedStage(null), 6000);
+    return () => clearTimeout(id);
+  }, [approvedStage, approvedPay]);
   const [floorId, setFloorId] = useState('');
   const [tab, setTab] = useState<'2d' | '3d'>('2d');
   const [showFurniture, setShowFurniture] = useState(true);
@@ -349,6 +367,10 @@ export function WorkspacePage() {
   const [addressed, setAddressed] = useState<string[]>([]);
   const [invalidAddressed, setInvalidAddressed] = useState<string[]>([]);
   const [saveError, setSaveError] = useState('');
+  /** Homeowner: product picked with "Suggest this", sent with the next comment on that item. */
+  const [proposal, setProposal] = useState<{ elementId: string; product: ProductOption } | null>(null);
+  /** Lead: comments whose suggestion was applied to the draft, ticked in advance in the Save dialog. */
+  const [appliedProposals, setAppliedProposals] = useState<string[]>([]);
   const versionId = params.get('v');
 
   // Another version: nothing pointed at on the old one survives. Done here, not when clicking, because the blocker may cancel the move.
@@ -386,6 +408,8 @@ export function WorkspacePage() {
   const load = useCallback(async () => {
     const seq = ++loadSeq.current;
     const stale = () => seq !== loadSeq.current;
+    // Not awaited with the rest: the contract only adds status lines, and no contract (404) or no access is not an error here.
+    getProjectContract(projectId).then((c) => { if (!stale()) setMilestones(c?.milestones ?? []); }).catch(() => { /* shown without payment info */ });
     try {
       const [p, layout, render, assigned] = await Promise.all([
         designApi.getProject(projectId), designApi.listVersions(projectId, 'LAYOUT_2D'), designApi.listVersions(projectId, 'RENDER_3D'),
@@ -419,6 +443,7 @@ export function WorkspacePage() {
         pendingFloor.current = null;
         setFloorId((f) => opened ?? (v.floors.some((x) => x.id === f) ? f : [...v.floors].sort((a, b) => a.level - b.level)[0]?.id ?? ''));
         setCanvas(CLEAR_CANVAS); setDraft({}); resetForVersion(); setMergeCompare(false); setRoomKey(null); setView2d(null);
+        setProposal(null); setAppliedProposals([]);
       }
       setVersion(v);
       setError('');
@@ -505,6 +530,9 @@ export function WorkspacePage() {
   const current = versions.find((v) => v.id === version?.id) ?? null;
   const layoutVersions = versions.filter((v) => v.version_type === 'LAYOUT_2D');
   const canFirstUpload = allow('uploadFirst').ok && !layoutVersions.length;
+  // no concept chosen yet: the layout can't start, so no Upload; while still checking, no Upload either (a failed check leaves it to the backend)
+  const conceptFirst = canFirstUpload && conceptData.conceptDone === false;
+  const firstUploadReady = canFirstUpload && (conceptData.conceptDone === true || !!conceptData.error);
   const isRender = version?.version_type === 'RENDER_3D';
   const readOnly = !!version && (version.status === 'SUPERSEDED' || version.status === 'APPROVED' || project.status === 'COMPLETED' || project.status === 'CANCELLED');
   const goVersion = (id: string) => setParams((p) => { p.set('v', id); return p; });
@@ -559,7 +587,12 @@ export function WorkspacePage() {
   // At Layout every merge is a layout merge: drafts there only hold DXF changes.
   const mergingLayout = reviewing && (layoutStage || !!summary?.hasLayout || hasLayoutChanges(work.ownDrafts));
   const stageLimit = (version && limits[version.version_type]) ?? null;
-  const layoutBlocked = mergingLayout && stageLimit?.remaining === 0;
+  /** System-made Products version before the Lead's first save: the backend records that save as Minor, whatever it merges. */
+  const awaiting = !!version?.awaiting_designer;
+  const layoutBlocked = mergingLayout && !awaiting && stageLimit?.remaining === 0;
+  const saveMode = revisionMode(version, mergingLayout);
+  /** Comments marked addressed in the drafts this Save merges: the backend marks them itself, so read-only in the dialog. */
+  const draftNotes = reviewing ? draftAddressedNotes([...work.readyDrafts, ...work.ownDrafts.filter((d) => draftChangeCount(d) > 0)], openThreads.map((x) => x.root)) : [];
   /** Who has the room of that name, for "in Bedroom 2, assigned to An". A room given to nobody stays with the Lead. */
   const ownerOfRoomName = (name: string | null) => {
     if (!name) return null;
@@ -570,6 +603,8 @@ export function WorkspacePage() {
   const canTakeOver = (roomId: string | null | undefined) => !!roomId && allow('takeOverRoom', roomId).ok;
   // The Comments composer follows the selected item unless the user picked a spot or switched to a general comment (✕).
   const composeTarget: CommentTarget | null = target ?? (selElement ? { kind: 'element', element: selElement } : null);
+  // a suggestion belongs to one item: picking another item or a general comment leaves it out
+  const activeProposal = proposal && composeTarget?.kind === 'element' && composeTarget.element.id === proposal.elementId ? proposal : null;
 
   /** Unsent popover text wins over a click elsewhere: keep the popover, ignore the click, put the cursor back. */
   const holdQuick = () => {
@@ -670,6 +705,8 @@ export function WorkspacePage() {
       // Offline: keep the screen and whatever was typed. With a dialog open the banner would be hidden behind it.
       if (isNetworkError(e) && !dialog) setError(errorText(e));
       else if (roomConflict(e)) return false;
+      // the comment moved out of the version on screen: show the threads as they are now
+      else if ((e as { code?: string }).code === 'INVALID_VIEW_VERSION') { setNotice(errorText(e)); loadRef.current(); }
       else if (isStale(e)) setDialog(staleNotice(e));
       else setDialog({ kind: 'notice', title: t('workspace.errorTitle'), body: messageOf(e) });
       return false;
@@ -681,15 +718,51 @@ export function WorkspacePage() {
       setDialog({ kind: 'notice', title: t('workspace.errorTitle'), body: t('workspace.targetGone') });
       return false;
     }
-    return run(() => designApi.createComment(version!.id, {
+    const proposed = tg.kind === 'element' && activeProposal?.elementId === tg.element.id ? activeProposal.product.id : null;
+    const ok = await run(() => designApi.createComment(version!.id, {
       content, floor_id: tg.kind === 'general' ? null : tg.kind === 'element' ? tg.element.floor_id : tg.floor_id,
       design_element_id: tg.kind === 'element' ? tg.element.id : null,
       pin_position: tg.kind === 'point' ? { x: tg.x, y: tg.y } : null,
+      proposed_product_id: proposed,
     }));
+    if (ok && proposed) setProposal(null);
+    return ok;
+  };
+  /** "Suggest this" in the Selected item tab: opens the item comment with the product filled in. Nothing changes yet. */
+  const suggestProduct = (p: ProductOption) => {
+    if (!selElement) return;
+    setProposal({ elementId: selElement.id, product: p });
+    patchCanvas({ target: { kind: 'element', element: selElement } });
+    setRightTab('comments');
+  };
+  /**
+   * Designer applies a homeowner's suggestion: the same swap as in the Selected item tab, put in the draft. The product
+   * is read again from the item's options, so the draft carries its model and size; gone from them = no longer offered.
+   */
+  const applyProposal = async (x: CommentThread) => {
+    const el = x.element, pp = x.root.proposed_product;
+    if (!el || !pp) return;
+    let option: ProductOption | undefined;
+    try { option = (await designApi.listProductOptions(el.id)).find((o) => o.id === pp.id); } catch (e) {
+      setDialog({ kind: 'notice', title: t('workspace.errorTitle'), body: errorText(e) });
+      return;
+    }
+    if (!option) { setDialog({ kind: 'notice', title: t('workspace.errorTitle'), body: t('comments.suggestionGone') }); return; }
+    const chosen = option;
+    setDraft((d) => ({ ...d, [el.id]: { ...d[el.id], product: chosen, choice: 'CHOSEN' } }));
+    if (isMember && el.room_id) work.setTick(el.room_id, x.root.id, true);
+    else setAppliedProposals((ids) => (ids.includes(x.root.id) ? ids : [...ids, x.root.id]));
+    patchCanvas({ selEl: el.id });
+    setNotice(t('comments.applied'));
+  };
+  const canApply = (x: CommentThread) => {
+    const pp = x.root.proposed_product;
+    return !!pp?.available && !!x.element && x.root.status === 'OPEN' && !previewing && x.element.product?.id !== pp.id
+      && draft[x.element.id]?.product?.id !== pp.id && allow('editItem', x.element.room_id).ok;
   };
   const approve = (layout: boolean) => run(async () => {
     await designApi.approve(version!.id);
-    setNotice(t(layout ? 'workspace.layoutApproved' : 'workspace.productsApproved'));
+    setApprovedStage(layout ? 'LAYOUT_2D' : 'RENDER_3D');
     if (layout) {
       const render = await designApi.listVersions(projectId, 'RENDER_3D');
       const next = latestVersion(render.items);
@@ -700,8 +773,9 @@ export function WorkspacePage() {
     work.setPreviewId(null);
     setAssignAfterSave(assignAfter);
     setText(title); setRevision('MINOR'); setChooseAll(remaining); setInvalidAddressed([]); setSaveError('');
+    // Comments ticked in the merged drafts are marked addressed by the backend itself: the Lead sends only their own ticks.
     const openIds = openThreads.map((x) => x.root.id);
-    setAddressed([...new Set([...suggestedAddressed(work.drafts, openIds), ...work.ownDrafts.flatMap((d) => d.addressed_comment_ids).filter((id) => openIds.includes(id))])]);
+    setAddressed(appliedProposals.filter((id) => openIds.includes(id) && !draftNotes.some((n) => n.commentId === id)));
     setDialog({ kind: 'save' });
   };
   const saveDraft = async () => {
@@ -723,7 +797,7 @@ export function WorkspacePage() {
         if (r.changed) await designApi.saveRoomDraft(version!.id, r.draft.room_id, r.input);
         if (r.count && (r.changed || r.draft.status !== 'READY')) await designApi.markRoomDraftReady(version!.id, r.draft.room_id);
       }
-      const v = await designApi.saveEdits(version!.id, { title: text.trim(), revision_type: mergingLayout ? 'MAJOR' : revision, edits, choose_all_remaining: chooseAll > 0, addressed_comment_ids: addressed, room_draft_ids: [...work.readyDrafts, ...own.rooms.filter((r) => r.count).map((r) => r.draft)].map((d) => d.id) });
+      const v = await designApi.saveEdits(version!.id, { title: text.trim(), revision_type: saveMode === 'first' ? 'MINOR' : mergingLayout ? 'MAJOR' : revision, edits, choose_all_remaining: chooseAll > 0, addressed_comment_ids: addressed, room_draft_ids: [...work.readyDrafts, ...own.rooms.filter((r) => r.count).map((r) => r.draft)].map((d) => d.id) });
       const skipped = skippedRoomNames(v.skipped_room_ids, version!.floors);
       const lostLayout = v.layout_merge?.skipped ?? [];
       const notices = [
@@ -732,6 +806,7 @@ export function WorkspacePage() {
       ].filter(Boolean);
       if (notices.length) setNotice(notices.join(' '));
       setDraft({});
+      setAppliedProposals([]);
       setDialog(null);
       if (assignAfterSave) {
         // the version is saved either way: a failed assignment must not hide it
@@ -753,7 +828,8 @@ export function WorkspacePage() {
       // The dialog stays open with everything typed; the backend names the refused ticks.
       const err = e as { code?: string; details?: { invalidCommentIds?: string[] } };
       if (err.code === 'INVALID_ADDRESSED_COMMENTS') setInvalidAddressed(err.details?.invalidCommentIds ?? []);
-      setSaveError(errorText(e));
+      // out of Major rounds while merging moved items: the way out is to drop those drafts
+      setSaveError(err.code === 'REVISION_LIMIT_REACHED' && mergingLayout ? `${errorText(e)} ${t('drafts.discardMovedHint')}` : errorText(e));
     } finally { setBusy(false); }
   };
   const patchSelected = (patch: Partial<DesignElement>) => selEl && setDraft((d) => ({ ...d, [selEl]: { ...d[selEl], ...patch } }));
@@ -762,6 +838,31 @@ export function WorkspacePage() {
   const clearRoomLocal = (roomId: string) => {
     setDraft((d) => Object.fromEntries(Object.entries(d).filter(([id]) => version?.elements.find((e) => e.id === id)?.room_id !== roomId)));
     work.clearRoomTicks(roomId);
+  };
+  /** Throws a room draft away on the server (owner or Lead). Any answer reloads: the drafts may have moved on. */
+  const discardDraft = (roomId: string, room: string, ownerId: string, ownerName: string) => {
+    const other = ownerId !== viewer.id;
+    setDialog({
+      kind: 'confirm', title: t('drafts.discardTitle'), label: t('items.discard'), cancelLabel: t('drafts.keep'), danger: true,
+      body: other ? `${t('drafts.discardBody', { room })} ${t('drafts.discardBodyMember', { name: ownerName, room })}` : t('drafts.discardBody', { room }),
+      run: async () => {
+        setBusy(true);
+        let done = false;
+        try {
+          await designApi.deleteRoomDraft(version!.id, roomId);
+          done = true;
+          if (work.previewDraft?.room_id === roomId) work.setPreviewId(null);
+          setNotice(t('drafts.discarded', { room }));
+        } catch (e) {
+          setDialog({ kind: 'notice', title: t('workspace.errorTitle'), body: discardErrorText(e) });
+        } finally {
+          await loadRef.current();
+          // unsaved changes in the room go with the draft, but only once the server has dropped it
+          if (done) clearRoomLocal(roomId);
+          setBusy(false);
+        }
+      },
+    });
   };
   const saveMemberDraft = async (r: MemberDraftRow) => {
     if (await run(() => designApi.saveRoomDraft(version!.id, r.roomId, r.input))) clearRoomLocal(r.roomId);
@@ -888,7 +989,7 @@ export function WorkspacePage() {
     if (isNarrow()) openDrawer('right');
     setDecisionTick((n) => n + 1);
   };
-  const primary = (allow('upload').ok || canFirstUpload) ? (
+  const primary = (allow('upload').ok || firstUploadReady) ? (
     <Button size="sm" variant="primary" onClick={() => setUploading(true)}><Upload aria-hidden className="h-4 w-4" />{t('workspace.uploadDxf')}</Button>
   ) : approveVisible && version ? (
     // below 1024px the reasons are in a drawer, so a blocked button still leads to them
@@ -919,7 +1020,11 @@ export function WorkspacePage() {
     { id: 'comments', label: t('workspace.comments'), badge: commentBadge },
   ];
   const activeTab = tabs.some((x) => x.id === rightTab) ? rightTab : 'comments';
-  const showDecision = viewer.role === 'homeowner' && (requestVisible || !!blockers.length || noRoundsLeft);
+  const due = version && !awaiting ? reviewDue(stageMilestone(milestones, version.version_type), version) : null;
+  const awaitingLine = readOnly ? null : awaitingNotice(viewer.role, version);
+  const showDecision = viewer.role === 'homeowner' && (requestVisible || !!blockers.length || noRoundsLeft || !!due || !!awaitingLine);
+  /** Designer and staff read why the homeowner cannot approve yet, next to the bar's primary action. */
+  const awaitingReason = awaiting && !readOnly && viewer.role !== 'homeowner' ? approveBlockers('approveProducts', { role: viewer.role, awaitingDesigner: true })[0] ?? null : null;
 
   return (
     <div className="grid h-dvh grid-rows-[56px_minmax(0,1fr)] overflow-hidden bg-canvas font-sans text-slate-900">
@@ -927,9 +1032,11 @@ export function WorkspacePage() {
         versions={versions} current={current} onVersion={goVersion}
         canCompare={(v) => compareOptions.some((o) => o.id === v.id)}
         onCompare={startCompare}
-        download={downloadDxf} step={STEP_OF[project.status] ?? 0} primary={primary}
+        download={downloadDxf} step={conceptData.conceptDone === false ? 0 : STEP_OF[project.status] ?? 0} primary={primary}
         secondary={<Button size="sm" onClick={() => setInfoOpen(true)}><Info aria-hidden className="h-4 w-4" /><span className="hidden md:inline">{t('ws.projectInfo')}</span></Button>}
-        onOpenLeft={() => openDrawer('left')} onOpenRight={() => openDrawer('right')} openComments={commentBadge} />
+        onOpenLeft={() => openDrawer('left')} onOpenRight={() => openDrawer('right')} openComments={commentBadge}
+        reviewNote={awaitingReason ? { text: awaitingReason, soon: false } : viewer.role === 'designer' && due ? { text: t('workspace.reviewDueDesigner', { date: formatDateTime(due.at) }), soon: due.soon } : null}
+        autoApproved={(id) => isAutoApproved(id, milestones)} />
 
       <div className={`relative grid min-h-0 grid-cols-1 ${cols}`}>
         {drawer && <div className={`fixed inset-0 ${Z.drawerBackdrop} bg-slate-900/30 lg:hidden`} onClick={() => setDrawer(null)} />}
@@ -953,7 +1060,28 @@ export function WorkspacePage() {
                 <Banner tone="amber" action={<Button size="sm" onClick={() => { setError(''); load(); }}>{t('common.retry')}</Button>}>{error}</Banner>
               </div>
             )}
-            <div role="status" aria-live="polite" className="pointer-events-auto">{notice && <Banner>{notice}</Banner>}</div>
+            <div role="status" aria-live="polite" className="pointer-events-auto flex flex-col gap-2">
+              {notice && <Banner>{notice}</Banner>}
+              {approvedStage && (
+                <Banner tone={approvedPay?.status === 'OVERDUE' ? 'rose' : 'blue'} action={
+                  <div className="flex items-center gap-2">
+                    {approvedPay?.canPay && approvedMilestone && (
+                      <Button size="sm" variant="primary" onClick={() => navigate(payUrl(project.id, approvedMilestone.id))}>{t('workspace.payNow')}</Button>
+                    )}
+                    {approvedPay?.status === 'PAID' && <StatusChip tone="green" label={t('workspace.paid')} size="sm" />}
+                    <button type="button" onClick={() => setApprovedStage(null)} aria-label={t('common.close')} title={t('common.close')}
+                      className="rounded-md p-1 opacity-70 hover:opacity-100 focus-visible:outline-2 focus-visible:outline-brand"><X aria-hidden className="h-4 w-4" /></button>
+                  </div>
+                }>
+                  {t(approvedStage === 'LAYOUT_2D' ? 'workspace.layoutApproved' : 'workspace.productsApproved')}
+                  {approvedPay && approvedPay.status !== 'PAID' && approvedMilestone && (
+                    <span className="mt-0.5 block text-xs">
+                      {t('workspace.paymentDue', { amount: formatMoney(approvedMilestone.amount), date: approvedMilestone.dueDate ? formatDate(approvedMilestone.dueDate) : '—' })}
+                    </span>
+                  )}
+                </Banner>
+              )}
+            </div>
             {!!droppedNames.length && (
               <div className="pointer-events-auto">
                 <Banner tone="amber" action={work.latestDrafts.length && newestRender && newestRender.id !== version?.id ? <Button size="sm" onClick={() => goVersion(newestRender.id)}>{t('workspace.viewLatest')}</Button> : undefined}>
@@ -967,8 +1095,14 @@ export function WorkspacePage() {
             <div className="flex h-full items-center justify-center px-6 text-center">
               <div className="max-w-sm">
                 <p className="text-[15px] font-semibold text-slate-900">{t('workspace.noDrawing')}</p>
-                <p className="mt-1 text-sm text-slate-600">{canFirstUpload ? t('workspace.uploadFirst') : t('workspace.waitingDesigner')}</p>
-                {canFirstUpload && <Button variant="primary" className="mt-4" onClick={() => setUploading(true)}>{t('workspace.uploadDxf')}</Button>}
+                <p className="mt-1 text-sm text-slate-600">{conceptFirst ? t('workspace.conceptFirst') : canFirstUpload ? t('workspace.uploadFirst') : t('workspace.waitingDesigner')}</p>
+                {firstUploadReady && <Button variant="primary" className="mt-4" onClick={() => setUploading(true)}>{t('workspace.uploadDxf')}</Button>}
+                {conceptFirst && (
+                  <Link to={`/designer/projects/${project.id}#concept`}
+                    className="mt-4 inline-flex h-9 items-center justify-center rounded-lg bg-brand px-3.5 text-sm font-medium text-white transition-colors hover:bg-brand-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">
+                    {t('concepts.goToConcepts')}
+                  </Link>
+                )}
               </div>
             </div>
           ) : (
@@ -1081,7 +1215,8 @@ export function WorkspacePage() {
                     canComment={canComment} leadTools={leadEditing && !previewing} note={itemNote}
                     noteAvatar={itemOwner ? <Avatar id={itemOwner.designerId} name={itemOwner.designerName} label={avatars[itemOwner.designerId]} /> : undefined}
                     onTakeOver={selElement && canTakeOver(selElement.room_id) ? () => takeOverRoom(selElement.room_id!) : undefined}
-                    change={mergeChange ? <ChangeSummary line={mergeChange} /> : undefined} />
+                    change={mergeChange ? <ChangeSummary line={mergeChange} /> : undefined}
+                    onSuggest={allow('suggestProduct').ok && canComment ? suggestProduct : undefined} />
                 )}
                 {activeTab === 'comments' && (
                   <CommentPanel threads={threads} me={viewer.role} floors={version.floors} floorId={floorId} labels={labels} selectedId={selComment}
@@ -1105,10 +1240,16 @@ export function WorkspacePage() {
                       if (ok) patchCanvas({ target: null });
                       return ok;
                     }}
-                    onAddress={async (id) => { await run(() => designApi.addressComment(id, version.id)); }}
+                    onAddress={async (id) => { await run(() => designApi.addressComment(id, version.id, version.id)); }}
                     onReply={async (id, content) => { await run(() => designApi.replyComment(version.id, id, content)); }}
-                    onAccept={async (id) => { await run(() => designApi.acceptComment(id)); }}
-                    onNotYet={async (id, content) => { await run(() => designApi.reopenComment(id, content)); }} />
+                    onAccept={async (id) => { await run(() => designApi.acceptComment(id, version.id)); }}
+                    onNotYet={async (id, content) => { await run(() => designApi.reopenComment(id, content, version.id)); }}
+                    proposal={activeProposal && {
+                      name: activeProposal.product.name, price: activeProposal.product.unit_price, supplier_name: activeProposal.product.supplier_name,
+                      thumbnail_url: activeProposal.product.thumbnail_url, current: elements.find((e) => e.id === activeProposal.elementId)?.product?.unit_price ?? null,
+                    }}
+                    onClearProposal={() => setProposal(null)}
+                    apply={viewer.role === 'designer' ? { can: canApply, onApply: applyProposal } : undefined} />
                 )}
               </div>
 
@@ -1117,7 +1258,8 @@ export function WorkspacePage() {
                   commentText={(id) => threads.find((x) => x.root.id === id)?.root.content}
                   comparing={mergeCompareOn} canCompare={!!summary?.lines.length} onCompare={toggleMergeCompare}
                   onShowIgnored={(d) => setDialog({ kind: 'ignored', room: d.room_name, designer: d.designer_name, items: d.last_upload?.ignored ?? [] })}
-                  onDownloadFile={(d) => downloadFile(designApi.roomDraftFilePath(version.id, d.room_id), `${d.room_name}.dxf`).catch((e) => setDialog({ kind: 'notice', title: t('workspace.downloadError'), body: errorText(e) }))} />
+                  onDownloadFile={(d) => downloadFile(designApi.roomDraftFilePath(version.id, d.room_id), `${d.room_name}.dxf`).catch((e) => setDialog({ kind: 'notice', title: t('workspace.downloadError'), body: errorText(e) }))}
+                  onDiscard={allow('discardRoomDraft').ok ? (d) => discardDraft(d.room_id, d.room_name, d.designer_id, d.designer_name) : undefined} />
               )}
               {leadEditing && (
                 <div className="flex shrink-0 items-center gap-2 border-t border-line bg-surface px-4 py-3">
@@ -1144,6 +1286,7 @@ export function WorkspacePage() {
                 </div>
               )}
               {memberBar && <MemberDraftBar rows={work.memberRows} hasRooms={work.assignedRoomIds.length > 0} busy={busy} onSave={saveMemberDraft} onReady={markMemberReady} swaps={memberDrafting}
+                canDiscard={(r) => allow('discardRoomDraft', r.roomId).ok} onDiscard={(r) => discardDraft(r.roomId, r.roomName, viewer.id, viewer.name)}
                 onUploadDxf={allow('uploadRoomDxf').ok ? () => setDialog({ kind: 'memberUpload' }) : undefined}
                 onShowLastUpload={lastUpload ? () => setDialog({ kind: 'uploadResult', title: `${t('drafts.lastUpload')} · ${lastUpload.file_name}`, accepted: work.drafts.flatMap((d) => d.last_upload?.accepted.filter((a) => a.room_id === d.room_id) ?? []), ignored: lastUpload.ignored }) : undefined} />}
               {showDecision && (
@@ -1154,6 +1297,8 @@ export function WorkspacePage() {
                       {blockers.map((line) => <li key={line} className="flex gap-1.5"><span aria-hidden>•</span><span className="min-w-0">{line}</span></li>)}
                     </ul>
                   )}
+                  {awaitingLine && <p className="text-xs leading-5 text-slate-700">{awaitingLine}</p>}
+                  {due && <p className={`text-xs leading-5 ${due.soon ? 'font-medium text-amber-800' : 'text-slate-600'}`}>{t('workspace.reviewBy', { date: formatDateTime(due.at) })}</p>}
                   {noRoundsLeft && <p className="text-xs leading-5 text-slate-700">{t('workspace.noRoundsLeft')}</p>}
                   {requestState.reason && <p className="text-xs leading-5 text-slate-500">{requestState.reason}</p>}
                   {requestVisible && (
@@ -1209,8 +1354,8 @@ export function WorkspacePage() {
       )}
       {dialog?.kind === 'confirm' && (
         <Modal title={dialog.title} onClose={closeDialog} footer={<>
-          <Button onClick={closeDialog}>{t('common.cancel')}</Button>
-          <Button variant="primary" autoFocus disabled={busy} onClick={() => { const r = dialog.run; setDialog(null); r(); }}>{dialog.label}</Button>
+          <Button onClick={closeDialog}>{dialog.cancelLabel ?? t('common.cancel')}</Button>
+          <Button variant={dialog.danger ? 'danger' : 'primary'} autoFocus disabled={busy} onClick={() => { const r = dialog.run; setDialog(null); r(); }}>{dialog.label}</Button>
         </>}>
           <p className="text-sm text-slate-700">{dialog.body}</p>
         </Modal>
@@ -1269,9 +1414,11 @@ export function WorkspacePage() {
         </>}>
           <div className="space-y-4">
             <Field label={t('workspace.titleLabel')}>{(f) => <Input {...f} autoFocus value={text} maxLength={255} onChange={(e) => setText(e.target.value)} placeholder={t('workspace.savePlaceholder')} />}</Field>
-            {mergingLayout ? (
+            {saveMode === 'first' ? (
+              <p className="rounded-lg border border-line bg-slate-50 px-3 py-2 text-[13px] text-slate-700">{t('workspace.firstSubmission')}</p>
+            ) : saveMode === 'layoutMajor' ? (
               <p className={`rounded-lg border px-3 py-2 text-[13px] ${layoutBlocked ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-line bg-slate-50 text-slate-700'}`}>
-                {layoutBlocked ? t('reasons.noMajorLeft')
+                {layoutBlocked ? `${t('reasons.noMajorLeft')} ${t('drafts.discardMovedHint')}`
                   : layoutStage ? t('drafts.layoutRevision', { used: (stageLimit?.used ?? 0) + 1, max: stageLimit?.limit ?? '—' })
                   : t('drafts.majorUse', { used: stageLimit?.used ?? 0, max: stageLimit?.limit ?? '—' })}
               </p>
@@ -1302,7 +1449,20 @@ export function WorkspacePage() {
                 </p>}
               </section>
             )}
-            <AddressedPicker threads={openThreads.map((x) => x.root)} value={addressed} onChange={setAddressed} invalid={invalidAddressed} />
+            <AddressedPicker threads={openThreads.map((x) => x.root).filter((c) => !draftNotes.some((n) => n.commentId === c.id))} value={addressed} onChange={setAddressed} invalid={invalidAddressed} />
+            {!!draftNotes.length && (
+              <section aria-label={t('drafts.markedByTitle')}>
+                <h3 className="mb-1.5 text-[13px] font-medium text-slate-700">{t('drafts.markedByTitle')}</h3>
+                <ul className="space-y-1.5">
+                  {draftNotes.map((n) => (
+                    <li key={n.commentId} className="text-sm text-slate-700">
+                      <span className="block break-words">{n.content}</span>
+                      <span className="block text-xs text-slate-500">{t('drafts.markedBy', { member: n.member })}</span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
             {saveError && <ErrorState message={saveError} />}
           </div>
         </Modal>

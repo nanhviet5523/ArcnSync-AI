@@ -10,7 +10,7 @@ import { canOpenWorkspace } from './projectApi';
 import type { Project } from './projectApi';
 import { PlanThumb } from './PlanThumb';
 import { awaitingCount, budgetShort, byUpdated, greeting, isClosed, knownVersion, needsAction, needsCheck, nextFor, stepProgress, unitLabel, versionUnknown } from './projectView';
-import type { LatestState } from './projectView';
+import type { ConceptGate, LatestState } from './projectView';
 
 type CardRole = 'designer' | 'homeowner';
 
@@ -34,12 +34,17 @@ const BAR: Record<Tone, string> = {
   yellow: 'bg-yellow-400', amber: 'bg-amber-400', green: 'bg-emerald-400', red: 'bg-rose-400', struck: 'bg-slate-300',
 };
 
+/** A link drawn as a small Button (same classes as Button size="sm"). */
+const linkButton = (variant: 'primary' | 'secondary') => `inline-flex h-8 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 text-[13px] font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${variant === 'primary' ? 'bg-brand text-white hover:bg-brand-hover' : 'border border-line-strong bg-surface text-slate-800 hover:bg-slate-50'}`;
+
 const Spinner = () => <span aria-hidden className="h-3 w-3 animate-spin rounded-full border-2 border-current border-r-transparent" />;
 
 interface CardProps {
   p: Project;
   role: CardRole;
   latest: LatestState | undefined;
+  /** In design, no layout, no concept chosen: the card leads to the concepts instead of the workspace. */
+  gate: ConceptGate;
   floors: number | null | undefined;
   large: boolean;
   /** First card of "Needs your action": the only one whose button is filled. */
@@ -49,11 +54,11 @@ interface CardProps {
   onRetryVersion: (id: string) => void;
 }
 
-function ProjectCard({ p, role, latest, floors, large, lead, onWorkspace, onDetails, onRetryVersion }: CardProps) {
+function ProjectCard({ p, role, latest, gate, floors, large, lead, onWorkspace, onDetails, onRetryVersion }: CardProps) {
   const tone = statusInfo('project', p.status).tone;
-  const urgent = needsAction(role, p, latest);
+  const urgent = needsAction(role, p, latest, gate);
   const progress = stepProgress(p, role);
-  const next = nextFor(role, p, latest);
+  const next = nextFor(role, p, latest, gate);
   const replies = awaitingCount(p, latest);
   const workspace = canOpenWorkspace(p.status);
   // still waiting for the first check, or the check failed / is being retried
@@ -62,7 +67,10 @@ function ProjectCard({ p, role, latest, floors, large, lead, onWorkspace, onDeta
   const retryable = latest === 'error' || latest === 'checking';
   // Designer: the card opens the workspace. Homeowner: the card opens the overview.
   // The title is a real link whose hit area covers the card (keyboard and screen-reader friendly); buttons sit above it.
-  const cardHref = role === 'designer' ? (workspace ? `/projects/${p.id}/workspace` : null) : `/homeowner/projects/${p.id}`;
+  // before a concept is chosen the Lead's work is on the project page (a Member can't act there, so keeps the workspace)
+  const conceptFirst = role === 'designer' && p.myProjectRole === 'LEAD' && !!gate;
+  const conceptPage = `/${role}/projects/${p.id}#concept`;
+  const cardHref = role === 'designer' ? (conceptFirst ? conceptPage : workspace ? `/projects/${p.id}/workspace` : null) : `/homeowner/projects/${p.id}`;
   const a = p.apartment;
   // the most human fact first, so a 2-line clamp at 375px cuts the code, not the name
   const meta = role === 'designer'
@@ -157,10 +165,14 @@ function ProjectCard({ p, role, latest, floors, large, lead, onWorkspace, onDeta
           {role === 'designer' ? (
             <>
             <Button size="sm" variant="ghost" onClick={() => onDetails(p)} aria-label={t('cards.actionFor', { action: t('cards.viewProject'), project: p.title })}>{t('cards.viewProject')}</Button>
-            {workspace
+            {conceptFirst
+              ? <Link to={conceptPage} aria-label={t('cards.actionFor', { action: t('projects.workOnConcepts'), project: p.title })} className={linkButton(variant)}>{t('projects.workOnConcepts')}</Link>
+              : workspace
               ? <Button size="sm" variant={variant} onClick={() => onWorkspace(p)} aria-label={t('cards.actionFor', { action: t('projects.openWorkspace'), project: p.title })}>{t('projects.openWorkspace')}</Button>
               : <span className="max-w-[160px] text-right text-xs text-slate-500">{t('cards.notOpenYet')}</span>}
             </>
+          ) : gate === 'waiting' ? (
+            <Link to={conceptPage} aria-label={t('cards.actionFor', { action: t('concepts.viewConcepts'), project: p.title })} className={linkButton(variant)}>{t('concepts.viewConcepts')}</Link>
           ) : workspace ? (
             // the title already links to the overview; this one goes straight into the design
             <Button size="sm" variant={variant} onClick={() => onWorkspace(p)} aria-label={t('cards.actionFor', { action: t('homeownerDetail.openDesign'), project: p.title })}>{t('homeownerDetail.openDesign')}</Button>
@@ -244,6 +256,7 @@ interface Props {
   /** Filtered projects; null = loading. */
   projects: Project[] | null;
   latest: (id: string) => LatestState | undefined;
+  gate: (id: string) => ConceptGate;
   onRetryVersion: (id: string) => void;
   /** A search or status filter is active: the Done group opens so matches are not hidden. */
   filtering?: boolean;
@@ -265,7 +278,7 @@ type GroupKey = 'checking' | 'failed' | 'action' | 'waiting' | 'done';
  * Cards render as soon as the project list arrives. Projects still being checked sit in "Checking…" and move into
  * their group once known; a failed check stays under "Couldn't check" (also while retrying, so focus stays on Retry).
  */
-export function ProjectCards({ role, projects, latest, floors, error, onRetry, filteredOut, onClearFilters, onWorkspace, onDetails, onRetryVersion, filtering = false, large = false }: Props) {
+export function ProjectCards({ role, projects, latest, gate, floors, error, onRetry, filteredOut, onClearFilters, onWorkspace, onDetails, onRetryVersion, filtering = false, large = false }: Props) {
   if (error) return <ErrorState message={error} onRetry={onRetry} />;
   if (!projects) return <ul aria-busy="true" className="space-y-2.5">{[0, 1, 2].map((i) => <CardSkeleton key={i} />)}</ul>;
   if (!projects.length) {
@@ -285,15 +298,15 @@ export function ProjectCards({ role, projects, latest, floors, error, onRetry, f
   const groups: { key: GroupKey; items: Project[] }[] = [
     { key: 'failed', items: projects.filter(failed) },
     { key: 'checking', items: projects.filter(loading) },
-    { key: 'action', items: projects.filter((p) => known(p) && needsAction(role, p, state(p))) },
-    { key: 'waiting', items: projects.filter((p) => known(p) && !needsAction(role, p, state(p))) },
+    { key: 'action', items: projects.filter((p) => known(p) && needsAction(role, p, state(p), gate(p.id))) },
+    { key: 'waiting', items: projects.filter((p) => known(p) && !needsAction(role, p, state(p), gate(p.id))) },
     { key: 'done', items: projects.filter((p) => !live(p)) },
   ];
   return (
     <div className="space-y-6">
       {groups.filter((g) => g.items.length).map((g) => (
         <CardGroup key={g.key} group={g.key} items={[...g.items].sort(byUpdated)} forceOpen={filtering} render={(p, i) => (
-          <ProjectCard key={p.id} p={p} role={role} latest={state(p)} floors={floors[p.id]} large={large} lead={g.key === 'action' && i === 0}
+          <ProjectCard key={p.id} p={p} role={role} latest={state(p)} gate={gate(p.id)} floors={floors[p.id]} large={large} lead={g.key === 'action' && i === 0}
             onWorkspace={onWorkspace} onDetails={onDetails} onRetryVersion={onRetryVersion} />
         )} />
       ))}
