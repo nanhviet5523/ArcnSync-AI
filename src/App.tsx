@@ -13,10 +13,11 @@ import { ResetPasswordPage } from '@/features/auth/ResetPasswordPage';
 import { AcceptInvitation } from '@/features/auth/AcceptInvitation';
 import { HomeownerPayments } from '@/features/homeowner/HomeownerPayments';
 import { ProfileSettings } from '@/features/shared/ProfileSettings';
+import { MessagesPage } from '@/features/chat/MessagesPage';
+import { CHAT_ROLES } from '@/features/chat/chatApi';
 import { CustomerDirectory } from '@/features/shared/CustomerDirectory';
 import { ApartmentManagement } from '@/features/shared/ApartmentManagement';
 import { ContractDetail } from '@/features/projects/ContractDetail';
-import { BookConsultation } from '@/features/shared/BookConsultation';
 import { AdminUsersPage } from '@/features/admin/users/AdminUsersPage';
 import { AdminMasterData } from '@/features/admin/AdminMasterData';
 import { AdminProducts } from '@/features/admin/AdminProducts';
@@ -36,10 +37,6 @@ import { QuotationPage } from '@/features/quotations/QuotationPage';
 import { ReviewsPage } from '@/features/reviews/ReviewsPage';
 import { InquiriesPage } from '@/features/inquiries/InquiriesPage';
 import { CreateContract } from '@/features/staff/CreateContract';
-import { HowItWorksPage } from '@/features/static/HowItWorksPage';
-import { AboutPage } from '@/features/static/AboutPage';
-import { PricingPage } from '@/features/static/PricingPage';
-import { HelpPage } from '@/features/static/HelpPage';
 import { TermsPage } from '@/features/static/TermsPage';
 import { PrivacyPage } from '@/features/static/PrivacyPage';
 import { ProtectedRoute } from '@/routes/ProtectedRoute';
@@ -93,10 +90,12 @@ function App() {
 
   const isAuthPage = location.pathname === '/login' || location.pathname === '/signup';
 
+  // overflow-x-clip, not -hidden: hidden makes this div the scroll container for position: sticky,
+  // so the sticky Header (and other sticky panels) would scroll away with the page.
   return (
     <div
       className={`w-full bg-white relative ${
-        isAuthPage ? 'h-screen overflow-hidden' : 'min-h-screen overflow-x-hidden'
+        isAuthPage ? 'h-screen overflow-hidden' : 'min-h-screen overflow-x-clip'
       }`}
     >
       <AnimatePresence mode="popLayout" initial={false}>
@@ -170,8 +169,9 @@ function App() {
             <Route path="/projects/:projectId/workspace" element={<WorkspacePage />} />
             <Route path="/projects/:projectId/quotation" element={<QuotationPage />} />
           </Route>
-          <Route element={<ProtectedRoute allowedRoles={['homeowner']} />}>
-            <Route path="/consultation/book" element={<BookConsultation />} />
+          {/* Chat: everyone but admin (backend @Roles CUSTOMER, STAFF, DESIGNER, SUPPLIER; admin gets 403) */}
+          <Route element={<ProtectedRoute allowedRoles={CHAT_ROLES} />}>
+            <Route path="/messages" element={<MessagesPage />} />
           </Route>
           <Route element={<ProtectedRoute allowedRoles={ALL_ROLES} />}>
             <Route path="/settings" element={<ProfileSettings />} />
@@ -184,6 +184,8 @@ function App() {
             ['/designer-projects', '/designer/projects'], ['/designer-projects/:projectId', '/designer/projects'],
             ['/homeowner-dashboard', '/homeowner/projects'], ['/homeowner-projects', '/homeowner/projects'],
           ].map(([from, to]) => <Route key={from} path={from} element={<Navigate to={to} replace />} />)}
+          {/* "/register" is what the landing-page spec calls the sign-up page */}
+          <Route path="/register" element={<Navigate to="/signup" replace />} />
 
           {/* Auth Routes */}
           <Route
@@ -216,11 +218,9 @@ function App() {
             }
           />
 
-          {/* Public info pages (static, no API) */}
-          <Route path="/how-it-works" element={<HowItWorksPage />} />
-          <Route path="/about" element={<AboutPage />} />
-          <Route path="/pricing" element={<PricingPage />} />
-          <Route path="/help" element={<HelpPage />} />
+          {/* Retired info pages (old AI-era copy): the landing page covers them now */}
+          <Route path="/how-it-works" element={<Navigate to="/#how-it-works" replace />} />
+          {['/about', '/pricing', '/help'].map((path) => <Route key={path} path={path} element={<Navigate to="/" replace />} />)}
           <Route path="/terms" element={<TermsPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />
 

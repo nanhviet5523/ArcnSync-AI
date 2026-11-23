@@ -1,116 +1,56 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Header } from '@/components/layout';
-import { Footer } from '@/components/layout';
+import React, { useEffect, useRef } from 'react';
+import { Footer, Header, scrollToSection } from '@/components/layout';
 import { getCurrentUser } from '@/services/authService';
 import { HeroSection } from './components/HeroSection';
 import { HowItWorksSection } from './components/HowItWorksSection';
-import { InspirationsSection } from './components/InspirationsSection';
 import { FeaturesSection } from './components/FeaturesSection';
-import { CtaSection } from './components/CtaSection';
+import { InspirationsSection } from './components/InspirationsSection';
 import { ContactSection } from './components/ContactSection';
-
-const GENERIC_LOGIN_PROMPT = 'Log in to access this feature';
-const CONSULTATION_LOGIN_PROMPT = 'Please log in to request a consultation';
 
 interface HomePageProps {
   onNavigateToLogin?: () => void;
   onNavigateToSignUp?: () => void;
 }
 
-export const HomePage: React.FC<HomePageProps> = ({
-  onNavigateToLogin,
-  onNavigateToSignUp,
-}) => {
-  const navigate = useNavigate();
-  const [loginPromptOpen, setLoginPromptOpen] = useState(false);
-  const [loginPromptTitle, setLoginPromptTitle] = useState(GENERIC_LOGIN_PROMPT);
+/**
+ * Landing page (/). Guests are sent to /signup or /login; signed-in visitors go straight to their projects.
+ * No login prompts on this page.
+ */
+export const HomePage: React.FC<HomePageProps> = ({ onNavigateToLogin, onNavigateToSignUp }) => {
+  const user = getCurrentUser();
+  const rootRef = useRef<HTMLDivElement>(null);
 
-  // arriving with #contact (footer / header link from another page): scroll once the sections are rendered
+  // Arriving with #features etc. (header or footer link on another page): scroll to the section once this page is the
+  // only one in the document. During the route change the page being left can still sit above it for a frame, which
+  // would put the target too far down by that page's height. Gives up waiting after ~30 frames.
   useEffect(() => {
-    const target = decodeURIComponent(window.location.hash.slice(1));
-    if (!target) return;
-    const id = requestAnimationFrame(() => document.getElementById(target)?.scrollIntoView({ behavior: 'smooth' }));
-    return () => cancelAnimationFrame(id);
+    const hash = window.location.hash;
+    if (!hash) return;
+    let frame = 0;
+    let waited = 0;
+    const scrollWhenAlone = () => {
+      const offset = (rootRef.current?.getBoundingClientRect().top ?? 0) + window.scrollY;
+      if (offset > 1 && ++waited < 30) {
+        frame = requestAnimationFrame(scrollWhenAlone);
+        return;
+      }
+      scrollToSection(hash);
+    };
+    frame = requestAnimationFrame(scrollWhenAlone);
+    return () => cancelAnimationFrame(frame);
   }, []);
 
-  useEffect(() => {
-    if (!loginPromptOpen) return;
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setLoginPromptOpen(false);
-    };
-    window.addEventListener('keydown', closeOnEscape);
-    return () => window.removeEventListener('keydown', closeOnEscape);
-  }, [loginPromptOpen]);
-
-  const promptLogin = () => {
-    setLoginPromptTitle(GENERIC_LOGIN_PROMPT);
-    setLoginPromptOpen(true);
-  };
-
-  // Guest -> modal "Please log in to request a consultation". Đã đăng nhập (Homeowner) -> vào thẳng form yêu cầu tư vấn.
-  const handleBookConsultation = () => {
-    if (getCurrentUser()) {
-      navigate('/consultation/book');
-      return;
-    }
-    setLoginPromptTitle(CONSULTATION_LOGIN_PROMPT);
-    setLoginPromptOpen(true);
-  };
-
   return (
-    <div className="min-h-screen bg-white font-sans">
-      <Header
-        onLoginClick={onNavigateToLogin}
-        onSignUpClick={onNavigateToSignUp}
-      />
+    <div ref={rootRef} className="min-h-screen bg-canvas font-sans">
+      <Header onLoginClick={onNavigateToLogin} onSignUpClick={onNavigateToSignUp} />
       <main>
-        <HeroSection onBookConsultation={handleBookConsultation} />
+        <HeroSection user={user} />
         <HowItWorksSection />
-        <InspirationsSection onFeatureClick={promptLogin} />
         <FeaturesSection />
-        <CtaSection onFeatureClick={promptLogin} onContactClick={() => document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' })} />
-        <ContactSection />
+        <InspirationsSection />
+        <ContactSection user={user} />
       </main>
       <Footer />
-      {loginPromptOpen && (
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/50 px-4"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) setLoginPromptOpen(false);
-          }}
-        >
-          <section
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="login-prompt-title"
-            className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl sm:p-7"
-          >
-            <h2 id="login-prompt-title" className="text-xl font-bold text-slate-900">
-              {loginPromptTitle}
-            </h2>
-            <div className="mt-6 flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setLoginPromptOpen(false)}
-                className="rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setLoginPromptOpen(false);
-                  onNavigateToLogin?.();
-                }}
-                className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
-              >
-                Confirm
-              </button>
-            </div>
-          </section>
-        </div>
-      )}
     </div>
   );
 };

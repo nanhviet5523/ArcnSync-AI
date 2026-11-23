@@ -4,7 +4,7 @@ import { ArrowRight, Ban, CircleCheck, Clock, CreditCard } from 'lucide-react';
 
 import { AppShell, Button, Card, PageHeader, Skeleton, StatusChip, Stepper } from '@/components/ui';
 import { formatDate, formatDateTime, t, tList } from '@/i18n';
-import { canOpenWorkspace } from './projectApi';
+import { canOpenWorkspace, stepIndex } from './projectApi';
 import { ConceptCard } from '@/features/concepts/ConceptCard';
 import { useProjectConcepts } from '@/features/concepts/useProjectConcepts';
 import { conceptSummary } from '@/features/concepts/conceptApi';
@@ -17,7 +17,7 @@ import { getCurrentUser } from '@/services/authService';
 import { QuotationSummaryCard } from '@/features/quotations/QuotationSummaryCard';
 import { ReviewCard } from '@/features/reviews/ReviewCard';
 import { SiteSurveyCard } from '@/features/site-surveys/SiteSurveyCard';
-import { designLabel, isClosed, knownVersion, needsAction, needsCheck, nextFor, projectStepIndex, useLatestVersions } from './projectView';
+import { designLabel, isClosed, knownVersion, needsAction, needsCheck, nextFor, useLatestVersions } from './projectView';
 
 /** Homeowner overview of one project (/homeowner/projects/:id). Staff keeps its own layout in ProjectDetail.
  * The only "Open design" button is inside the Next step card; the latest drawing sits beside it. */
@@ -90,7 +90,7 @@ export function HomeownerProjectView({ project, onProjectChanged }: { project: P
 
       {project.status !== 'CANCELLED' && (
         <Card className="mb-5" bodyClassName="px-4 py-5 sm:px-6">
-          <Stepper steps={tList('steps.project')} current={projectStepIndex(project.status, conceptData.conceptDone)} emphasis />
+          <Stepper steps={tList('steps.project')} current={stepIndex(project.status)} emphasis />
         </Card>
       )}
 

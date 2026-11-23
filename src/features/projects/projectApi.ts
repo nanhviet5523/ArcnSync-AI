@@ -380,13 +380,8 @@ export const projectApi = {
   listApartments: (ownerId: string) => apiRequest<Page<Apartment>>(`/apartments${qs({ ownerId, limit: 100 })}`),
 };
 
-/** Index into the 7 project steps (steps.project): Contract, Requirements, Concept, Layout, Products, Quotation, Handover.
- * IN_DESIGN maps to Layout here; the project pages move it back to Concept until a concept is chosen
- * (projectView.projectStepIndex). Completed = every step done. */
-const STEP_OF: Record<ProjectStatus, number> = {
-  DRAFT: 0, CONTRACT_PENDING: 0, REQUIREMENT_ANALYSIS: 1, IN_DESIGN: 3, PRODUCT_SELECTION: 4, QUOTING: 5, COMPLETED: 7, CANCELLED: -1,
-};
-export const stepIndex = (s: ProjectStatus) => STEP_OF[s];
+/** Step of a status on the 7-step progress bar (steps.ts: one step per backend status). */
+export { stepIndex } from './steps';
 export const isPreparing = (s: ProjectStatus) => ['DRAFT', 'CONTRACT_PENDING', 'REQUIREMENT_ANALYSIS'].includes(s);
 export const canOpenWorkspace = (s: ProjectStatus) => ['IN_DESIGN', 'PRODUCT_SELECTION', 'QUOTING', 'COMPLETED'].includes(s);
 

@@ -1,106 +1,65 @@
-import React from 'react';
-import { Button } from '@/components/common';
+import { t } from '@/i18n';
 
+/** Sample projects; copy in home.inspiration.<key>. Not links: there is no gallery page. */
 const INSPIRATION_CARDS = [
   {
-    style: 'Minimalist',
+    key: 'minimalist',
     area: '35 m²',
-    title: 'Minimalist Kitchen',
-    designer: 'ArcnSync Studio',
     img: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=800&auto=format&fit=crop',
   },
   {
-    style: 'Japandi',
+    key: 'japandi',
     area: '42 m²',
-    title: 'Cozy Living Room',
-    designer: 'ArcnSync Studio',
     img: 'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?q=80&w=800&auto=format&fit=crop',
   },
   {
-    style: 'Modern',
+    key: 'modern',
     area: '18 m²',
-    title: 'Bright Home Office',
-    designer: 'ArcnSync Studio',
     img: 'https://images.unsplash.com/photo-1524758631624-e2822e304c36?q=80&w=800&auto=format&fit=crop',
   },
 ];
 
-export const InspirationsSection: React.FC<{ onFeatureClick: () => void }> = ({ onFeatureClick }) => {
+/** Section 4: three featured sample projects. */
+export function InspirationsSection() {
   return (
-    <section className="w-full bg-[#f8fafc] px-6 lg:px-12 py-20">
-      <div className="max-w-7xl mx-auto">
-        
-        {/* Header Section */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-10">
-          <div>
-            <span className="text-xs font-bold text-teal-600 tracking-widest uppercase">
-              INSPIRATION
-            </span>
-            <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 mt-2 mb-2 tracking-tight">
-              Featured design inspirations
-            </h2>
-            <p className="text-sm text-slate-500">
-              Completed townhouse and single-storey house projects by our in-house design team.
-            </p>
-          </div>
-
-          <Button
-            onClick={onFeatureClick}
-            variant="outline"
-            fullWidth={false}
-            className="px-5 py-2 text-xs font-semibold shrink-0"
-          >
-            Explore all inspiration
-          </Button>
+    <section className="w-full bg-canvas px-6 py-20 lg:px-12">
+      <div className="mx-auto max-w-7xl">
+        <div className="mb-10">
+          <p className="text-xs font-bold uppercase tracking-widest text-brand">{t('home.inspiration.eyebrow')}</p>
+          <h2 className="mt-2 text-3xl font-extrabold tracking-tight text-slate-900 md:text-4xl">{t('home.inspiration.title')}</h2>
+          <p className="mt-2 text-sm text-slate-500">{t('home.inspiration.intro')}</p>
         </div>
 
-        {/* Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-7">
-          {INSPIRATION_CARDS.map((card, idx) => (
-            <div
-              key={idx}
-              className="group rounded-3xl overflow-hidden bg-white border border-slate-100/80 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col cursor-pointer"
-            >
-              {/* Image Container */}
-              <div className="h-64 overflow-hidden relative">
-                <img
-                  src={card.img}
-                  alt={card.title}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                />
-              </div>
-
-              {/* Card Body */}
-              <div className="p-6 flex flex-col flex-1 justify-between">
-                <div>
-                  {/* Badges: Style & Area */}
-                  <div className="flex items-center gap-2 mb-3.5">
-                    <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-3 py-1 rounded-full">
-                      {card.style}
-                    </span>
-                    <span className="text-xs font-semibold text-slate-600 bg-slate-100 px-3 py-1 rounded-full">
-                      {card.area}
-                    </span>
-                  </div>
-
-                  {/* Title */}
-                  <h3 className="text-lg font-bold text-slate-900 mb-1 group-hover:text-blue-600 transition-colors">
-                    {card.title}
-                  </h3>
+        <ul className="grid grid-cols-1 gap-7 md:grid-cols-2 lg:grid-cols-3">
+          {INSPIRATION_CARDS.map((card) => {
+            const title = t(`home.inspiration.${card.key}.title`);
+            return (
+              <li key={card.key} className="group flex flex-col overflow-hidden rounded-3xl border border-line bg-surface shadow-card">
+                <div className="h-64 overflow-hidden">
+                  <img
+                    src={card.img}
+                    alt={title}
+                    loading="lazy"
+                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  />
                 </div>
-
-                {/* Designer */}
-                <p className="text-xs text-slate-400 mt-1">
-                  Designed by <span className="text-slate-500">{card.designer}</span>
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
-
+                <div className="flex flex-1 flex-col justify-between p-6">
+                  <div>
+                    <div className="mb-3.5 flex items-center gap-2">
+                      <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">{t(`home.inspiration.${card.key}.style`)}</span>
+                      <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">{card.area}</span>
+                    </div>
+                    <h3 className="mb-1 text-lg font-bold text-slate-900">{title}</h3>
+                  </div>
+                  <p className="mt-1 text-xs text-slate-500">{t('home.inspiration.designedBy', { name: t('home.inspiration.studio') })}</p>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
       </div>
     </section>
   );
-};
+}
 
 export default InspirationsSection;

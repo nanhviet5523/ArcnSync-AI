@@ -1,7 +1,9 @@
 import type { User, UserRole } from '@/types/role';
+import { runSignOutListeners } from './signOut.ts';
 
+// `?.`: under plain `node --test` import.meta.env does not exist.
 const API_BASE_URL =
-  import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
+  import.meta.env?.VITE_API_URL ?? 'http://localhost:3000';
 
 const SESSION_KEY = 'archsync-auth-session';
 const LEGACY_DEMO_SESSION_KEY = 'archsync-demo-session';
@@ -350,6 +352,8 @@ function dispatchAuthChange(): void {
 }
 
 export function clearAuthSession(): void {
+  // Per-user caches (chat...) go first, whatever happens next.
+  runSignOutListeners();
   if (typeof window === 'undefined') return;
 
   for (const storage of [
@@ -745,6 +749,13 @@ export function fetchBlobUrl(path: string): Promise<string> {
     blobCache.set(path, p);
   }
   return p;
+}
+/** Free one blob URL made by fetchBlobUrl (a preview that unmounts). The next fetchBlobUrl(path) downloads again. */
+export function revokeBlobUrl(path: string) {
+  const p = blobCache.get(path);
+  if (!p) return;
+  blobCache.delete(path);
+  p.then(URL.revokeObjectURL, () => undefined);
 }
 export function revokeBlobUrls() {
   for (const p of blobCache.values()) p.then(URL.revokeObjectURL, () => undefined);

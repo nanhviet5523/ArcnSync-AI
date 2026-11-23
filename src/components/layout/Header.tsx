@@ -2,9 +2,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Bell, Settings, LogOut } from 'lucide-react';
 import { Button, Logo } from '@/components/common';
+import { t } from '@/i18n';
 import { getCurrentUser, logout } from '@/services/authService';
 import { ROLE_CONFIG } from '@/types/role';
 import type { UserRole } from '@/types/role';
+import { SectionLink } from './SectionLink';
 import { useDetectedRole } from './useDetectedRole';
 
 export interface HeaderProps {
@@ -14,14 +16,12 @@ export interface HeaderProps {
   onSignUpClick?: () => void;
 }
 
+/** Guest tabs: sections of the landing page, by element id. */
 const publicLinks = [
-  ['Home', '#home'],
-  ['Service', '#service'],
-  ['How It Works', '#how-it-works'],
-  ['Our Team', '#our-team'],
-  ['Our Work', '#our-work'],
-  ['Partners', '#partners'],
-  ['Contact', '#contact'],
+  { label: t('home.nav.hero'), hash: '#hero' },
+  { label: t('home.nav.howItWorks'), hash: '#how-it-works' },
+  { label: t('home.nav.features'), hash: '#features' },
+  { label: t('home.nav.contact'), hash: '#contact' },
 ];
 
 const BADGE_STYLE: Record<UserRole, string> = {
@@ -166,28 +166,22 @@ export const Header: React.FC<HeaderProps> = ({ role, activeTab, onLoginClick, o
   if (!detectedRole) {
     return (
       <header className="sticky top-0 z-50 border-b border-line bg-surface">
-        <div className="mx-auto flex h-16 w-full max-w-[1440px] items-center justify-between gap-6 px-6 lg:px-12">
+        <div className="mx-auto flex h-16 w-full max-w-[1440px] items-center justify-between gap-3 px-6 sm:gap-6 lg:px-12">
           <Logo size={32} to="/" />
-          <nav className="hidden gap-8 text-sm font-medium text-slate-700 lg:flex" aria-label="Main">
-            {publicLinks.map(([label, href]) => (
-              <a
-                key={label}
-                href={href}
-                onClick={(event) => {
-                  event.preventDefault();
-                  // keep the hash so the homepage can scroll after it renders when we come from another page
-                  navigate(`/${href}`);
-                  document.querySelector(href)?.scrollIntoView({ behavior: 'smooth' });
-                }}
-                className="text-slate-600 transition-colors hover:text-slate-900"
+          <nav className="hidden gap-6 text-sm font-medium md:flex lg:gap-8" aria-label="Main">
+            {publicLinks.map(({ label, hash }) => (
+              <SectionLink
+                key={hash}
+                hash={hash}
+                className="rounded text-slate-600 transition-colors hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
               >
                 {label}
-              </a>
+              </SectionLink>
             ))}
           </nav>
-          <div className="flex items-center gap-3">
-            <Button variant="outline" onClick={onLoginClick}>Login</Button>
-            <Button variant="primary" onClick={onSignUpClick}>Sign Up</Button>
+          <div className="flex shrink-0 items-center gap-3">
+            <Button variant="outline" onClick={onLoginClick ?? (() => navigate('/login'))}>Login</Button>
+            <Button variant="primary" onClick={onSignUpClick ?? (() => navigate('/signup'))}>Sign Up</Button>
           </div>
         </div>
       </header>

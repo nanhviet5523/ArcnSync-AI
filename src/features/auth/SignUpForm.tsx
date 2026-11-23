@@ -183,7 +183,21 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({
         });
       }, 1500);
     } catch (err) {
-      if (err instanceof ApiError && err.status === 400) {
+      if (err instanceof ApiError && err.status === 409) {
+        // Already registered. Point at the field when the backend code says which one (e.g. PHONE_EXISTS).
+        const code = err.code.toUpperCase();
+        if (code.includes('PHONE')) {
+          setFieldErrors({ phone: 'This phone number is already in use.' });
+          setError('This phone number is already linked to an account. Log in or use a different number.');
+        } else {
+          if (!code || code.includes('EMAIL')) setFieldErrors({ email: 'This email is already registered.' });
+          setError(
+            code.includes('EMAIL')
+              ? 'An account with this email already exists. Log in instead, or use a different email.'
+              : 'This email or phone number is already registered. Log in instead, or use different details.',
+          );
+        }
+      } else if (err instanceof ApiError && err.status === 400) {
         const { fields, general } = mapServerErrors(err);
         setFieldErrors(fields);
         setError(general || err.message);
