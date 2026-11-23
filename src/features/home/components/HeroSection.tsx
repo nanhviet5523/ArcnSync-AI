@@ -1,44 +1,61 @@
-import React from 'react';
-import { ArrowRight, Sparkles } from 'lucide-react';
-import { Button } from '@/components/common';
+import type { CSSProperties } from 'react';
+import { Link } from 'react-router-dom';
+import { ArrowRight, Ruler } from 'lucide-react';
+import { t } from '@/i18n';
+import type { User } from '@/types/role';
+import { ctaPrimary, ctaSecondary, startFor } from '../landing';
+import { ProjectPreview } from './ProjectPreview';
 
+/** Faint drafting grid in the border colour, fading out before it reaches the text. */
+const fade = 'radial-gradient(ellipse 70% 80% at 80% 45%, #000 25%, transparent 75%)';
+const GRID: CSSProperties = {
+  backgroundImage: 'linear-gradient(var(--bd) 1px, transparent 1px), linear-gradient(90deg, var(--bd) 1px, transparent 1px)',
+  backgroundSize: '40px 40px',
+  maskImage: fade,
+  WebkitMaskImage: fade,
+};
 
-export const HeroSection: React.FC<{ onBookConsultation: () => void }> = ({ onBookConsultation }) => {
+/** Section 1: what the platform is, the account CTAs (or the way back to your projects), and the project page preview. */
+export function HeroSection({ user }: { user: User | null }) {
+  const start = user ? startFor(user) : null;
+
   return (
-    <section className="relative w-full min-h-[560px] flex items-center px-6 lg:px-12 py-20 lg:py-28 bg-slate-900 text-white bg-cover bg-center bg-no-repeat bg-[linear-gradient(to_right,rgba(11,19,43,0.92),rgba(11,19,43,0.6)),url('https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?q=80&w=1600&auto=format&fit=crop')]">
-      <div className="max-w-7xl mx-auto w-full flex flex-col items-start">
-        
-        {/* Badge Generative AI */}
-        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/15 backdrop-blur-md text-xs font-medium text-white mb-6 border border-white/20">
-          <Sparkles className="w-3.5 h-3.5 text-blue-400 shrink-0" />
-          <span>Generative AI for architecture & interior design</span>
+    <section id="hero" className="relative scroll-mt-16 overflow-hidden bg-canvas px-6 py-16 sm:py-20 lg:px-12 lg:py-24">
+      <div aria-hidden className="pointer-events-none absolute inset-0 opacity-70" style={GRID} />
+
+      <div className="relative mx-auto grid max-w-7xl items-center gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] xl:gap-16">
+        <div>
+          <p className="inline-flex items-center gap-2 rounded-full border border-line bg-surface px-3.5 py-1.5 text-xs font-medium text-slate-700 shadow-card">
+            <Ruler aria-hidden className="h-3.5 w-3.5 shrink-0 text-brand" />
+            {t('home.hero.eyebrow')}
+          </p>
+          <h1 className="mt-6 text-3xl font-extrabold leading-[1.15] tracking-tight text-slate-900 sm:text-4xl xl:text-[44px]">
+            {t('home.hero.title')}
+          </h1>
+          <p className="mt-5 max-w-xl text-base leading-relaxed text-slate-600">{t('home.hero.description')}</p>
+
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+            {start ? (
+              <Link to={start.to} className={ctaPrimary}>
+                {start.label}
+                <ArrowRight aria-hidden className="h-4 w-4" />
+              </Link>
+            ) : (
+              <>
+                <Link to="/signup" className={ctaPrimary}>
+                  {t('home.cta.signUp')}
+                  <ArrowRight aria-hidden className="h-4 w-4" />
+                </Link>
+                <Link to="/login" className={ctaSecondary}>{t('home.cta.logIn')}</Link>
+              </>
+            )}
+          </div>
         </div>
 
-        {/* Headline */}
-        <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-[52px] font-extrabold leading-[1.15] max-w-2xl mb-5 tracking-tight">
-          From your idea to your dream space.
-        </h1>
-
-        {/* Subtitle */}
-        <p className="text-sm sm:text-base text-gray-300 max-w-xl mb-9 leading-relaxed">
-          Describe your house, get free AI design directions, then work with our in-house designers to turn the best one into a complete design.
-        </p>
-
-        {/* Action Button — Book Consultation là CTA chính duy nhất của Hero */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full sm:w-auto">
-          <Button
-            onClick={onBookConsultation}
-            fullWidth={false}
-            className="px-6 py-3 text-sm font-semibold bg-blue-600 hover:bg-blue-700 border-transparent text-white"
-          >
-            <span>Book Consultation</span>
-            <ArrowRight className="w-4 h-4 ml-1" />
-          </Button>
-        </div>
-
+        <ProjectPreview />
       </div>
     </section>
   );
-};
+}
 
 export default HeroSection;

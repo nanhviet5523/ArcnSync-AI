@@ -21,6 +21,7 @@ export const ROLE_CONFIG: Record<UserRole, { defaultPath: string; badge: string;
     navItems: [
       { label: t('nav.myProjects'), path: '/homeowner/projects' },
       { label: t('nav.myProperties'), path: '/homeowner-apartments' },
+      { label: t('nav.messages'), path: '/messages' },
     ],
   },
   staff: {
@@ -32,6 +33,7 @@ export const ROLE_CONFIG: Record<UserRole, { defaultPath: string; badge: string;
       { label: t('nav.customers'), path: '/customers' },
       { label: t('nav.inquiries'), path: '/staff/inquiries' },
       { label: t('nav.reviews'), path: '/reviews' },
+      { label: t('nav.messages'), path: '/messages' },
     ],
   },
   designer: {
@@ -41,6 +43,7 @@ export const ROLE_CONFIG: Record<UserRole, { defaultPath: string; badge: string;
       { label: t('nav.assignedProjects'), path: '/designer/projects' },
       { label: t('nav.catalog'), path: '/designer-catalog' },
       { label: t('nav.reviews'), path: '/reviews' },
+      { label: t('nav.messages'), path: '/messages' },
     ],
   },
   supplier: {
@@ -49,6 +52,7 @@ export const ROLE_CONFIG: Record<UserRole, { defaultPath: string; badge: string;
     navItems: [
       { label: t('nav.dashboard'), path: '/supplier-dashboard' },
       { label: t('nav.products'), path: '/supplier-catalog' },
+      { label: t('nav.messages'), path: '/messages' },
     ],
   },
   admin: {

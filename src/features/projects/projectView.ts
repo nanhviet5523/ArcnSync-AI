@@ -8,6 +8,7 @@ import { conceptApi, conceptSummary } from '@/features/concepts/conceptApi';
 import { unreadyDraftRooms } from '@/features/design-workspace/roomDrafts';
 import { isPreparing, nextStep, projectApi, stepIndex } from './projectApi';
 import type { Project } from './projectApi';
+import { PROJECT_STEPS } from './steps';
 
 /*
  * TODO: when the project list API returns latestVersionStatus and floorCount, read them from the list
@@ -15,7 +16,7 @@ import type { Project } from './projectApi';
  * TODO: when it also returns awaitingReplyCount, drop the per-project comments request in useLatestVersions.
  */
 
-const STEPS_TOTAL = 7;
+const STEPS_TOTAL = PROJECT_STEPS.length;
 const MAX_PARALLEL = 4;
 
 /**
@@ -118,16 +119,6 @@ export const designLabel = (label: string) => versionLabel(label, 'homeowner');
 
 /** Completed or cancelled: nothing left to act on, so never "needs action" or "couldn't check". */
 export const isClosed = (s: Project['status']) => s === 'COMPLETED' || s === 'CANCELLED';
-
-/** Index of Concept in steps.project. */
-const CONCEPT_STEP = 2;
-
-/**
- * Current step on the project pages. In design, the project sits on Concept until a concept is chosen (or a layout already
- * exists, for projects made before concepts); conceptDone undefined = not known yet, so it keeps the status-based step.
- */
-export const projectStepIndex = (status: Project['status'], conceptDone: boolean | undefined) =>
-  status === 'IN_DESIGN' && conceptDone === false ? CONCEPT_STEP : stepIndex(status);
 
 /**
  * Progress along the 7 project steps; null for a cancelled project.

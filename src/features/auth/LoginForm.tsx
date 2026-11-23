@@ -67,10 +67,14 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSignUpClick }) => {
         replace: true,
       });
     } catch (err) {
+      // On the login form a 401 means the credentials were refused (there is no session to expire yet). The backend
+      // sends no code to tell a wrong password from an unverified account, so the message covers both.
       setError(
-        err instanceof ApiError || err instanceof Error
-          ? err.message
-          : 'Something went wrong. Please try again.',
+        err instanceof ApiError && err.status === 401
+          ? "We couldn't log you in. Check your email and password, or verify your email with the OTP code if you haven't yet."
+          : err instanceof ApiError || err instanceof Error
+            ? err.message
+            : 'Something went wrong. Please try again.',
       );
     } finally {
       setLoading(false);

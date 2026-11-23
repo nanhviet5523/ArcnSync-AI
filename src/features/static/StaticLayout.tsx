@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import type { ReactNode } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Footer, Header } from '@/components/layout';
 
 /** Shell for the public info pages: shared header, dark hero, page body, footer. */
@@ -34,41 +34,5 @@ export function StaticLayout({ eyebrow, title, subtitle, children, heroExtra }: 
       </main>
       <Footer />
     </div>
-  );
-}
-
-/** Section wrapper with the shared container width. */
-export function StaticSection({ title, intro, children, tone = 'canvas', id }: {
-  title?: string;
-  intro?: string;
-  children: ReactNode;
-  tone?: 'canvas' | 'surface';
-  id?: string;
-}) {
-  return (
-    <section id={id} className={`w-full px-6 py-14 lg:px-16 lg:py-16 ${tone === 'surface' ? 'border-y border-line bg-surface' : ''}`}>
-      <div className="mx-auto w-full max-w-[1200px]">
-        {title && <h2 className="text-2xl font-extrabold tracking-tight text-slate-900 lg:text-3xl">{title}</h2>}
-        {intro && <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-600 lg:text-base">{intro}</p>}
-        <div className={title || intro ? 'mt-8' : ''}>{children}</div>
-      </div>
-    </section>
-  );
-}
-
-/** Dark closing call-to-action band. */
-export function StaticCta({ title, body, button, to }: { title: string; body: string; button: string; to: string }) {
-  return (
-    <section className="w-full px-6 pb-16 lg:px-16">
-      <div className="mx-auto flex w-full max-w-[1200px] flex-col items-start justify-between gap-6 rounded-2xl border border-slate-800/80 bg-slate-900 p-8 shadow-2xl sm:flex-row sm:items-center lg:p-10">
-        <div>
-          <h2 className="text-xl font-bold tracking-tight text-white sm:text-2xl">{title}</h2>
-          <p className="mt-2 max-w-xl text-sm leading-relaxed text-slate-300">{body}</p>
-        </div>
-        <Link to={to} className="inline-flex shrink-0 items-center justify-center rounded-xl bg-brand px-6 py-3.5 font-medium text-white shadow-lg shadow-slate-900/30 transition-all hover:bg-brand-hover">
-          {button}
-        </Link>
-      </div>
-    </section>
   );
 }

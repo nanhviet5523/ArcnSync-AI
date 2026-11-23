@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { AppShell, Banner, Button, Card, DetailList, ErrorState, PageHeader, Skeleton, StatusChip, Stepper } from '@/components/ui';
 import { errorText, formatDate, formatMoney, formatNumber, t, tList } from '@/i18n';
 import { getCurrentUser } from '@/services/authService';
-import { canOpenWorkspace, kickoffErrorText, kickoffProjectDesign, projectApi } from './projectApi';
+import { canOpenWorkspace, kickoffErrorText, kickoffProjectDesign, projectApi, stepIndex } from './projectApi';
 import type { DesignerOption, Project } from './projectApi';
 import { TeamCard } from '@/features/design-workspace/TeamCard';
 import { isOffTeam, resolveProjectRole } from '@/features/design-workspace/logic';
@@ -15,7 +15,7 @@ import { HomeownerProjectView } from './HomeownerProjectView';
 import { RoomAssignmentsTab } from './RoomAssignmentsTab';
 import { ReviewCard } from '@/features/reviews/ReviewCard';
 import { HandoverCard } from '@/features/quotations/HandoverCard';
-import { nextFor, projectStepIndex, useLatestVersions } from './projectView';
+import { nextFor, useLatestVersions } from './projectView';
 import { ConceptCard } from '@/features/concepts/ConceptCard';
 import { useProjectConcepts } from '@/features/concepts/useProjectConcepts';
 import { conceptSummary } from '@/features/concepts/conceptApi';
@@ -205,7 +205,7 @@ export function ProjectDetail() {
 
       {project.status !== 'CANCELLED' && (
         <Card className="mb-5" bodyClassName="px-4 py-4 sm:px-6">
-          <Stepper steps={tList('steps.project')} current={projectStepIndex(project.status, conceptData.conceptDone)} />
+          <Stepper steps={tList('steps.project')} current={stepIndex(project.status)} />
         </Card>
       )}
 

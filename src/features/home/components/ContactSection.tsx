@@ -1,36 +1,95 @@
 import { Link } from 'react-router-dom';
-import { CheckCircle2 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
+import { ArrowRight, Mail, MapPin, MessageCircle, Phone } from 'lucide-react';
 import { t, tList } from '@/i18n';
+import type { User } from '@/types/role';
+import { ctaPrimary, startFor } from '../landing';
 
-/** Homepage #contact section: benefits on the left, AI Studio promotion card on the right. */
-export function ContactSection() {
+/** Static contact details (values in home.contact.values); a link only where there is something to open. */
+const CONTACTS: { key: string; icon: LucideIcon; href?: (value: string) => string }[] = [
+  { key: 'hotline', icon: Phone, href: (value) => `tel:${value.replace(/[^\d+]/g, '')}` },
+  { key: 'email', icon: Mail, href: (value) => `mailto:${value}` },
+  { key: 'zalo', icon: MessageCircle },
+  { key: 'address', icon: MapPin },
+];
+
+/** Section 5: contact details on the left; creating an account (or going back to your projects) on the right. */
+export function ContactSection({ user }: { user: User | null }) {
+  const start = user ? startFor(user) : null;
+
   return (
-    <section id="contact" className="w-full scroll-mt-20 bg-slate-50 px-6 py-16 lg:px-16">
-      <div className="mx-auto grid w-full max-w-[1200px] gap-10 lg:grid-cols-5">
-        <div className="lg:col-span-2">
-          <p className="text-sm font-semibold uppercase tracking-wide text-blue-600">{t('contact.eyebrow')}</p>
-          <h2 className="mt-2 text-3xl font-extrabold tracking-tight text-slate-900 lg:text-4xl">{t('contact.title')}</h2>
-          <p className="mt-3 text-sm text-slate-600 lg:text-base">{t('contact.description')}</p>
-          <ul className="mt-6 space-y-3">
-            {tList('contact.points').map((p) => (
-              <li key={p} className="flex items-start gap-2 text-sm text-slate-700"><CheckCircle2 aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />{p}</li>
-            ))}
-          </ul>
+    <section id="contact" className="scroll-mt-16 border-t border-line bg-surface px-6 py-20 lg:px-12">
+      <div className="mx-auto max-w-7xl">
+        <div className="max-w-2xl">
+          <p className="text-xs font-bold uppercase tracking-widest text-brand">{t('home.contact.eyebrow')}</p>
+          <h2 className="mt-2 text-3xl font-extrabold tracking-tight text-slate-900 md:text-4xl">{t('home.contact.title')}</h2>
+          <p className="mt-4 text-sm leading-relaxed text-slate-600 sm:text-base">{t('home.contact.intro')}</p>
         </div>
 
-        <div className="rounded-2xl border border-slate-800/80 bg-slate-900 p-6 shadow-2xl transition-all duration-300 hover:border-emerald-500/30 sm:p-8 lg:col-span-3">
-          <span className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-400">
-            {t('contact.promo.badge')}
-          </span>
-          <h3 className="text-xl font-bold leading-snug tracking-tight text-white sm:text-2xl">{t('contact.promo.title')}</h3>
-          <p className="mb-6 mt-2.5 text-sm leading-relaxed text-slate-300">{t('contact.promo.description')}</p>
-          <Link
-            to="/login"
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand px-6 py-3.5 text-center font-medium text-white shadow-lg shadow-slate-900/30 transition-all hover:bg-brand-hover"
-          >
-            {t('contact.promo.cta')}
-          </Link>
-          <p className="mt-3.5 text-center text-xs font-normal text-slate-400">{t('contact.promo.note')}</p>
+        <div className="mt-10 grid gap-6 lg:grid-cols-5">
+          <div className="rounded-2xl border border-line bg-canvas p-6 sm:p-8 lg:col-span-2">
+            <h3 className="text-base font-bold text-slate-900">{t('home.contact.infoTitle')}</h3>
+            <dl className="mt-6 space-y-5">
+              {CONTACTS.map(({ key, icon: Icon, href }) => {
+                const value = t(`home.contact.values.${key}`);
+                return (
+                  <div key={key} className="flex items-start gap-3.5">
+                    <span aria-hidden className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-soft text-brand">
+                      <Icon className="h-5 w-5" />
+                    </span>
+                    <div className="min-w-0">
+                      <dt className="text-xs font-medium text-slate-500">{t(`home.contact.${key}`)}</dt>
+                      <dd className="mt-0.5 wrap-break-word text-sm font-semibold text-slate-900">
+                        {href
+                          ? <a href={href(value)} className="rounded transition-colors hover:text-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">{value}</a>
+                          : value}
+                      </dd>
+                    </div>
+                  </div>
+                );
+              })}
+            </dl>
+          </div>
+
+          <div className={`flex flex-col gap-8 rounded-2xl bg-slate-900 p-6 text-white shadow-float sm:p-8 lg:col-span-3 ${start ? 'justify-center' : 'justify-between'}`}>
+            {start ? (
+              <>
+                <p className="text-xl font-bold leading-snug tracking-tight sm:text-2xl">{t('home.contact.signedIn')}</p>
+                <Link to={start.to} className={`${ctaPrimary} self-start`}>
+                  {start.label}
+                  <ArrowRight aria-hidden className="h-4 w-4" />
+                </Link>
+              </>
+            ) : (
+              <>
+                <div>
+                  <h3 className="text-xl font-bold tracking-tight sm:text-2xl">{t('home.contact.cardTitle')}</h3>
+                  <ol className="mt-6 space-y-4">
+                    {tList('home.contact.cardSteps').map((step, i) => (
+                      <li key={step} className="flex items-center gap-3 text-sm text-slate-300">
+                        <span aria-hidden className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/10 text-xs font-bold text-amber-300">
+                          {i + 1}
+                        </span>
+                        {step}
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+                <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:gap-6">
+                  <Link to="/signup" className={ctaPrimary}>
+                    {t('home.contact.signUp')}
+                    <ArrowRight aria-hidden className="h-4 w-4" />
+                  </Link>
+                  <p className="text-sm text-slate-300">
+                    {t('home.contact.haveAccount')}{' '}
+                    <Link to="/login" className="rounded font-semibold text-white underline underline-offset-4 transition-colors hover:text-amber-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-300">
+                      {t('home.cta.logIn')}
+                    </Link>
+                  </p>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
     </section>
