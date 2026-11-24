@@ -36,6 +36,7 @@ import { AdminDashboard } from '@/features/admin/AdminDashboard';
 import { QuotationPage } from '@/features/quotations/QuotationPage';
 import { ReviewsPage } from '@/features/reviews/ReviewsPage';
 import { InquiriesPage } from '@/features/inquiries/InquiriesPage';
+import { ContactPage } from '@/features/inquiries/ContactPage';
 import { CreateContract } from '@/features/staff/CreateContract';
 import { TermsPage } from '@/features/static/TermsPage';
 import { PrivacyPage } from '@/features/static/PrivacyPage';
@@ -221,6 +222,7 @@ function App() {
           {/* Retired info pages (old AI-era copy): the landing page covers them now */}
           <Route path="/how-it-works" element={<Navigate to="/#how-it-works" replace />} />
           {['/about', '/pricing', '/help'].map((path) => <Route key={path} path={path} element={<Navigate to="/" replace />} />)}
+          <Route path="/contact" element={<ContactPage />} />
           <Route path="/terms" element={<TermsPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />
 

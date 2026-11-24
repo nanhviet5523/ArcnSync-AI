@@ -48,12 +48,14 @@ const qs = (q: Record<string, string | number | boolean | undefined>) => {
   return p.toString() ? `?${p}` : '';
 };
 
+const enc = encodeURIComponent;
+
 export const inquiryApi = {
   /** Public, no account needed (rate limited by IP). */
   submit: (input: ContactInput) => apiRequest<{ message: string }>('/contact-inquiries', json('POST', input)),
   list: (q: { status?: InquiryStatus; topic?: InquiryTopic; q?: string; mine?: boolean } = {}) =>
     apiRequest<InquiryPage>(`/contact-inquiries${qs({ ...q, limit: 100 })}`),
-  get: (id: string) => apiRequest<Inquiry>(`/contact-inquiries/${id}`),
+  get: (id: string) => apiRequest<Inquiry>(`/contact-inquiries/${enc(id)}`),
   update: (id: string, body: { status?: InquiryStatus; staffNote?: string | null; assignToMe?: boolean }) =>
-    apiRequest<Inquiry>(`/contact-inquiries/${id}`, json('PATCH', body)),
+    apiRequest<Inquiry>(`/contact-inquiries/${enc(id)}`, json('PATCH', body)),
 };

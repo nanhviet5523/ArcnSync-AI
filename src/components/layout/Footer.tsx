@@ -11,6 +11,7 @@ const COLUMNS: { title: string; links: { label: string; hash?: string; to?: stri
     links: [
       { label: t('footer.howItWorks'), hash: '#how-it-works' },
       { label: t('footer.features'), hash: '#features' },
+      { label: t('footer.contact'), to: '/contact' },
     ],
   },
   {

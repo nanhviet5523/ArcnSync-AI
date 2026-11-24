@@ -49,6 +49,12 @@ export function ContactSection({ user }: { user: User | null }) {
                 );
               })}
             </dl>
+            <div className="mt-6 border-t border-line pt-5">
+              <Link to="/contact" className="inline-flex items-center gap-1.5 rounded text-sm font-semibold text-brand transition-colors hover:text-brand-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">
+                {t('contactPage.formTitle')}
+                <ArrowRight aria-hidden className="h-4 w-4" />
+              </Link>
+            </div>
           </div>
 
           <div className={`flex flex-col gap-8 rounded-2xl bg-slate-900 p-6 text-white shadow-float sm:p-8 lg:col-span-3 ${start ? 'justify-center' : 'justify-between'}`}>
