@@ -2,7 +2,7 @@ import type { User, UserRole } from '@/types/role';
 import { runSignOutListeners } from './signOut.ts';
 
 // `?.`: under plain `node --test` import.meta.env does not exist.
-const API_BASE_URL =
+export const API_BASE_URL =
   import.meta.env?.VITE_API_URL ?? 'http://localhost:3000';
 
 const SESSION_KEY = 'archsync-auth-session';

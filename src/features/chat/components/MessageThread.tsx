@@ -4,18 +4,32 @@ import { t } from '@/i18n';
 import { getCurrentUser } from '@/services/authService';
 import { dayDivider, dayKey } from '../chatFormat';
 import type { ConversationMessages } from '../hooks/useConversationMessages';
+import { findLastSeenMessageId } from '../readMarker';
 import { MessageBubble } from './MessageBubble';
 import { SystemMessage } from './SystemMessage';
+
+/** Distance from the bottom (px) within which incoming realtime messages auto-scroll into view. */
+const AUTO_SCROLL_THRESHOLD_PX = 140;
 
 /**
  * The message thread of one conversation: oldest at the top, newest at the bottom. State comes from
  * useConversationMessages (held by the panel, so the composer can append to it).
  * Opens scrolled to the newest message; older pages load when the top comes into view (or with "Load earlier")
- * without moving what the reader is looking at. A new message of the viewer's own always scrolls to the bottom.
+ * without moving what the reader is looking at. Own messages always scroll to bottom; incoming realtime messages
+ * scroll to bottom when the reader is already near the bottom.
  */
-export function MessageThread({ conversationId, thread }: { conversationId: string; thread: ConversationMessages }) {
+export function MessageThread({
+  conversationId,
+  thread,
+  otherLastReadAt = null,
+}: {
+  conversationId: string;
+  thread: ConversationMessages;
+  otherLastReadAt?: string | null;
+}) {
   const { messages, loading, loadingOlder, hasMore, error, loadOlder, retry } = thread;
   const meId = getCurrentUser()?.id;
+  const lastSeenMessageId = findLastSeenMessageId(messages, meId, otherLastReadAt);
   const scroller = useRef<HTMLDivElement>(null);
   const sentinel = useRef<HTMLDivElement>(null);
   /** Scroll position saved right before an older page is requested. */
@@ -24,6 +38,8 @@ export function MessageThread({ conversationId, thread }: { conversationId: stri
   const scrolledFor = useRef<string | null>(null);
   /** Newest message already laid out: a different one at the end means something was appended. */
   const lastSeen = useRef<string | undefined>(undefined);
+  /** Whether the reader was near the bottom before the latest append. */
+  const nearBottomRef = useRef(true);
 
   /** Remember where the reader is, so a prepended page can be compensated in the layout effect. */
   const saveAnchor = () => {
@@ -55,10 +71,10 @@ export function MessageThread({ conversationId, thread }: { conversationId: stri
       el.scrollTop = el.scrollHeight;
       return;
     }
-    // Appended at the end (just sent; realtime later): my own message always brings the view down.
+    // Appended at the end (just sent or realtime): own message always scrolls down; incoming scrolls down if near bottom.
     if (last && last.id !== lastSeen.current) {
       lastSeen.current = last.id;
-      if (meId && last.senderId === meId) {
+      if ((meId && last.senderId === meId) || nearBottomRef.current) {
         anchor.current = null;
         el.scrollTop = el.scrollHeight;
         return;
@@ -101,8 +117,21 @@ export function MessageThread({ conversationId, thread }: { conversationId: stri
     return <div className="flex flex-1 items-center justify-center p-6"><EmptyState compact title={t('chat.thread.empty')} /></div>;
   }
 
+  const handleScroll = () => {
+    const el = scroller.current;
+    if (!el) return;
+    nearBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight <= AUTO_SCROLL_THRESHOLD_PX;
+  };
+
   return (
-    <div ref={scroller} role="log" aria-label={t('chat.thread.label')} aria-busy={loadingOlder} className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+    <div
+      ref={scroller}
+      onScroll={handleScroll}
+      role="log"
+      aria-label={t('chat.thread.label')}
+      aria-busy={loadingOlder}
+      className="min-h-0 flex-1 overflow-y-auto px-4 py-3"
+    >
       <div ref={sentinel} aria-hidden className="h-px" />
       <div className="flex min-h-8 items-center justify-center pb-2">
         {loadingOlder ? (
@@ -133,7 +162,13 @@ export function MessageThread({ conversationId, thread }: { conversationId: stri
               <li>
                 {m.messageType === 'SYSTEM'
                   ? <SystemMessage message={m} />
-                  : <MessageBubble message={m} mine={!!meId && m.senderId === meId} />}
+                  : (
+                    <MessageBubble
+                      message={m}
+                      mine={!!meId && m.senderId === meId}
+                      seenAt={m.id === lastSeenMessageId ? otherLastReadAt : null}
+                    />
+                  )}
               </li>
             </Fragment>
           );

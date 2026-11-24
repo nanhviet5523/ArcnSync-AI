@@ -160,3 +160,89 @@ export interface PaginatedConversations {
   limit: number;
   total: number;
 }
+
+// ---------------------------------------------------------------------------
+// PUT /conversations/:id/read-marker → 200 ReadMarkerResponse
+// ---------------------------------------------------------------------------
+
+/** Read marker confirmation (ReadMarkerResponseDto); lastReadAt is an ISO string. */
+export interface ReadMarkerResponse {
+  conversationId: string;
+  lastReadAt: string;
+}
+
+// ---------------------------------------------------------------------------
+// Video calls: POST /conversations/:id/video-calls,
+//              POST /video-calls/:id/{acceptance,rejection,ending}
+// ---------------------------------------------------------------------------
+
+export type VideoCallStatus =
+  | 'RINGING'
+  | 'ONGOING'
+  | 'ENDED'
+  | 'DECLINED'
+  | 'MISSED'
+  | 'CANCELLED';
+
+/** A 1-1 video call record (VideoCallResponseDto); dates are ISO strings. */
+export interface VideoCallItem {
+  id: string;
+  conversationId: string;
+  callerId: string;
+  calleeId: string;
+  status: VideoCallStatus;
+  answeredAt: string | null;
+  endedAt: string | null;
+  /** Duration in seconds for an answered call (0 if never answered). */
+  durationSeconds: number;
+  createdAt: string;
+}
+
+/** ICE server passed directly to `new RTCPeerConnection({ iceServers })` (IceServerResponseDto). */
+export interface IceServerItem {
+  urls: string | string[];
+  username?: string;
+  credential?: string;
+}
+
+/** Returned by POST /conversations/:id/video-calls (201) and POST /video-calls/:id/acceptance (200). */
+export interface VideoCallSession {
+  call: VideoCallItem;
+  iceServers: IceServerItem[];
+}
+
+// ---------------------------------------------------------------------------
+// Socket.IO `/chat` realtime payloads (backend ChatGateway)
+// ---------------------------------------------------------------------------
+
+export interface MessageCreatedSocketEvent {
+  conversationId: string;
+  message: ChatMessageSummary;
+}
+
+export interface ConversationReadSocketEvent {
+  conversationId: string;
+  userId: string;
+  lastReadAt: string;
+}
+
+export interface VideoCallSocketEvent {
+  call: VideoCallItem;
+}
+
+export type CallSignalKind = 'offer' | 'answer' | 'ice-candidate';
+
+export interface CallSignalPayload {
+  callId: string;
+  kind: CallSignalKind;
+  data: unknown;
+}
+
+export interface IncomingCallSignalEvent extends CallSignalPayload {
+  fromUserId: string;
+}
+
+export interface CallSignalAck {
+  ok: boolean;
+  code?: string;
+}

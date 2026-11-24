@@ -14,6 +14,12 @@ export const CHAT_ERROR_MESSAGES = {
   MESSAGE_CONTENT_REQUIRED: 'chat.errors.MESSAGE_CONTENT_REQUIRED',
   INVALID_CHAT_ATTACHMENT: 'chat.errors.INVALID_CHAT_ATTACHMENT',
   INVALID_MESSAGE_CONTEXT: 'chat.errors.INVALID_MESSAGE_CONTEXT',
+  MESSAGE_NOT_FOUND: 'chat.errors.MESSAGE_NOT_FOUND',
+  CHAT_ATTACHMENT_NOT_FOUND: 'chat.errors.CHAT_ATTACHMENT_NOT_FOUND',
+  USER_BUSY: 'chat.errors.USER_BUSY',
+  VIDEO_CALL_NOT_FOUND: 'chat.errors.VIDEO_CALL_NOT_FOUND',
+  NOT_VIDEO_CALL_CALLEE: 'chat.errors.NOT_VIDEO_CALL_CALLEE',
+  INVALID_VIDEO_CALL_STATUS_TRANSITION: 'chat.errors.INVALID_VIDEO_CALL_STATUS_TRANSITION',
 } as const;
 
 /** Unmapped errors: whether "Try again" belongs in the sentence depends on `retryable`. */
@@ -111,5 +117,54 @@ export function sendMessageFailure(error: unknown): SendMessageFailure {
     messageKey,
     effect: Object.hasOwn(SEND_EFFECTS, code) ? SEND_EFFECTS[code] ?? null : null,
     clientBug: code === 'VALIDATION_ERROR',
+  };
+}
+
+// ---------------------------------------------------------------------------
+// GET /messages/:id/attachment
+// ---------------------------------------------------------------------------
+
+/** Classify an attachment download/preview error. Missing attachments are final (no retry). */
+export function attachmentFailure(error: unknown): ChatError {
+  const classified = classifyChatError(error);
+  const { code, retryable } = classified;
+  const messageKey = isMapped(code)
+    ? classified.messageKey
+    : retryable
+      ? 'chat.thread.downloadFailed'
+      : 'chat.thread.downloadUnavailable';
+  return { ...classified, messageKey };
+}
+
+// ---------------------------------------------------------------------------
+// Video calls: POST /conversations/:id/video-calls & /video-calls/:id/*
+// ---------------------------------------------------------------------------
+
+export interface VideoCallFailure extends ChatError {
+  /** 403 CHAT_NOT_ALLOWED / 422 CHAT_RECIPIENT_INACTIVE: conversation is now read-only. */
+  blocked: boolean;
+  /** 404 CONVERSATION_NOT_FOUND / VIDEO_CALL_NOT_FOUND. */
+  notFound: boolean;
+  /** 422 INVALID_VIDEO_CALL_STATUS_TRANSITION: the call already changed or ended (e.g. peer hung up first). */
+  alreadyEnded: boolean;
+  /** 409 USER_BUSY: caller or callee is already in another call. */
+  busy: boolean;
+}
+
+export function videoCallFailure(error: unknown): VideoCallFailure {
+  const classified = classifyChatError(error);
+  const { code, retryable } = classified;
+  const messageKey = isMapped(code)
+    ? classified.messageKey
+    : retryable
+      ? 'chat.call.errorRetry'
+      : 'chat.call.errorFailed';
+  return {
+    ...classified,
+    messageKey,
+    blocked: code === 'CHAT_NOT_ALLOWED' || code === 'CHAT_RECIPIENT_INACTIVE',
+    notFound: code === 'CONVERSATION_NOT_FOUND' || code === 'VIDEO_CALL_NOT_FOUND',
+    alreadyEnded: code === 'INVALID_VIDEO_CALL_STATUS_TRANSITION',
+    busy: code === 'USER_BUSY',
   };
 }

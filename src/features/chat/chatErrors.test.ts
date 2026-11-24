@@ -2,7 +2,13 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import type { ConversationItem } from '../../types/chat.ts';
 import { chatCache } from './chatCache.ts';
-import { CHAT_ERROR_MESSAGES, classifyChatError, openConversationFailure } from './chatErrors.ts';
+import {
+  CHAT_ERROR_MESSAGES,
+  attachmentFailure,
+  classifyChatError,
+  openConversationFailure,
+  videoCallFailure,
+} from './chatErrors.ts';
 
 const apiError = (code: string, status: number) => Object.assign(new Error('x'), { name: 'ApiError', code, status });
 const RETRY = 'chat.errors.retry';
@@ -93,4 +99,43 @@ test('chatCache stores conversations and notifies only the invalidated lists', (
   offConversations();
   chatCache.invalidate('chat-contacts', 'conversations');
   assert.equal(calls.length, 3);
+});
+
+// --- attachmentFailure & videoCallFailure ------------------------------------
+
+test('attachmentFailure classifies 404 attachment errors as final and network errors as retryable', () => {
+  assert.deepEqual(attachmentFailure(apiError('CHAT_ATTACHMENT_NOT_FOUND', 404)), {
+    code: 'CHAT_ATTACHMENT_NOT_FOUND',
+    messageKey: CHAT_ERROR_MESSAGES.CHAT_ATTACHMENT_NOT_FOUND,
+    retryable: false,
+  });
+  assert.deepEqual(attachmentFailure(apiError('MESSAGE_NOT_FOUND', 404)), {
+    code: 'MESSAGE_NOT_FOUND',
+    messageKey: CHAT_ERROR_MESSAGES.MESSAGE_NOT_FOUND,
+    retryable: false,
+  });
+  assert.deepEqual(attachmentFailure(new TypeError('Failed to fetch')), {
+    code: '',
+    messageKey: 'chat.thread.downloadFailed',
+    retryable: true,
+  });
+});
+
+test('videoCallFailure sets busy, blocked, notFound and alreadyEnded flags accurately', () => {
+  const busy = videoCallFailure(apiError('USER_BUSY', 409));
+  assert.equal(busy.busy, true);
+  assert.equal(busy.retryable, false);
+  assert.equal(busy.messageKey, CHAT_ERROR_MESSAGES.USER_BUSY);
+
+  const blocked = videoCallFailure(apiError('CHAT_RECIPIENT_INACTIVE', 422));
+  assert.equal(blocked.blocked, true);
+  assert.equal(blocked.alreadyEnded, false);
+
+  const ended = videoCallFailure(apiError('INVALID_VIDEO_CALL_STATUS_TRANSITION', 422));
+  assert.equal(ended.alreadyEnded, true);
+  assert.equal(ended.messageKey, CHAT_ERROR_MESSAGES.INVALID_VIDEO_CALL_STATUS_TRANSITION);
+
+  const missing = videoCallFailure(apiError('VIDEO_CALL_NOT_FOUND', 404));
+  assert.equal(missing.notFound, true);
+  assert.equal(missing.messageKey, CHAT_ERROR_MESSAGES.VIDEO_CALL_NOT_FOUND);
 });

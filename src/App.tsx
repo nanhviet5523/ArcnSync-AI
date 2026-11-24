@@ -14,6 +14,7 @@ import { AcceptInvitation } from '@/features/auth/AcceptInvitation';
 import { HomeownerPayments } from '@/features/homeowner/HomeownerPayments';
 import { ProfileSettings } from '@/features/shared/ProfileSettings';
 import { MessagesPage } from '@/features/chat/MessagesPage';
+import { ChatRealtimeProvider } from '@/features/chat/ChatRealtimeProvider';
 import { CHAT_ROLES } from '@/features/chat/chatApi';
 import { CustomerDirectory } from '@/features/shared/CustomerDirectory';
 import { ApartmentManagement } from '@/features/shared/ApartmentManagement';
@@ -94,11 +95,12 @@ function App() {
   // overflow-x-clip, not -hidden: hidden makes this div the scroll container for position: sticky,
   // so the sticky Header (and other sticky panels) would scroll away with the page.
   return (
-    <div
-      className={`w-full bg-white relative ${
-        isAuthPage ? 'h-screen overflow-hidden' : 'min-h-screen overflow-x-clip'
-      }`}
-    >
+    <ChatRealtimeProvider>
+      <div
+        className={`w-full bg-white relative ${
+          isAuthPage ? 'h-screen overflow-hidden' : 'min-h-screen overflow-x-clip'
+        }`}
+      >
       <AnimatePresence mode="popLayout" initial={false}>
         <Routes location={location} key={location.pathname}>
           <Route
@@ -236,7 +238,8 @@ function App() {
           <Route path="/activate-account" element={<AcceptInvitation />} />
         </Routes>
       </AnimatePresence>
-    </div>
+      </div>
+    </ChatRealtimeProvider>
   );
 }
 
