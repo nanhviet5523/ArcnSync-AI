@@ -66,6 +66,7 @@ export function errorText(e: unknown): string {
     if (err.code === 'PRODUCTS_NOT_CHOSEN') return t('errors.PRODUCTS_NOT_CHOSEN', { n: Number(d.unchosen ?? 1) });
     if (err.code === 'PREVIOUS_MILESTONE_UNPAID') return milestoneUnpaidText(typeof d.stageType === 'string' ? d.stageType : null);
     if (err.code === 'DOWNLOAD_FORBIDDEN' && d.reason === 'PAYMENT_REQUIRED') return t('errors.DOWNLOAD_PAYMENT_REQUIRED');
+    if (err.code === 'DOWNLOAD_FORBIDDEN' && d.reason === 'NOT_SUBMITTED') return t('errors.DOWNLOAD_NOT_SUBMITTED');
     const mapped = t(`errors.${err.code}`);
     if (mapped !== `errors.${err.code}`) return mapped;
     if (err.code.endsWith('NOT_FOUND')) return t('errors.notFound');

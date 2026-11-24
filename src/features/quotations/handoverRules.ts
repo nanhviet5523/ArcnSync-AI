@@ -1,10 +1,10 @@
 // No '@/' imports here: unit-tested with node --test (handoverRules.test.ts).
 import type { MilestoneStatus } from '../projects/services/contractsApi';
-import type { HandoverStatus } from './handoverApi';
+import type { HandoverAssetType, HandoverStatus } from './handoverApi';
 
 /**
- * Submit gates (backend PREVIOUS_MILESTONE_UNPAID): the previous stage's milestone must be paid. A stage missing from the
- * contract or CANCELLED does not block. Undefined = unknown (contract not read): left to the backend.
+ * Submit & upload gates (backend PREVIOUS_MILESTONE_UNPAID): the previous stage's milestone must be paid. A stage missing
+ * from the contract or CANCELLED does not block. Undefined = unknown (contract not read): left to the backend.
  */
 export const milestoneClear = (status?: MilestoneStatus | null) => !status || status === 'PAID' || status === 'CANCELLED';
 
@@ -14,6 +14,18 @@ export const milestoneClear = (status?: MilestoneStatus | null) => !status || st
  */
 export const canHomeownerDownload = (handover: HandoverStatus, milestone: MilestoneStatus) =>
   handover === 'APPROVED' && milestone === 'PAID';
+
+/**
+ * Preview route (GET /design-assets/:id/preview):
+ * - DOCUMENT never has a preview (backend returns 404 PREVIEW_NOT_AVAILABLE).
+ * - Homeowner previews RENDER_IMAGE / MODEL_3D once SUBMITTED or APPROVED (no need to pay FINAL_PACKAGE).
+ * - Non-homeowner roles (designer, staff, admin) can always preview RENDER_IMAGE / MODEL_3D.
+ */
+export const canPreview = (role: string, handoverStatus: HandoverStatus, assetType: HandoverAssetType): boolean => {
+  if (assetType === 'DOCUMENT') return false;
+  if (role === 'homeowner') return handoverStatus === 'SUBMITTED' || handoverStatus === 'APPROVED';
+  return true;
+};
 
 /** Handover DXF: once approved. Homeowner and staff also need the FINAL_PACKAGE milestone PAID; designer and admin don't. */
 export const canSeeDxf = (role: string, handover: HandoverStatus, milestone: MilestoneStatus) =>

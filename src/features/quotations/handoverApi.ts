@@ -1,5 +1,5 @@
 import { t } from '@/i18n';
-import { apiRequest, apiUpload, downloadFile } from '@/services/authService';
+import { apiFetch, apiRequest, apiUpload, buildApiError, downloadFile } from '@/services/authService';
 import type { MilestoneStatus } from '@/features/projects/services/contractsApi';
 
 /**
@@ -97,10 +97,20 @@ export const handoverApi = {
     await apiRequest<void>(`/design-assets/${enc(assetId)}`, { method: 'DELETE' });
   },
 
-  /** GET /design-assets/{id}/file. The homeowner only after approving the package (403 DOWNLOAD_FORBIDDEN). */
+  /** GET /design-assets/{id}/file. The homeowner only after approving the package and paying the final installment (403 DOWNLOAD_FORBIDDEN). */
   download: (asset: Pick<HandoverAsset, 'id' | 'fileName'>) =>
     // the server sends `filename*=UTF-8''…`, which downloadFile can't parse: use the name from the list
     downloadFile(`/design-assets/${enc(asset.id)}/file`, asset.fileName, { preferFallbackName: true }),
+
+  /**
+   * GET /design-assets/{id}/preview with Bearer token (returns watermarked JPEG for RENDER_IMAGE, .glb for MODEL_3D).
+   * Callers create an object URL from the Blob and revoke it on unmount.
+   */
+  async previewBlob(assetId: string, signal?: AbortSignal): Promise<Blob> {
+    const res = await apiFetch(`/design-assets/${enc(assetId)}/preview`, { signal });
+    if (!res.ok) throw buildApiError(res.status, await res.json().catch(() => null), 'Could not load preview');
+    return res.blob();
+  },
 
   /**
    * DXF of one floor of the final version. GET /design-versions/{id}/file?floorId=. Designers and admin always; the
