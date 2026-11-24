@@ -4,16 +4,17 @@ import { Link, useBlocker, useNavigate, useParams, useSearchParams } from 'react
 import { Box, Image as ImageIcon, Info, PanelLeftOpen, Upload, X } from 'lucide-react';
 import { Avatar, Banner, Button, ErrorState, Field, Input, Modal, Skeleton, StatusChip, Textarea, Z, avatarLabels } from '@/components/ui';
 import { downloadFile, revokeBlobUrls } from '@/services/authService';
-import { errorText, formatDate, formatDateTime, formatMoney, isNetworkError, t } from '@/i18n';
+import { errorText, formatDate, formatDateTime, formatMoney, isNetworkError, milestoneUnpaidText, t } from '@/i18n';
 import { getProjectContract } from '@/features/projects/services/contractsApi';
 import type { PaymentMilestoneResponse } from '@/features/projects/services/contractsApi';
+import { milestoneClear } from '@/features/quotations/handoverRules';
 import { projectApi } from '@/features/projects/projectApi';
 import { useProjectConcepts } from '@/features/concepts/useProjectConcepts';
 import { designApi } from './designApi';
 import { approveBlockers, awaitingNotice, can, CLEAR_CANVAS, discardErrorText, draftAddressedNotes, revisionMode, commentPlaceholder, commentThreads, compareCandidates, newUploadRow, pickCompareTarget, resolveProjectRole, isOffTeam, uploadRowErrors, elementName, formatTime, latestVersion, targetInVersion, versionLabel, isNotChosenItem, isUnknownItem, pinPoint, pinsToShow, isAutoApproved, paymentState, payUrl, reviewDue, stageMilestone } from './logic';
 import type { Action, CanvasUi, CommentThread, UploadRow } from './logic';
 import { NotOnTeam } from '@/features/projects/NotOnTeam';
-import { CommentPanel } from './CommentPanel';
+import { CommentPanel, ProposalChip } from './CommentPanel';
 import { ComparePanel } from './ComparePanel';
 import { FloorRoomTree } from './FloorRoomTree';
 import { Plan2D } from './Plan2D';
@@ -264,9 +265,9 @@ export function WorkspacePage() {
   const [tab, setTab] = useState<'2d' | '3d'>('2d');
   const [showFurniture, setShowFurniture] = useState(true);
   const [uploading, setUploading] = useState(false);
-  // Selection, comment target, popover, 3D hint and comment mode: all tied to one version and one floor.
+  // Selection, comment popover, 3D hint and comment mode: all tied to one version and one floor.
   const [canvas, setCanvas] = useState<CanvasUi>(CLEAR_CANVAS);
-  const { selEl, selComment, target, quick, hint, commentMode } = canvas;
+  const { selEl, selComment, quick, hint, commentMode } = canvas;
   const patchCanvas = useCallback((p: Partial<CanvasUi>) => setCanvas((c) => ({ ...c, ...p })), []);
   const [roomKey, setRoomKey] = useState<string | null>(null);
   const [drawer, setDrawer] = useState<'left' | 'right' | null>(null);
@@ -336,6 +337,7 @@ export function WorkspacePage() {
       } else if (e.key === 'Escape') {
         // Esc closes an open popover or hint first, and only then leaves comment mode
         patchCanvas(keys.current.overlay ? { quick: null, hint: null } : { commentMode: false });
+        if (keys.current.overlay) setProposal(null);
       } else if (!keys.current.drawer) {
         if (e.key === '+' || e.key === '=') zoomCanvas(ZOOM_IN);
         else if (e.key === '-') zoomCanvas(ZOOM_OUT);
@@ -590,6 +592,10 @@ export function WorkspacePage() {
   /** System-made Products version before the Lead's first save: the backend records that save as Minor, whatever it merges. */
   const awaiting = !!version?.awaiting_designer;
   const layoutBlocked = mergingLayout && !awaiting && stageLimit?.remaining === 0;
+  /** Products: a new version needs the LAYOUT_2D installment paid (backend 422 PREVIOUS_MILESTONE_UNPAID). Not in the contract or cancelled: no block. */
+  const awaitingLayoutPayment = version?.version_type === 'RENDER_3D' && !milestoneClear(stageMilestone(milestones, 'LAYOUT_2D')?.status);
+  // the unpaid installment comes first: it is what the Lead has to wait for
+  const saveBlockedReason = awaitingLayoutPayment ? milestoneUnpaidText('LAYOUT_2D') : layoutBlocked ? t('reasons.noMajorLeft') : undefined;
   const saveMode = revisionMode(version, mergingLayout);
   /** Comments marked addressed in the drafts this Save merges: the backend marks them itself, so read-only in the dialog. */
   const draftNotes = reviewing ? draftAddressedNotes([...work.readyDrafts, ...work.ownDrafts.filter((d) => draftChangeCount(d) > 0)], openThreads.map((x) => x.root)) : [];
@@ -601,10 +607,8 @@ export function WorkspacePage() {
     return work.ownerOf.get(id)?.designerName ?? project.designer?.fullName ?? null;
   };
   const canTakeOver = (roomId: string | null | undefined) => !!roomId && allow('takeOverRoom', roomId).ok;
-  // The Comments composer follows the selected item unless the user picked a spot or switched to a general comment (✕).
-  const composeTarget: CommentTarget | null = target ?? (selElement ? { kind: 'element', element: selElement } : null);
-  // a suggestion belongs to one item: picking another item or a general comment leaves it out
-  const activeProposal = proposal && composeTarget?.kind === 'element' && composeTarget.element.id === proposal.elementId ? proposal : null;
+  // a suggestion belongs to the popover of one item: another item or a spot leaves it out
+  const activeProposal = proposal && quick?.target.kind === 'element' && quick.target.element.id === proposal.elementId ? proposal : null;
 
   /** Unsent popover text wins over a click elsewhere: keep the popover, ignore the click, put the cursor back. */
   const holdQuick = () => {
@@ -644,11 +648,9 @@ export function WorkspacePage() {
     patchCanvas({ selEl: e?.id ?? null, selComment: null });
     if (commenting && e && at) { patchCanvas({ hint: null, quick: { target: { kind: 'element', element: e }, ...anchor(at) } }); return; }
     if (commenting && !e && at && tab === '3d') { patchCanvas({ quick: null, hint: anchor(at) }); return; }
-    // a new selection re-attaches the Comments composer to the selected item
-    patchCanvas({ quick: null, hint: null, target: null });
-    if (!e) return;
-    if (isRender) { setRightTab('item'); setDrawer('right'); }
-    else if (canComment) { setRightTab('comments'); patchCanvas({ target: { kind: 'element', element: e } }); setDrawer('right'); }
+    // outside comment mode a click only selects; commenting on the item goes through comment mode (C)
+    patchCanvas({ quick: null, hint: null });
+    if (e && isRender) { setRightTab('item'); setDrawer('right'); }
   };
   /** Only reached in comment mode: elsewhere an empty click just clears the selection. */
   const clickSpot = (p: { x: number; y: number }, at: ClickPoint) => {
@@ -656,6 +658,20 @@ export function WorkspacePage() {
     patchCanvas({ selEl: null, quick: { target: { kind: 'point', ...p, floor_id: floorId }, ...anchor(at) } });
   };
   const toggleCommentMode = () => { if (!holdQuick()) patchCanvas({ commentMode: !commentMode, quick: null, hint: null }); };
+  /**
+   * Opens the comment popover on an item without a click on the drawing (e.g. "Suggest this"): turns comment mode on and
+   * anchors the popover in the middle of the canvas, as the drawings can't tell where the item is on screen.
+   */
+  const openQuickFor = (e: DesignElement) => {
+    if (holdQuick()) return false;
+    if (compareParam) stopCompare();
+    setMergeCompare(false);
+    if (narrow) setDrawer(null);
+    const r = mainRef.current?.getBoundingClientRect();
+    const w = r?.width ?? 0, h = r?.height ?? 0;
+    patchCanvas({ commentMode: true, selEl: e.id, selComment: null, hint: null, quick: { target: { kind: 'element', element: e }, x: w / 2, y: h / 3, w, h } });
+    return true;
+  };
   /** Turns Compare on, or changes the version while on; zoom and pan stay. Compare and comment mode exclude each other. */
   const startCompare = (id: string) => {
     if (holdQuick()) return;
@@ -728,12 +744,12 @@ export function WorkspacePage() {
     if (ok && proposed) setProposal(null);
     return ok;
   };
-  /** "Suggest this" in the Selected item tab: opens the item comment with the product filled in. Nothing changes yet. */
+  /** "Suggest this" in the Selected item tab: opens the item's comment popover with the product filled in. Nothing changes yet. */
   const suggestProduct = (p: ProductOption) => {
-    if (!selElement) return;
+    if (!selElement || !openQuickFor(selElement)) return;
     setProposal({ elementId: selElement.id, product: p });
-    patchCanvas({ target: { kind: 'element', element: selElement } });
-    setRightTab('comments');
+    // the popover may already be open there: put the cursor in it, so the homeowner can write the message right away
+    setQuickNudge((n) => n + 1);
   };
   /**
    * Designer applies a homeowner's suggestion: the same swap as in the Selected item tab, put in the draft. The product
@@ -937,7 +953,7 @@ export function WorkspacePage() {
     if (holdQuick()) return;
     if (l.floorId !== floorId) changeFloor(l.floorId);
     const real = !isAddedItem(l.elementId);
-    patchCanvas({ selEl: real ? l.elementId : null, selComment: null, quick: null, hint: null, target: null });
+    patchCanvas({ selEl: real ? l.elementId : null, selComment: null, quick: null, hint: null });
     if (real) setRightTab('item');
     setView2d({ x: l.position.x - 1.5, y: -l.position.y - 1.5, w: 3, h: 3 });
     // after the floor change above has been drawn
@@ -1142,7 +1158,16 @@ export function WorkspacePage() {
                   bounds={{ width: quick.w, height: quick.h }} nudge={quickNudge} placeholder={commentPlaceholder(quick.target, isRender)}
                   title={quick.target.kind === 'element' ? t('comments.forItem', { name: elementName(quick.target.element, viewer.role) }) : t('ws.commentAtSpot')}
                   onTextChange={(has) => { quickHasText.current = has; }}
-                  onCancel={() => patchCanvas({ quick: null })}
+                  extra={activeProposal && (
+                    <ProposalChip name={activeProposal.product.name} price={activeProposal.product.unit_price} supplier={activeProposal.product.supplier_name}
+                      thumb={activeProposal.product.thumbnail_url} current={elements.find((e) => e.id === activeProposal.elementId)?.product?.unit_price}
+                      action={
+                        <button type="button" onClick={() => setProposal(null)} aria-label={t('comments.clearSuggestion')} title={t('comments.clearSuggestion')} className="shrink-0 self-start rounded p-0.5 text-slate-500 hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-2 focus-visible:outline-brand">
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      } />
+                  )}
+                  onCancel={() => { patchCanvas({ quick: null }); setProposal(null); }}
                   onSend={async (content) => { const ok = await postComment(quick.target, content); if (ok) patchCanvas({ quick: null }); return ok; }} />
               )}
 
@@ -1227,7 +1252,7 @@ export function WorkspacePage() {
                       if (f && f !== floorId) changeFloor(f);
                       patchCanvas({ selComment: id, selEl: th?.element?.id ?? null });
                     }}
-                    target={composeTarget} onTarget={(tg) => patchCanvas({ target: tg })} composerPlaceholder={commentPlaceholder(composeTarget, isRender)}
+                    composerPlaceholder={commentPlaceholder(null, isRender)}
                     mine={isMember ? { has: (x) => !!x.root.room_id && work.assignedRoomIds.includes(x.root.room_id) } : undefined}
                     draftTick={isMember ? {
                       can: (x) => x.root.status === 'OPEN' && allow('saveRoomDraft', x.root.room_id).ok,
@@ -1235,20 +1260,11 @@ export function WorkspacePage() {
                       onToggle: (x, on) => work.setTick(x.root.room_id!, x.root.id, on),
                     } : undefined}
                     allow={{ comment: canComment, reply: allow('reply').ok, respond: allow('respond').ok, address: allow('addressComment').ok }}
-                    onCreate={async (content) => {
-                      const ok = await postComment(composeTarget ?? { kind: 'general' }, content);
-                      if (ok) patchCanvas({ target: null });
-                      return ok;
-                    }}
+                    onCreate={(content) => postComment({ kind: 'general' }, content)}
                     onAddress={async (id) => { await run(() => designApi.addressComment(id, version.id, version.id)); }}
                     onReply={async (id, content) => { await run(() => designApi.replyComment(version.id, id, content)); }}
                     onAccept={async (id) => { await run(() => designApi.acceptComment(id, version.id)); }}
                     onNotYet={async (id, content) => { await run(() => designApi.reopenComment(id, content, version.id)); }}
-                    proposal={activeProposal && {
-                      name: activeProposal.product.name, price: activeProposal.product.unit_price, supplier_name: activeProposal.product.supplier_name,
-                      thumbnail_url: activeProposal.product.thumbnail_url, current: elements.find((e) => e.id === activeProposal.elementId)?.product?.unit_price ?? null,
-                    }}
-                    onClearProposal={() => setProposal(null)}
                     apply={viewer.role === 'designer' ? { can: canApply, onApply: applyProposal } : undefined} />
                 )}
               </div>
@@ -1267,8 +1283,8 @@ export function WorkspacePage() {
                     {leadCount ? t('items.draft', { n: leadCount }) : work.readyDrafts.length ? t('drafts.readyCount', { n: work.readyDrafts.length }) : t('ws.noDraft')}
                   </span>
                   {leadCount > 0 && <Button size="sm" variant="ghost" onClick={discardLeadWork} disabled={busy}>{t('items.discard')}</Button>}
-                  <Button size="sm" variant={leadCount || work.readyDrafts.length ? 'primary' : 'secondary'} disabled={(!leadCount && !work.readyDrafts.length) || layoutBlocked} loading={busy}
-                    title={layoutBlocked ? t('reasons.noMajorLeft') : undefined}
+                  <Button size="sm" variant={leadCount || work.readyDrafts.length ? 'primary' : 'secondary'} disabled={(!leadCount && !work.readyDrafts.length) || layoutBlocked || awaitingLayoutPayment} loading={busy}
+                    title={saveBlockedReason}
                     onClick={() => openSave('', 0)}>
                     {busy ? t('common.saving') : work.readyDrafts.length ? t('drafts.mergeSave') : t('common.save')}
                   </Button>
@@ -1279,8 +1295,8 @@ export function WorkspacePage() {
                   <span className={`min-w-0 flex-1 truncate text-[13px] ${work.readyDrafts.length ? 'font-medium text-slate-900' : 'text-slate-500'}`}>
                     {work.readyDrafts.length ? t('drafts.readyCount', { n: work.readyDrafts.length }) : t('drafts.noneReady')}
                   </span>
-                  <Button size="sm" variant="primary" disabled={!work.readyDrafts.length || layoutBlocked} loading={busy}
-                    title={layoutBlocked ? t('reasons.noMajorLeft') : undefined} onClick={() => openSave('', 0)}>
+                  <Button size="sm" variant="primary" disabled={!work.readyDrafts.length || layoutBlocked || awaitingLayoutPayment} loading={busy}
+                    title={saveBlockedReason} onClick={() => openSave('', 0)}>
                     {busy ? t('common.saving') : t('drafts.mergeSave')}
                   </Button>
                 </div>
