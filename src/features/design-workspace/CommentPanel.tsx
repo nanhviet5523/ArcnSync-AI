@@ -1,13 +1,12 @@
 import { useState } from 'react';
 import type { ReactNode } from 'react';
-import { X } from 'lucide-react';
 import { Button, StatusChip, Tabs, Textarea, initials } from '@/components/ui';
 import { t } from '@/i18n';
 import { commentKind, elementName, formatTime, formatVnd, proposalDelta, statusMatches, versionLabel, waitingForMe } from './logic';
 import type { CommentThread, StatusFilter } from './logic';
 import { Thumb } from './ItemPanel';
 import { signedVnd } from './roomDrafts';
-import type { CommentTarget, Floor, Role } from './types';
+import type { Floor, Role } from './types';
 
 interface Props {
   threads: CommentThread[];
@@ -20,9 +19,7 @@ interface Props {
   onSelect: (id: string | null) => void;
   /** Selected room: list can be narrowed to its comments. */
   room: { name: string; has: (x: CommentThread) => boolean } | null;
-  /** What a new comment attaches to; null = general comment. */
-  target: CommentTarget | null;
-  onTarget: (t: CommentTarget | null) => void;
+  /** The composer at the bottom only writes general comments; items and spots are commented on in comment mode (C). */
   composerPlaceholder: string;
   /** Member: threads in their rooms. Adds a "My rooms" filter, on by default. */
   mine?: { has: (x: CommentThread) => boolean };
@@ -34,15 +31,12 @@ interface Props {
   onReply: (id: string, text: string) => Promise<void>;
   onAccept: (id: string) => Promise<void>;
   onNotYet: (id: string, text: string) => Promise<void>;
-  /** Product the homeowner is suggesting with the next item comment ("Suggest this"). current: the item's current price. */
-  proposal?: { name: string; price: string; supplier_name: string; thumbnail_url: string | null; current: string | null } | null;
-  onClearProposal?: () => void;
   /** Designer: put the suggested product in the draft. can() decides per thread. */
   apply?: { can: (x: CommentThread) => boolean; onApply: (x: CommentThread) => Promise<void> };
 }
 
 /** Suggested product: small image, name, price and the difference with the item's current product. */
-function ProposalChip({ name, price, supplier, thumb, current, unavailable, action }: {
+export function ProposalChip({ name, price, supplier, thumb, current, unavailable, action }: {
   name: string; price: string; supplier: string; thumb: string | null; current: string | null | undefined; unavailable?: boolean; action?: ReactNode;
 }) {
   const delta = proposalDelta(price, current);
@@ -113,7 +107,6 @@ export function CommentPanel(p: Props) {
   const list = p.threads.filter((x) => inScope(x) && (status === 'WAITING' ? waitingForMe(x.root, p.me) : statusMatches(x.root, status))
     && (!multi || allFloors || !x.root.floor_id || x.root.floor_id === p.floorId)
     && (!p.room || !roomOnly || p.room.has(x)));
-  const target = p.target;
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -229,29 +222,8 @@ export function CommentPanel(p: Props) {
 
       {p.allow.comment && (
         <div className="shrink-0 border-t border-line bg-surface px-4 py-3">
-          <div className="mb-1.5 flex items-center justify-between gap-2">
-            <p className={`truncate text-xs font-medium ${target ? 'text-brand' : 'text-slate-600'}`}>
-              {target?.kind === 'element' ? t('comments.onItem', { name: elementName(target.element, p.me) }) : target?.kind === 'point' ? t('comments.onSpot') : t('comments.forGeneral')}
-            </p>
-            {target && target.kind !== 'general' && (
-              <button type="button" onClick={() => p.onTarget({ kind: 'general' })} aria-label={t('ws.clearTarget')} title={t('ws.clearTarget')} className="rounded p-0.5 text-slate-500 hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-2 focus-visible:outline-brand">
-                <X className="h-3.5 w-3.5" />
-              </button>
-            )}
-          </div>
-          {p.proposal && target?.kind === 'element' && (
-            <div className="mb-2">
-              <ProposalChip name={p.proposal.name} price={p.proposal.price} supplier={p.proposal.supplier_name} thumb={p.proposal.thumbnail_url} current={p.proposal.current}
-                action={p.onClearProposal && (
-                  <button type="button" onClick={p.onClearProposal} aria-label={t('comments.clearSuggestion')} title={t('comments.clearSuggestion')} className="shrink-0 self-start rounded p-0.5 text-slate-500 hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-2 focus-visible:outline-brand">
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                )} />
-            </div>
-          )}
-          {/* a new suggestion remounts the composer focused, so the homeowner can write the message right away */}
-          <Composer key={`${target ? JSON.stringify(target.kind === 'element' ? target.element.id : target) : 'general'}|${p.proposal?.name ?? ''}`}
-            autoFocus={!!p.proposal} compact hint={target ? undefined : t('comments.hint')} placeholder={p.composerPlaceholder} onSend={p.onCreate} />
+          <p className="mb-1.5 truncate text-xs font-medium text-slate-600">{t('comments.forGeneral')}</p>
+          <Composer compact hint={t('comments.hint')} placeholder={p.composerPlaceholder} onSend={p.onCreate} />
         </div>
       )}
     </div>

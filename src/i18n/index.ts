@@ -45,6 +45,14 @@ export function isNetworkError(e: unknown): boolean {
   return err.name === 'ApiError' && !err.code && !err.status;
 }
 
+/** "The homeowner hasn't paid the 2D layout installment yet…"; without a known stage, the generic sentence. */
+export function milestoneUnpaidText(stageType: string | null | undefined): string {
+  const stage = stageType ? t(`newContract.stageType.${stageType}`) : '';
+  return stage && stage !== `newContract.stageType.${stageType}`
+    ? t('errors.PREVIOUS_MILESTONE_UNPAID_STAGE', { stage })
+    : t('errors.PREVIOUS_MILESTONE_UNPAID');
+}
+
 /** Any thrown error → English sentence. Backend messages (Vietnamese) are never shown; codes are mapped instead. */
 export function errorText(e: unknown): string {
   const err = (e ?? {}) as { name?: string; code?: string; status?: number; message?: string; details?: Record<string, unknown> };
@@ -56,6 +64,8 @@ export function errorText(e: unknown): string {
     }
     if (err.code === 'COMMENTS_OPEN') return t('errors.COMMENTS_OPEN', { n: Number(d.openComments ?? 1) });
     if (err.code === 'PRODUCTS_NOT_CHOSEN') return t('errors.PRODUCTS_NOT_CHOSEN', { n: Number(d.unchosen ?? 1) });
+    if (err.code === 'PREVIOUS_MILESTONE_UNPAID') return milestoneUnpaidText(typeof d.stageType === 'string' ? d.stageType : null);
+    if (err.code === 'DOWNLOAD_FORBIDDEN' && d.reason === 'PAYMENT_REQUIRED') return t('errors.DOWNLOAD_PAYMENT_REQUIRED');
     const mapped = t(`errors.${err.code}`);
     if (mapped !== `errors.${err.code}`) return mapped;
     if (err.code.endsWith('NOT_FOUND')) return t('errors.notFound');

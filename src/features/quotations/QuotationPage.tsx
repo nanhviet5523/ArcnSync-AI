@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { Download, Sparkles } from 'lucide-react';
+import { ChevronDown, ChevronRight, Download, Sparkles } from 'lucide-react';
 import { AppShell, Banner, Button, Card, DetailList, EmptyState, ErrorState, PageHeader, Skeleton, StatusChip } from '@/components/ui';
 import { errorText, formatDate, formatMoney, t } from '@/i18n';
 import { getCurrentUser } from '@/services/authService';
@@ -10,6 +10,7 @@ import { designApi } from '@/features/design-workspace/designApi';
 import { budgetStatusOf, COST_GROUPS, estimateWith, quotationApi, signedMoney, todayVn } from './quotationApi';
 import type { CostCategory, ProductOption, Quotation, QuotationFileFormat, QuotationItem, QuotationSummary } from './quotationApi';
 import { ConfirmDialog, OptionsDialog, RequestChangesDialog, ValidUntilDialog } from './QuotationDialogs';
+import { collapseKey, defaultCollapsed } from './bomView';
 
 type Dialog =
   | { kind: 'validUntil' } | { kind: 'send' } | { kind: 'accept' } | { kind: 'requestChanges' }
@@ -17,6 +18,17 @@ type Dialog =
 
 /** What the page needs from the approved design version: its label and the design items per product (for "Try options"). */
 interface VersionInfo { label: string; elementsByProduct: Map<string, string[]> }
+
+/** Collapsed cost groups remembered for this tab; null when nothing is stored (or storage is blocked). */
+const readCollapsed = (quotationId: string): CostCategory[] | null => {
+  try {
+    const v: unknown = JSON.parse(sessionStorage.getItem(collapseKey(quotationId)) ?? 'null');
+    return Array.isArray(v) ? (v as CostCategory[]) : null;
+  } catch { return null; }
+};
+const writeCollapsed = (quotationId: string, groups: CostCategory[]) => {
+  try { sessionStorage.setItem(collapseKey(quotationId), JSON.stringify(groups)); } catch { /* private mode: just not remembered */ }
+};
 
 const projectHome = (role: string, id: string) =>
   role === 'homeowner' ? `/homeowner/projects/${id}` : role === 'designer' ? `/designer/projects/${id}` : `/staff/projects/${id}`;
@@ -41,6 +53,8 @@ export function QuotationPage() {
   const [dialog, setDialog] = useState<Dialog | null>(null);
   /** What-if product per line (homeowner and team trying options); never saved. */
   const [picked, setPicked] = useState<Record<string, ProductOption>>({});
+  /** Collapsed cost groups of the BOM table, per quotation (also kept in sessionStorage). */
+  const [collapsedBy, setCollapsedBy] = useState<Record<string, CostCategory[]>>({});
 
   const load = useCallback(async (id?: string | null) => {
     setError('');
@@ -117,6 +131,14 @@ export function QuotationPage() {
   const triedLines = q.items.filter((i) => picked[i.id]).map((i) =>
     t('quotation.changeLine', { from: i.productName, to: picked[i.id].name, price: formatMoney(picked[i.id].price) }));
   const groupTotal = Number(q.totalAmount) || 1;
+  const groups = byGroup.map(([g]) => g);
+  const collapsed = collapsedBy[q.id] ?? readCollapsed(q.id) ?? (defaultCollapsed(q.items.length) ? groups : []);
+  const allCollapsed = groups.length > 0 && groups.every((g) => collapsed.includes(g));
+  const setCollapsed = (next: CostCategory[]) => {
+    setCollapsedBy((m) => ({ ...m, [q.id]: next }));
+    writeCollapsed(q.id, next);
+  };
+  const toggleGroup = (g: CostCategory) => setCollapsed(collapsed.includes(g) ? collapsed.filter((x) => x !== g) : [...collapsed, g]);
 
   // exactly one primary action per state
   const primary = draft ? <Button variant="primary" onClick={() => setDialog({ kind: 'send' })}>{t('quotation.send')}</Button>
@@ -162,7 +184,10 @@ export function QuotationPage() {
         <Card className="lg:col-span-2" bodyClassName="p-0"
           title={t('quotation.lines', { n: q.items.length })}
           description={q.validUntil ? t('quotation.validUntil', { date: formatDate(q.validUntil) }) : t('quotation.noExpiry')}
-          actions={pickedCount > 0 ? <Button size="sm" onClick={() => setPicked({})}>{t('quotation.resetOptions')}</Button> : undefined}>
+          actions={<>
+            {pickedCount > 0 && <Button size="sm" onClick={() => setPicked({})}>{t('quotation.resetOptions')}</Button>}
+            {groups.length > 0 && <Button size="sm" variant="ghost" onClick={() => setCollapsed(allCollapsed ? [] : groups)}>{t(allCollapsed ? 'quotation.expandAll' : 'quotation.collapseAll')}</Button>}
+          </>}>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[640px] text-left text-sm">
               <thead className="border-b border-line bg-slate-50/70 text-[13px] text-slate-500">
@@ -174,43 +199,54 @@ export function QuotationPage() {
                   <th scope="col" className="px-4 py-2.5 text-right font-medium">{t('quotation.col.lineTotal')}</th>
                 </tr>
               </thead>
-              {byGroup.map(([group, items]) => (
-                <tbody key={group} className="divide-y divide-slate-100 border-b border-line last:border-b-0">
-                  <tr className="bg-slate-50/40">
-                    <th scope="rowgroup" colSpan={4} className="px-4 py-2 text-[13px] font-semibold text-slate-700">{t(`quotation.group.${group}`)}</th>
-                    <td className="px-4 py-2 text-right text-[13px] font-semibold tabular-nums text-slate-700">{formatMoney(q.costBreakdown[group] ?? items.reduce((s, i) => s + Number(i.lineTotal), 0))}</td>
-                  </tr>
-                  {items.map((item) => {
-                    const pick = picked[item.id];
-                    const elementId = version?.elementsByProduct.get(item.productId)?.[0];
-                    return (
-                      <tr key={item.id} className="align-top">
-                        <td className="px-4 py-3 tabular-nums text-slate-500">{lineNo.get(item.id)}</td>
-                        <td className="px-2 py-3">
-                          <p className={`font-medium ${pick ? 'text-slate-400 line-through' : 'text-slate-900'}`}>{item.productName}</p>
-                          {item.supplierName && <p className="text-xs text-slate-500">{item.supplierName}</p>}
-                          {pick && (
-                            <p className="mt-1 text-xs font-medium text-brand">
-                              → {pick.name} · {formatMoney(pick.price)} ({signedMoney((Number(pick.price) - Number(item.unitPrice)) * Number(item.quantity))})
-                            </p>
-                          )}
-                          {canTry && elementId && (
-                            <button type="button" onClick={() => setDialog({ kind: 'options', item, elementId })}
-                              className="mt-1 inline-flex items-center gap-1 rounded text-xs font-semibold text-brand hover:underline focus-visible:outline-2 focus-visible:outline-brand">
-                              <Sparkles aria-hidden className="h-3.5 w-3.5" />{t('quotation.tryOptions')}
-                            </button>
-                          )}
-                        </td>
-                        <td className="px-2 py-3 text-right tabular-nums text-slate-700">
-                          {Number(item.quantity).toLocaleString('en-US')} <span className="text-xs text-slate-500">{t(`quotation.unit.${item.unit}`)}</span>
-                        </td>
-                        <td className="px-2 py-3 text-right tabular-nums text-slate-700">{formatMoney(item.unitPrice)}</td>
-                        <td className="px-4 py-3 text-right font-semibold tabular-nums text-slate-900">{formatMoney(item.lineTotal)}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              ))}
+              {byGroup.map(([group, items]) => {
+                const shut = collapsed.includes(group);
+                const Chevron = shut ? ChevronRight : ChevronDown;
+                return (
+                  <tbody key={group} className="divide-y divide-slate-100 border-b border-line last:border-b-0">
+                    <tr className="bg-slate-50/40">
+                      <th scope="rowgroup" colSpan={4} className="px-4 py-2 text-[13px] font-semibold text-slate-700">
+                        <button type="button" aria-expanded={!shut} onClick={() => toggleGroup(group)}
+                          className="-mx-1 inline-flex items-center gap-1.5 rounded px-1 text-left hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-brand">
+                          <Chevron aria-hidden className="h-4 w-4 text-slate-500" />
+                          {t(`quotation.group.${group}`)}
+                          {shut && <span className="font-normal text-slate-500">· {t('quotation.groupLines', { n: items.length })}</span>}
+                        </button>
+                      </th>
+                      <td className="px-4 py-2 text-right text-[13px] font-semibold tabular-nums text-slate-700">{formatMoney(q.costBreakdown[group] ?? items.reduce((s, i) => s + Number(i.lineTotal), 0))}</td>
+                    </tr>
+                    {!shut && items.map((item) => {
+                      const pick = picked[item.id];
+                      const elementId = version?.elementsByProduct.get(item.productId)?.[0];
+                      return (
+                        <tr key={item.id} className="align-top">
+                          <td className="px-4 py-3 tabular-nums text-slate-500">{lineNo.get(item.id)}</td>
+                          <td className="px-2 py-3">
+                            <p className={`font-medium ${pick ? 'text-slate-400 line-through' : 'text-slate-900'}`}>{item.productName}</p>
+                            {item.supplierName && <p className="text-xs text-slate-500">{item.supplierName}</p>}
+                            {pick && (
+                              <p className="mt-1 text-xs font-medium text-brand">
+                                → {pick.name} · {formatMoney(pick.price)} ({signedMoney((Number(pick.price) - Number(item.unitPrice)) * Number(item.quantity))})
+                              </p>
+                            )}
+                            {canTry && elementId && (
+                              <button type="button" onClick={() => setDialog({ kind: 'options', item, elementId })}
+                                className="mt-1 inline-flex items-center gap-1 rounded text-xs font-semibold text-brand hover:underline focus-visible:outline-2 focus-visible:outline-brand">
+                                <Sparkles aria-hidden className="h-3.5 w-3.5" />{t('quotation.tryOptions')}
+                              </button>
+                            )}
+                          </td>
+                          <td className="px-2 py-3 text-right tabular-nums text-slate-700">
+                            {Number(item.quantity).toLocaleString('en-US')} <span className="text-xs text-slate-500">{t(`quotation.unit.${item.unit}`)}</span>
+                          </td>
+                          <td className="px-2 py-3 text-right tabular-nums text-slate-700">{formatMoney(item.unitPrice)}</td>
+                          <td className="px-4 py-3 text-right font-semibold tabular-nums text-slate-900">{formatMoney(item.lineTotal)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                );
+              })}
             </table>
           </div>
         </Card>

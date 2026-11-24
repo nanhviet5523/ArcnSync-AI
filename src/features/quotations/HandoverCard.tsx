@@ -5,11 +5,14 @@ import { Button, Card, ErrorState, Field, Modal, Skeleton, StatusChip, Textarea 
 import { errorText, formatDate, formatDateTime, formatMoney, t } from '@/i18n';
 import type { UserRole } from '@/types/role';
 import type { Project, ProjectRole } from '@/features/projects/projectApi';
+import { getProjectContract } from '@/features/projects/services/contractsApi';
+import type { MilestoneStatus } from '@/features/projects/services/contractsApi';
 import { designApi } from '@/features/design-workspace/designApi';
 import { quotationApi } from './quotationApi';
 import { acceptOf, fileSize, HANDOVER_ASSET_TYPES, HANDOVER_REASON_MAX, handoverApi, isEditable, validateHandoverFiles } from './handoverApi';
 import type { Handover, HandoverAsset, HandoverAssetType } from './handoverApi';
 import { ConfirmDialog } from './QuotationDialogs';
+import { canHomeownerDownload, canSeeDxf, submitHandoverBlock } from './handoverRules';
 
 type Dialog = { kind: 'submit' } | { kind: 'approve' } | { kind: 'changes' } | { kind: 'delete'; asset: HandoverAsset };
 
@@ -36,6 +39,8 @@ export function HandoverCard({ project, role, projectRole, className = '', onCha
   const [dialog, setDialog] = useState<Dialog | null>(null);
   const [progress, setProgress] = useState<{ type: HandoverAssetType; fraction: number } | null>(null);
   const inputs = useRef<Partial<Record<HandoverAssetType, HTMLInputElement | null>>>({});
+  /** Lead: status of the RENDER_3D milestone, which must be paid before submitting. undefined = unknown, left to the backend. */
+  const [render3d, setRender3d] = useState<MilestoneStatus | null | undefined>(undefined);
 
   const load = useCallback(async () => {
     setError('');
@@ -59,6 +64,17 @@ export function HandoverCard({ project, role, projectRole, className = '', onCha
     return () => { alive = false; };
   }, [approved, versionId]);
 
+  const lead = role === 'designer' && projectRole === 'LEAD';
+  useEffect(() => {
+    if (!lead) return;
+    let alive = true;
+    getProjectContract(project.id).then(
+      (c) => alive && setRender3d(c ? c.milestones.find((m) => m.stageType === 'RENDER_3D')?.status ?? null : null),
+      () => { /* unknown: the backend still refuses, and the error is shown */ },
+    );
+    return () => { alive = false; };
+  }, [lead, project.id]);
+
   if (handover === null) return null;
   if (error) return <div className={className}><ErrorState message={error} onRetry={load} /></div>;
   if (handover === undefined) return <Skeleton className={`h-40 w-full rounded-card ${className}`} />;
@@ -66,13 +82,15 @@ export function HandoverCard({ project, role, projectRole, className = '', onCha
   const h = handover;
   const homeowner = role === 'homeowner';
   const quoting = project.status === 'QUOTING';
-  const lead = role === 'designer' && projectRole === 'LEAD';
   const editable = lead && quoting && isEditable(h);
   const reviewing = homeowner && quoting && h.status === 'SUBMITTED';
-  // the homeowner downloads only after approving; the team always
-  const canDownload = !homeowner || approved;
+  // the homeowner downloads only after approving and paying the final installment; the team always
+  const canDownload = !homeowner || canHomeownerDownload(h.status, h.milestone.status);
+  const showDxf = canSeeDxf(role, h.status, h.milestone.status);
   const renders = h.assets.filter((a) => a.assetType === 'RENDER_IMAGE').length;
   const unpaid = h.milestone.status === 'INVOICED' || h.milestone.status === 'OVERDUE';
+  const block = submitHandoverBlock({ renders, uploading: progress !== null, render3d });
+  const blockReason = block === 'awaitingRender3dPayment' ? t('handover.waitRender3d') : block === 'needRender' ? t('handover.needRender') : undefined;
 
   /** Runs an action that returns the updated package. */
   const act = async (fn: () => Promise<Handover>) => {
@@ -102,7 +120,7 @@ export function HandoverCard({ project, role, projectRole, className = '', onCha
   const message = t(`handover.say.${h.status}.${who}`, { date: h.milestone.reviewDeadline ? formatDateTime(h.milestone.reviewDeadline) : '—' });
 
   const actions = editable ? (
-    <Button variant="primary" size="sm" disabled={renders === 0 || progress !== null} title={renders === 0 ? t('handover.needRender') : undefined}
+    <Button variant="primary" size="sm" disabled={block !== null} title={blockReason}
       onClick={() => setDialog({ kind: 'submit' })}>{t(h.status === 'CHANGES_REQUESTED' ? 'handover.resubmit' : 'handover.submit')}</Button>
   ) : reviewing ? (
     <>
@@ -120,6 +138,8 @@ export function HandoverCard({ project, role, projectRole, className = '', onCha
       actions={actions}>
       <div className="space-y-3 border-b border-line px-5 py-4">
         <p className={`text-sm ${reviewing || (editable && h.status === 'CHANGES_REQUESTED') ? 'font-medium text-slate-900' : 'text-slate-700'}`}>{message}</p>
+        {editable && block === 'awaitingRender3dPayment' && <p className="text-sm font-medium text-amber-800">{t('handover.waitRender3d')}</p>}
+        {homeowner && approved && !canDownload && <p className="text-sm font-medium text-amber-800">{t('handover.payToDownload')}</p>}
         {h.latestRevisionRequest && (
           <div className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
             <p className="text-[13px] font-semibold">{t('handover.changesAsked', { date: formatDateTime(h.latestRevisionRequest.createdAt) })}</p>
@@ -186,7 +206,7 @@ export function HandoverCard({ project, role, projectRole, className = '', onCha
           );
         })}
 
-        {approved && floors.length > 0 && (
+        {showDxf && floors.length > 0 && (
           <section aria-labelledby="handover-dxf" className="px-5 py-3">
             <h3 id="handover-dxf" className="inline-flex items-center gap-2 text-[13px] font-semibold text-slate-700">
               <FileText aria-hidden className="h-4 w-4 text-slate-500" />{t('handover.dxf')}

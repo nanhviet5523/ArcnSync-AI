@@ -86,13 +86,13 @@ export interface HintAnchor { x: number; y: number; w: number; h: number }
 export interface CanvasUi {
   selEl: string | null;
   selComment: string | null;
-  target: CommentTarget | null;
+  /** The comment popover: the only way to comment on an item or a spot (comment mode). */
   quick: QuickAnchor | null;
   hint: HintAnchor | null;
   commentMode: boolean;
 }
 /** State after changing version or floor. */
-export const CLEAR_CANVAS: CanvasUi = { selEl: null, selComment: null, target: null, quick: null, hint: null, commentMode: false };
+export const CLEAR_CANVAS: CanvasUi = { selEl: null, selComment: null, quick: null, hint: null, commentMode: false };
 /** At Products a comment on an item is a request to change its model, colour or material. */
 export const commentPlaceholder = (target: CommentTarget | null, isRender: boolean) =>
   t(isRender && target?.kind === 'element' ? 'comments.placeholderItem' : 'comments.placeholder');
