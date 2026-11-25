@@ -18,6 +18,7 @@ import { Footer } from '@/components/layout';
 import { ApiError, getCurrentUser, logout } from '@/services/authService';
 import type { UserRole } from '@/types/role';
 import { Button, Modal } from '@/components/ui';
+import { ContractPaymentHistory } from '@/features/payments/ContractPaymentHistory';
 import {
   CONTRACT_FILE_MAX_BYTES,
   getContractFileBlob,
@@ -176,6 +177,13 @@ export const ContractDetail: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  }, [projectId, isCustomer]);
+
+  /** Refresh milestone statuses after a payment re-check, without the full-page loading state. */
+  const refreshContractQuietly = useCallback(() => {
+    getProjectContract(projectId)
+      .then((result) => setContract(isCustomer && result?.esignStatus === 'NOT_SENT' ? null : result))
+      .catch(() => { /* keep what is on screen; the transaction section shows its own state */ });
   }, [projectId, isCustomer]);
 
   useEffect(() => {
@@ -498,6 +506,8 @@ export const ContractDetail: React.FC = () => {
 
   const { status, esignStatus } = contract;
   const showMilestones = status === 'ACTIVE' && esignStatus === 'SIGNED';
+  // Payments only exist once the contract is active; a completed contract keeps its history.
+  const showTransactions = role !== 'designer' && (showMilestones || status === 'COMPLETED');
   const canDownloadSignedFile = esignStatus === 'SIGNED' || contract.signedFile !== null;
   const cooldownLeft = Math.max(0, Math.ceil((otpCooldownUntil - now) / 1000));
   const otpSecondsLeft = otpExpiresAt === null ? null : Math.max(0, Math.ceil((otpExpiresAt - now) / 1000));
@@ -825,6 +835,11 @@ export const ContractDetail: React.FC = () => {
           </div>
 
         </section>
+      )}
+
+      {/* GET /contracts/:id/payment-transactions: CUSTOMER/STAFF/ADMIN only; designer gets no section and no request */}
+      {showTransactions && (
+        <ContractPaymentHistory key={contract.id} contractId={contract.id} onChanged={refreshContractQuietly} />
       )}
     </Shell>
   );

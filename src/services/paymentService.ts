@@ -1,8 +1,12 @@
 import { apiRequest } from '@/services/authService';
-import { buildPaymentHistoryQuery } from '@/features/payments/paymentHistoryQuery';
-import type { PaymentHistoryQuery, PaymentTransactionHistoryPage } from '@/features/payments/paymentHistoryQuery';
+import { buildPaymentHistoryQuery, contractPaymentTransactionsPath } from '@/features/payments/paymentHistoryQuery';
+import type {
+  ContractPaymentTransactions, PaymentHistoryQuery, PaymentTransactionHistoryPage, PaymentTransactionStatus as HistoryStatus,
+} from '@/features/payments/paymentHistoryQuery';
 
-export type { PaymentHistoryQuery, PaymentTransactionHistoryItem, PaymentTransactionHistoryPage } from '@/features/payments/paymentHistoryQuery';
+export type {
+  ContractPaymentTransactions, PaymentHistoryQuery, PaymentTransactionHistoryItem, PaymentTransactionHistoryPage,
+} from '@/features/payments/paymentHistoryQuery';
 
 export type PaymentTransactionStatus = 'PENDING' | 'SUCCESS' | 'FAILED';
 export type PaymentGateway = 'PAYOS' | 'VNPAY' | 'BANK_TRANSFER';
@@ -49,5 +53,15 @@ export const paymentService = {
    */
   listTransactions(query: PaymentHistoryQuery = {}): Promise<PaymentTransactionHistoryPage> {
     return apiRequest<PaymentTransactionHistoryPage>(`/payment-transactions${buildPaymentHistoryQuery(query)}`);
+  },
+
+  /**
+   * All transactions of one contract (every milestone), newest first, no paging. Pass contract.id,
+   * not contractNo. Only `status` is sent. CUSTOMER/STAFF/ADMIN; does NOT reconcile with PayOS.
+   */
+  listContractTransactions(contractId: string, status?: HistoryStatus | ''): Promise<ContractPaymentTransactions> {
+    const path = contractPaymentTransactionsPath(contractId, status);
+    if (!path) return Promise.reject(new Error(`listContractTransactions: invalid contract id "${contractId}"`));
+    return apiRequest<ContractPaymentTransactions>(path);
   },
 };

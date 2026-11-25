@@ -61,7 +61,24 @@ export function buildPaymentHistoryQuery(q: PaymentHistoryQuery = {}): string {
   return s ? `?${s}` : '';
 }
 
-export const totalPages = (total: number, limit: number) => (total > 0 && limit > 0 ? Math.ceil(total / limit) : 0);
+/** GET /contracts/:id/payment-transactions: all milestones of one contract, newest first, no paging. */
+export interface ContractPaymentTransactions {
+  items: PaymentTransactionHistoryItem[];
+}
+
+/**
+ * Path for GET /contracts/:id/payment-transactions. Only `status` may be sent (page/limit → 400);
+ * "All" drops the key. Returns null while there is no valid contract UUID, so nothing is called
+ * with "undefined" or a contractNo.
+ */
+export function contractPaymentTransactionsPath(contractId: string | null | undefined, status?: PaymentTransactionStatus | '' | null): string | null {
+  const id = contractId?.trim();
+  if (!id || !UUID.test(id)) return null;
+  const query = status && PAYMENT_TRANSACTION_STATUSES.includes(status) ? `?status=${status}` : '';
+  return `/contracts/${encodeURIComponent(id)}/payment-transactions${query}`;
+}
+
+export const totalPages =(total: number, limit: number) => (total > 0 && limit > 0 ? Math.ceil(total / limit) : 0);
 
 /** Page to jump to when the current one is past the end (e.g. after a filter change); null when it is fine. */
 export function clampedPage(page: number, total: number, limit: number): number | null {

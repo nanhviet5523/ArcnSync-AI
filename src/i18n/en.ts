@@ -69,6 +69,9 @@ export const en = {
     notFound: 'This transaction no longer exists. The list has been reloaded.',
     forbidden: "You don't have permission to view transaction history.",
     gateway: { PAYOS: 'PayOS', VNPAY: 'VNPAY', BANK_TRANSFER: 'Bank transfer' },
+    contractTitle: 'Transaction history',
+    contractMilestone: '#{seq} {name}',
+    contractUnavailable: 'Transaction history unavailable.',
   },
   role: { homeowner: 'Homeowner', staff: 'Staff', designer: 'Designer', supplier: 'Supplier', admin: 'Admin' },
   status: {
