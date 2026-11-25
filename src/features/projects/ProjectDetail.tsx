@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { AppShell, Banner, Button, Card, DetailList, ErrorState, PageHeader, Skeleton, StatusChip, Stepper } from '@/components/ui';
+import { Sparkles } from 'lucide-react';
 import { errorText, formatDate, formatMoney, formatNumber, t, tList } from '@/i18n';
 import { getCurrentUser } from '@/services/authService';
 import { canOpenWorkspace, kickoffErrorText, kickoffProjectDesign, projectApi, stepIndex } from './projectApi';
@@ -153,7 +154,9 @@ export function ProjectDetail() {
     ? t(conceptSummary(conceptData.concepts).submittedCount ? 'concepts.nextLeadWaiting' : 'concepts.nextLead')
     : '';
   // one sentence for this page and the project's card; a designer waits for the version check
-  const next = conceptNext || (designer && !ready ? '' : nextFor(role, project, designer ? latest(project.id) : undefined));
+  const next = waitingDeposit
+    ? t('nextStep.staffWaitingDeposit')
+    : conceptNext || (designer && !ready ? '' : nextFor(role, project, designer ? latest(project.id) : undefined));
 
   // quotation stage: staff's next step is the quotation, the workspace stays one click away
   const quoting = project.status === 'QUOTING' || project.status === 'COMPLETED';
@@ -188,6 +191,7 @@ export function ProjectDetail() {
         description={<>{project.code}<span className="mx-2 text-slate-300">|</span>{t('projectDetail.created', { date: formatDate(project.createdAt) })}</>}
         primary={primary}
         secondary={<>
+          <Button onClick={() => navigate(`/projects/${encodeURIComponent(project.id)}/ai`)}><Sparkles aria-hidden className="h-4 w-4" />AI assistant</Button>
           {secondary}
           {canEditProject && <Button onClick={() => setEditOpen(true)}>{t('editProject.open')}</Button>}
           {/* POST /projects/:id/contract answers 422 SITE_SURVEY_NOT_CONFIRMED until the homeowner confirms the survey (which attaches the home) */}
