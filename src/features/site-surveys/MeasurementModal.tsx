@@ -3,8 +3,7 @@ import type { FormEvent } from 'react';
 import { Button, Field, Input, Modal, Select, Textarea } from '@/components/ui';
 import { t } from '@/i18n';
 import type { PropertyType } from '@/services/apartmentService';
-import { ROOM_TYPES, suggestRoomName } from './roomTypes';
-import { MAX_FLOORS, MAX_ROOMS_PER_FLOOR, siteSurveyApi, surveyErrorText, surveyFieldErrors } from './siteSurveyApi';
+import { MAX_FLOORS, siteSurveyApi, surveyErrorText, surveyFieldErrors } from './siteSurveyApi';
 import type { MeasurementPayload, SiteSurvey } from './siteSurveyApi';
 
 interface RoomForm { key: number; name: string; roomType: string; area: string; purpose: string; nameTouched: boolean }
@@ -17,7 +16,7 @@ const MIN_AREA = 1;
 const intIn = (raw: string, min: number, max: number) => INT.test(raw.trim()) && Number(raw) >= min && Number(raw) <= max;
 const areaOk = (raw: string) => AREA.test(raw.trim()) && Number(raw) >= MIN_AREA && Number(raw) <= 999999;
 /** Backend field names of the measurement body → this form's field names. */
-const HOME_FIELDS = ['buildingName', 'address', 'tower', 'unitNo', 'floorNo', 'layoutCode', 'bedroomCount', 'bathroomCount', 'note'];
+const HOME_FIELDS = ['buildingName', 'address', 'tower', 'unitNo', 'floorNo', 'layoutCode', 'note'];
 const FLOOR_FIELDS: Record<string, string> = { level: 'level', name: 'name', floorHeightMm: 'height', measuredArea: 'area', note: 'note' };
 const ROOM_FIELDS = ['name', 'roomType', 'area', 'purpose'];
 /** React keys for floor and room rows; only needs to be unique while the dialog is open. */
@@ -25,8 +24,8 @@ let seq = 0;
 const nextKey = () => ++seq;
 
 /**
- * Lead records the survey result (PUT /site-surveys/:id/measurement replaces it all): home details, bedroom and bathroom
- * counts, and every floor with its rooms. Photos are added per floor after saving, outside this dialog.
+ * Lead records the survey result (PUT /site-surveys/:id/measurement replaces it all): home details and each measured
+ * floor with its rooms. Bedroom and bathroom totals are derived from those room entries. Photos are added after saving.
  */
 export function MeasurementModal({ survey, onClose, onSaved }: { survey: SiteSurvey; onClose: () => void; onSaved: (survey: SiteSurvey) => void }) {
   const [home, setHome] = useState({
@@ -37,8 +36,6 @@ export function MeasurementModal({ survey, onClose, onSaved }: { survey: SiteSur
     unitNo: survey.unitNo,
     floorNo: survey.floorNo == null ? '' : String(survey.floorNo),
     layoutCode: survey.layoutCode ?? '',
-    bedroomCount: survey.bedroomCount == null ? '' : String(survey.bedroomCount),
-    bathroomCount: survey.bathroomCount == null ? '' : String(survey.bathroomCount),
     note: survey.leadNote ?? '',
   });
   const [floors, setFloors] = useState<FloorForm[]>(() => (survey.floors.length
@@ -56,8 +53,6 @@ export function MeasurementModal({ survey, onClose, onSaved }: { survey: SiteSur
 
   const setH = (key: keyof typeof home, value: string) => { setHome((h) => ({ ...h, [key]: value })); setErrors((e) => ({ ...e, [key]: '' })); };
   const patchFloor = (fk: number, patch: Partial<FloorForm>) => setFloors((list) => list.map((f) => (f.key === fk ? { ...f, ...patch } : f)));
-  const patchRoom = (fk: number, rk: number, patch: Partial<RoomForm>) =>
-    setFloors((list) => list.map((f) => (f.key === fk ? { ...f, rooms: f.rooms.map((r) => (r.key === rk ? { ...r, ...patch } : r)) } : f)));
   const clear = (key: string) => setErrors((e) => (e[key] ? { ...e, [key]: '' } : e));
   /** Flags a wrong area as soon as the field loses focus (an empty one waits for Save). */
   const checkArea = (key: string, raw: string) => { if (raw.trim() && !areaOk(raw)) setErrors((e) => ({ ...e, [key]: t('siteSurvey.v.area') })); };
@@ -67,15 +62,6 @@ export function MeasurementModal({ survey, onClose, onSaved }: { survey: SiteSur
     const level = levels.length ? Math.max(...levels) + 1 : 1;
     return [...list, { key: nextKey(), level: String(level), name: `Floor ${level}`, height: '3000', area: '', note: '', rooms: [] }];
   });
-  const addRoom = (fk: number) => setFloors((list) => list.map((f) => (f.key === fk
-    ? { ...f, rooms: [...f.rooms, { key: nextKey(), name: '', roomType: '', area: '', purpose: '', nameTouched: false }] } : f)));
-  const pickType = (floor: FloorForm, room: RoomForm, roomType: string) => {
-    const others = floor.rooms.filter((r) => r.key !== room.key).map((r) => r.name);
-    patchRoom(floor.key, room.key, { roomType, name: room.nameTouched && room.name.trim() ? room.name : suggestRoomName(roomType, others) });
-    clear(`r${room.key}.roomType`);
-    clear(`r${room.key}.name`);
-  };
-
   // Floors that already have photos and would lose them: their level is no longer in the list.
   const photoLoss = useMemo(() => {
     const levels = new Set(floors.map((f) => f.level.trim()).filter((l) => INT.test(l)).map(Number));
@@ -109,10 +95,6 @@ export function MeasurementModal({ survey, onClose, onSaved }: { survey: SiteSur
     if (!isHouse) { text('tower', home.tower, 50, false); text('layoutCode', home.layoutCode, 50, false); }
     text('note', home.note, 2000, false);
     if (home.floorNo.trim() && !intIn(home.floorNo, -10, 200)) e.floorNo = t('siteSurvey.v.int', { min: -10, max: 200 });
-    for (const key of ['bedroomCount', 'bathroomCount'] as const) {
-      if (!home[key].trim()) e[key] = req;
-      else if (!intIn(home[key], 0, 20)) e[key] = t('siteSurvey.v.int', { min: 0, max: 20 });
-    }
     const seenLevels = new Set<string>();
     for (const f of floors) {
       const k = `f${f.key}`;
@@ -155,8 +137,8 @@ export function MeasurementModal({ survey, onClose, onSaved }: { survey: SiteSur
       ...(!isHouse && opt(home.tower) ? { tower: opt(home.tower) } : {}),
       ...(home.floorNo.trim() ? { floorNo: Number(home.floorNo) } : {}),
       ...(!isHouse && opt(home.layoutCode) ? { layoutCode: opt(home.layoutCode) } : {}),
-      bedroomCount: Number(home.bedroomCount),
-      bathroomCount: Number(home.bathroomCount),
+      bedroomCount: floors.reduce((count, floor) => count + floor.rooms.filter((room) => room.roomType === 'BEDROOM').length, 0),
+      bathroomCount: floors.reduce((count, floor) => count + floor.rooms.filter((room) => room.roomType === 'BATHROOM').length, 0),
       ...(opt(home.note) ? { note: opt(home.note) } : {}),
       floors: floors.map((f) => ({
         level: Number(f.level),
@@ -231,12 +213,6 @@ export function MeasurementModal({ survey, onClose, onSaved }: { survey: SiteSur
                 {(p) => <Input {...p} maxLength={50} placeholder="e.g. 2PN-A1" value={home.layoutCode} invalid={!!errors.layoutCode} onChange={(e) => setH('layoutCode', e.target.value)} />}
               </Field>
             )}
-            <Field label={t('siteSurvey.measure.bedrooms')} error={errors.bedroomCount}>
-              {(p) => <Input {...p} type="number" min={0} max={20} value={home.bedroomCount} invalid={!!errors.bedroomCount} onChange={(e) => setH('bedroomCount', e.target.value)} />}
-            </Field>
-            <Field label={t('siteSurvey.measure.bathrooms')} error={errors.bathroomCount}>
-              {(p) => <Input {...p} type="number" min={0} max={20} value={home.bathroomCount} invalid={!!errors.bathroomCount} onChange={(e) => setH('bathroomCount', e.target.value)} />}
-            </Field>
             <Field label={t('siteSurvey.measure.note')} optional error={errors.note} className="sm:col-span-2">
               {(p) => <Textarea {...p} rows={2} maxLength={2000} value={home.note} invalid={!!errors.note} onChange={(e) => setH('note', e.target.value)} />}
             </Field>
@@ -276,40 +252,6 @@ export function MeasurementModal({ survey, onClose, onSaved }: { survey: SiteSur
                     {(p) => <Input {...p} maxLength={1000} value={f.note} invalid={!!errors[`${k}.note`]} onChange={(e) => { patchFloor(f.key, { note: e.target.value }); clear(`${k}.note`); }} />}
                   </Field>
 
-                  <div className="mt-4">
-                    <div className="mb-2 flex items-center justify-between">
-                      <h4 className="text-[13px] font-medium text-slate-700">{t('siteSurvey.measure.rooms')}</h4>
-                      <Button size="sm" variant="ghost" disabled={f.rooms.length >= MAX_ROOMS_PER_FLOOR} onClick={() => addRoom(f.key)}>+ {t('siteSurvey.measure.addRoom')}</Button>
-                    </div>
-                    {f.rooms.length === 0 ? <p className="text-xs text-slate-500">{t('siteSurvey.noRooms')}</p> : (
-                      <ul className="space-y-2">
-                        {f.rooms.map((r) => {
-                          const rk = `r${r.key}`;
-                          return (
-                            <li key={r.key} className="grid items-start gap-2 rounded-lg bg-slate-50 p-2.5 sm:grid-cols-[10rem_1fr_6rem_1fr_auto]">
-                              <Field label={t('siteSurvey.measure.roomType')} error={errors[`${rk}.roomType`]}>
-                                {(p) => <Select {...p} value={r.roomType} invalid={!!errors[`${rk}.roomType`]} onChange={(e) => pickType(f, r, e.target.value)}>
-                                  <option value="" disabled>{t('siteSurvey.measure.selectType')}</option>
-                                  {ROOM_TYPES.map((type) => <option key={type.value} value={type.value}>{type.label}</option>)}
-                                </Select>}
-                              </Field>
-                              <Field label={t('siteSurvey.measure.roomName')} error={errors[`${rk}.name`]}>
-                                {(p) => <Input {...p} maxLength={100} value={r.name} invalid={!!errors[`${rk}.name`]} placeholder="e.g. Master bedroom" onChange={(e) => { patchRoom(f.key, r.key, { name: e.target.value, nameTouched: true }); clear(`${rk}.name`); }} />}
-                              </Field>
-                              <Field label={t('siteSurvey.measure.roomArea')} optional error={errors[`${rk}.area`]}>
-                                {(p) => <Input {...p} type="number" min={MIN_AREA} step={0.01} value={r.area} invalid={!!errors[`${rk}.area`]} onBlur={(e) => checkArea(`${rk}.area`, e.target.value)} onChange={(e) => { patchRoom(f.key, r.key, { area: e.target.value }); clear(`${rk}.area`); }} />}
-                              </Field>
-                              <Field label={t('siteSurvey.measure.purpose')} optional error={errors[`${rk}.purpose`]}>
-                                {(p) => <Input {...p} maxLength={255} value={r.purpose} invalid={!!errors[`${rk}.purpose`]} placeholder={t('siteSurvey.measure.purposePlaceholder')} onChange={(e) => { patchRoom(f.key, r.key, { purpose: e.target.value }); clear(`${rk}.purpose`); }} />}
-                              </Field>
-                              <Button size="sm" variant="ghost" aria-label={t('siteSurvey.measure.removeRoom')} className="sm:mt-6"
-                                onClick={() => patchFloor(f.key, { rooms: f.rooms.filter((x) => x.key !== r.key) })}>✕</Button>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    )}
-                  </div>
                   {floors.length > 1 && (confirmRemove === f.key ? (
                     <div role="alert" className="mt-3 flex flex-wrap items-center justify-end gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2">
                       <p className="mr-auto text-xs text-rose-800">

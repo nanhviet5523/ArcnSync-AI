@@ -159,23 +159,23 @@ export function validateContractDraft(
   payload: CreateContractPayload,
 ): ContractValidationError | null {
   if (!isUuid(projectId)) {
-    return { code: 'INVALID_PROJECT_ID', message: 'Mã dự án không hợp lệ (phải là UUID chuẩn).' };
+    return { code: 'INVALID_PROJECT_ID', message: 'Project ID must be a valid UUID.' };
   }
 
   if (payload.milestones.length === 0) {
-    return { code: 'EMPTY_MILESTONES', message: 'Hợp đồng cần ít nhất một đợt thanh toán.' };
+    return { code: 'EMPTY_MILESTONES', message: 'A contract must include at least one payment milestone.' };
   }
 
   const total = toMinorUnits(payload.totalDesignFee);
   if (total === null) {
-    return { code: 'MILESTONE_TOTAL_MISMATCH', message: 'Tổng phí thiết kế không hợp lệ.' };
+    return { code: 'MILESTONE_TOTAL_MISMATCH', message: 'Enter a valid total design fee.' };
   }
 
   let sum = 0n;
   for (const milestone of payload.milestones) {
     const amount = toMinorUnits(milestone.amount);
     if (amount === null) {
-      return { code: 'MILESTONE_TOTAL_MISMATCH', message: `Số tiền đợt "${milestone.name}" không hợp lệ.` };
+      return { code: 'MILESTONE_TOTAL_MISMATCH', message: `Enter a valid amount for milestone "${milestone.name}".` };
     }
     sum += amount;
   }
@@ -183,7 +183,7 @@ export function validateContractDraft(
   if (sum !== total) {
     return {
       code: 'MILESTONE_TOTAL_MISMATCH',
-      message: 'Tổng số tiền các đợt thanh toán phải bằng đúng phí thiết kế.',
+      message: 'The milestone amounts must add up exactly to the design fee.',
     };
   }
 
@@ -194,16 +194,16 @@ export function validateContractDraft(
 // Formatting helpers
 // ---------------------------------------------------------------------------
 
-const VND_FORMATTER = new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 0 });
+const VND_FORMATTER = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
 
 /**
  * Format a VND decimal string (or number) for display, e.g. "50000000.00" or
- * "50000000" → "50,000,000 VNĐ". Non-numeric input is returned as-is.
+ * "50000000" → "50,000,000 VND". Non-numeric input is returned as-is.
  */
 export function formatVnd(amount: string | number): string {
   const value = typeof amount === 'number' ? amount : Number(amount);
   if (Number.isNaN(value)) return String(amount);
-  return `${VND_FORMATTER.format(value)} VNĐ`;
+  return `${VND_FORMATTER.format(value)} VND`;
 }
 
 // ---------------------------------------------------------------------------

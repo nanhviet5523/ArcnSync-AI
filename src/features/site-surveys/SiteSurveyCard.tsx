@@ -88,7 +88,6 @@ export function SiteSurveyCard({ project, viewer, canCancel = viewer !== 'member
   // What the backend would refuse with 422 SURVEY_INCOMPLETE, worked out from data already loaded (the 422 is still handled)
   const submitBlockers = !survey ? [] : [
     ...(survey.floors.length === 0 ? [t('siteSurvey.submitBlocked.noResult')] : []),
-    ...(survey.floors.length > 0 && (survey.bedroomCount == null || survey.bathroomCount == null) ? [t('siteSurvey.submitBlocked.noCounts')] : []),
     ...(survey.floors.some((f) => f.photos.length === 0)
       ? [t('siteSurvey.submitBlocked.missingPhotos', { floors: survey.floors.filter((f) => f.photos.length === 0).map((f) => f.name).join(', ') })] : []),
   ];

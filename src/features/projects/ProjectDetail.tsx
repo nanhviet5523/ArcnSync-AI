@@ -153,7 +153,13 @@ export function ProjectDetail() {
     ? t(conceptSummary(conceptData.concepts).submittedCount ? 'concepts.nextLeadWaiting' : 'concepts.nextLead')
     : '';
   // one sentence for this page and the project's card; a designer waits for the version check
+
+  const next = waitingDeposit
+    ? t('nextStep.staffWaitingDeposit')
+    : designer && !ready ? '' : nextFor(role, project, designer ? latest(project.id) : undefined);
+
   const next = conceptNext || (designer && !ready ? '' : nextFor(role, project, designer ? latest(project.id) : undefined));
+
 
   // quotation stage: staff's next step is the quotation, the workspace stays one click away
   const quoting = project.status === 'QUOTING' || project.status === 'COMPLETED';
