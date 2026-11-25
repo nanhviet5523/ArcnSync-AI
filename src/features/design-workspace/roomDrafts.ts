@@ -138,6 +138,8 @@ export interface MemberDraftRow {
   /** Differs from what the server holds. */
   dirty: boolean;
   ready: boolean;
+  /** The server holds a draft for this room: it can be discarded. */
+  saved: boolean;
 }
 
 export function memberDraftRows({ elements, drafts, local, ticks, roomNames }: {
@@ -163,7 +165,7 @@ export function memberDraftRows({ elements, drafts, local, ticks, roomNames }: {
     const dirty = JSON.stringify(edits) !== JSON.stringify(before) || [...addressed].sort().join() !== [...savedTicks].sort().join();
     const count = changeCount(edits) + (draft ? layoutCount(draft) : 0);
     if (!count && !dirty && !addressed.length) continue;
-    rows.push({ roomId, roomName: draft?.room_name ?? roomNames[roomId] ?? '', input: { ...edits, addressed_comment_ids: addressed }, count, dirty, ready: draft?.status === 'READY' });
+    rows.push({ roomId, roomName: draft?.room_name ?? roomNames[roomId] ?? '', input: { ...edits, addressed_comment_ids: addressed }, count, dirty, ready: draft?.status === 'READY', saved: !!draft });
   }
   return rows.sort((a, b) => a.roomName.localeCompare(b.roomName));
 }
@@ -284,10 +286,6 @@ export const skippedRoomNames = (ids: readonly string[], floors: readonly { scen
   const rooms = floors.flatMap((f) => f.scene_json.rooms);
   return ids.flatMap((id) => rooms.find((r) => r.room_id === id)?.name ?? []);
 };
-
-/** Comments the Members handled in their Ready drafts, still open: ticked in advance for the Lead. */
-export const suggestedAddressed = (drafts: readonly RoomDraft[], openIds: readonly string[]) =>
-  [...new Set(drafts.filter((d) => d.status === 'READY').flatMap((d) => d.addressed_comment_ids))].filter((id) => openIds.includes(id));
 
 /** How the changed items are tinted while the Lead previews a draft. */
 export function previewHighlight(draft: RoomDraft | null): Record<string, DiffKind> {

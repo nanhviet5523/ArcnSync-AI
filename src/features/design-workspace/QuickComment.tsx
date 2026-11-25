@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import type { KeyboardEvent } from 'react';
+import type { KeyboardEvent, ReactNode } from 'react';
 import { Button, Z } from '@/components/ui';
 import { t } from '@/i18n';
 
 const WIDTH = 300;
 const HEIGHT = 176;
+/** Room taken by `extra` (the suggested product chip). */
+const EXTRA_HEIGHT = 60;
 const GAP = 12;
 
 interface Props {
@@ -22,6 +24,8 @@ interface Props {
   onTextChange?: (hasText: boolean) => void;
   /** Bump to put the cursor back in the box (a click elsewhere was ignored to protect the text). */
   nudge?: number;
+  /** Shown under the title, e.g. the product the homeowner suggests with this comment. */
+  extra?: ReactNode;
 }
 
 /**
@@ -42,7 +46,7 @@ export function CommentHint({ x, y, bounds, onSwitch2D }: { x: number; y: number
 }
 
 /** Comment box opened right where the user clicked in comment mode. Enter sends, Shift+Enter adds a line, Esc cancels. */
-export function QuickComment({ title, placeholder, x, y, bounds, onSend, onCancel, onTextChange, nudge = 0 }: Props) {
+export function QuickComment({ title, placeholder, x, y, bounds, onSend, onCancel, onTextChange, nudge = 0, extra }: Props) {
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
   const area = useRef<HTMLTextAreaElement>(null);
@@ -50,7 +54,8 @@ export function QuickComment({ title, placeholder, x, y, bounds, onSend, onCance
 
   // open to the lower right of the click, flipping when it would leave the canvas
   const left = Math.max(GAP, Math.min(x + GAP + WIDTH > bounds.width ? x - GAP - WIDTH : x + GAP, bounds.width - WIDTH - GAP));
-  const top = Math.max(GAP, Math.min(y + GAP + HEIGHT > bounds.height ? y - GAP - HEIGHT : y + GAP, bounds.height - HEIGHT - GAP));
+  const height = HEIGHT + (extra ? EXTRA_HEIGHT : 0);
+  const top = Math.max(GAP, Math.min(y + GAP + height > bounds.height ? y - GAP - height : y + GAP, bounds.height - height - GAP));
 
   const send = async () => {
     const value = text.trim();
@@ -68,6 +73,7 @@ export function QuickComment({ title, placeholder, x, y, bounds, onSend, onCance
     <div role="dialog" aria-label={title} onKeyDown={onKey} onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}
       className={`absolute ${Z.canvasOverlay} rounded-card border border-line bg-surface p-3 shadow-float`} style={{ left, top, width: WIDTH }}>
       <p className="mb-2 truncate text-[13px] font-semibold text-slate-900">{title}</p>
+      {extra && <div className="mb-2">{extra}</div>}
       <textarea ref={area} rows={3} value={text} disabled={busy} onChange={(e) => { setText(e.target.value); onTextChange?.(!!e.target.value.trim()); }}
         aria-label={title} placeholder={placeholder}
         className="block w-full resize-none rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition placeholder:text-slate-500 focus:border-brand focus:ring-2 focus:ring-brand/20 disabled:bg-slate-50" />

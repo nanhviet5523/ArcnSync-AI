@@ -37,7 +37,7 @@ export function InquiriesPage() {
   }, [filter, topic, query, mine]);
   useEffect(() => { Promise.resolve().then(load); }, [load]);
 
-  const total = counts ? INQUIRY_STATUSES.filter((s) => s !== 'SPAM').reduce((n, s) => n + counts[s], 0) : 0;
+  const total = counts ? INQUIRY_STATUSES.reduce((n, s) => n + counts[s], 0) : 0;
   const filtered = filter !== 'ALL' || !!topic || !!query || mine;
   const columns: Column<Inquiry>[] = [
     { key: 'from', header: t('inquiries.col.from'), cell: (i) => <><p className="font-medium text-slate-900">{i.fullName}</p><p className="text-xs text-slate-500">{i.email}</p></>, sort: (i) => i.fullName },
@@ -71,7 +71,7 @@ export function InquiriesPage() {
       <DataTable columns={columns} rows={rows} rowKey={(i) => i.id} error={error} onRetry={load}
         empty={t(filtered ? 'inquiries.emptyFiltered' : 'inquiries.empty')} onRowClick={setOpen} initialSort={{ key: 'received', dir: 'desc' }} pageSize={15} />
       {rows && matched > rows.length && <p className="mt-2 text-xs text-slate-500">{t('common.showingOf', { shown: rows.length, total: matched })}</p>}
-      {open && <InquiryDialog inquiry={open} onClose={() => setOpen(null)} onChanged={(i) => { setOpen(i); load(); }} />}
+      {open && <InquiryDialog key={open.id} inquiry={open} onClose={() => setOpen(null)} onChanged={(i) => { setOpen(i); void load(); }} />}
     </AppShell>
   );
 }
@@ -83,20 +83,25 @@ function InquiryDialog({ inquiry: i, onClose, onChanged }: { inquiry: Inquiry; o
   const [error, setError] = useState('');
   const run = async (key: string, body: Parameters<typeof inquiryApi.update>[1]) => {
     setBusy(key); setError('');
-    try { onChanged(await inquiryApi.update(i.id, body)); } catch (e) { setError(errorText(e)); } finally { setBusy(''); }
+    try {
+      const updated = await inquiryApi.update(i.id, body);
+      setNote(updated.staffNote ?? '');
+      onChanged(updated);
+    } catch (e) { setError(errorText(e)); } finally { setBusy(''); }
   };
   const mineNow = i.assignee?.id === me;
-  const noteChanged = note.trim() !== (i.staffNote ?? '');
+  const noteChanged = note.trim() !== (i.staffNote ?? '').trim();
+  const locked = busy !== '';
 
   return (
     <Modal title={t('inquiries.detailTitle')} size="md" onClose={onClose} footer={<>
-      {i.status === 'SPAM' ? <Button loading={busy === 'restore'} onClick={() => run('restore', { status: 'NEW' })}>{t('inquiries.restore')}</Button>
-        : i.status !== 'RESOLVED' && <Button variant="ghost" loading={busy === 'spam'} onClick={() => run('spam', { status: 'SPAM' })}>{t('inquiries.markSpam')}</Button>}
-      {i.status !== 'SPAM' && (mineNow
-        ? <Button loading={busy === 'release'} onClick={() => run('release', { assignToMe: false })}>{t('inquiries.release')}</Button>
-        : <Button loading={busy === 'claim'} onClick={() => run('claim', { assignToMe: true })}>{t('inquiries.claim')}</Button>)}
-      {i.status === 'RESOLVED' ? <Button variant="primary" loading={busy === 'reopen'} onClick={() => run('reopen', { status: 'IN_PROGRESS' })}>{t('inquiries.reopen')}</Button>
-        : i.status !== 'SPAM' && <Button variant="primary" loading={busy === 'resolve'} onClick={() => run('resolve', { status: 'RESOLVED' })}>{t('inquiries.markResolved')}</Button>}
+      {i.status === 'SPAM' ? <Button disabled={locked} loading={busy === 'restore'} onClick={() => run('restore', { status: 'NEW' })}>{t('inquiries.restore')}</Button>
+        : i.status !== 'RESOLVED' && <Button variant="ghost" disabled={locked} loading={busy === 'spam'} onClick={() => run('spam', { status: 'SPAM' })}>{t('inquiries.markSpam')}</Button>}
+      {i.status !== 'SPAM' && !mineNow && (
+        <Button disabled={locked} loading={busy === 'claim'} onClick={() => run('claim', { assignToMe: true })}>{t('inquiries.claim')}</Button>
+      )}
+      {i.status === 'RESOLVED' ? <Button variant="primary" disabled={locked} loading={busy === 'reopen'} onClick={() => run('reopen', { status: 'IN_PROGRESS' })}>{t('inquiries.reopen')}</Button>
+        : i.status !== 'SPAM' && <Button variant="primary" disabled={locked} loading={busy === 'resolve'} onClick={() => run('resolve', { status: 'RESOLVED' })}>{t('inquiries.markResolved')}</Button>}
     </>}>
       <div className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -119,10 +124,10 @@ function InquiryDialog({ inquiry: i, onClose, onChanged }: { inquiry: Inquiry; o
         </div>
         <div>
           <label htmlFor="inquiry-note" className="mb-1.5 block text-[13px] font-medium text-slate-700">{t('inquiries.staffNote')}</label>
-          <Textarea id="inquiry-note" rows={3} maxLength={5000} value={note} onChange={(e) => setNote(e.target.value)} />
+          <Textarea id="inquiry-note" rows={3} maxLength={2000} value={note} onChange={(e) => setNote(e.target.value)} />
           <div className="mt-1.5 flex items-center justify-between gap-2">
             <p className="text-xs text-slate-500">{t('inquiries.staffNoteHint')}</p>
-            <Button size="sm" disabled={!noteChanged} loading={busy === 'note'} onClick={() => run('note', { staffNote: note.trim() || null })}>{t('inquiries.saveNote')}</Button>
+            <Button size="sm" disabled={locked || !noteChanged} loading={busy === 'note'} onClick={() => run('note', { staffNote: note.trim() || null })}>{t('inquiries.saveNote')}</Button>
           </div>
         </div>
         {error && <ErrorState message={error} />}

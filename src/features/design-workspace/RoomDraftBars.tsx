@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowRight, ChevronRight, Download, Upload } from 'lucide-react';
+import { ArrowRight, ChevronRight, Download, Trash2, Upload } from 'lucide-react';
 import { Avatar, Button, StatusChip } from '@/components/ui';
 import { t } from '@/i18n';
 import { Thumb } from './ItemPanel';
@@ -9,8 +9,11 @@ import type { ChangeLine, MemberDraftRow } from './roomDrafts';
 import type { DesignElement, Product, RoomDraft } from './types';
 
 /** Member's bar at the bottom of the right column: one line per room with a draft. */
-export function MemberDraftBar({ rows, hasRooms, busy, onSave, onReady, onUploadDxf, onShowLastUpload, swaps = true }: {
+export function MemberDraftBar({ rows, hasRooms, busy, onSave, onReady, onDiscard, canDiscard, onUploadDxf, onShowLastUpload, swaps = true }: {
   rows: MemberDraftRow[]; hasRooms: boolean; busy: boolean; onSave: (r: MemberDraftRow) => void; onReady: (r: MemberDraftRow) => void;
+  /** Shown on rooms with a saved draft, when can('discardRoomDraft'). */
+  onDiscard?: (r: MemberDraftRow) => void;
+  canDiscard?: (r: MemberDraftRow) => boolean;
   /** Shown when can('uploadRoomDxf'). */
   onUploadDxf?: () => void;
   /** Reopens the result of the last DXF upload, when there was one. */
@@ -39,6 +42,11 @@ export function MemberDraftBar({ rows, hasRooms, busy, onSave, onReady, onUpload
     <ul className="max-h-36 shrink-0 divide-y divide-line overflow-y-auto border-t border-line bg-surface">
       {rows.map((r) => {
         const waiting = r.ready && !r.dirty;
+        const discard = onDiscard && r.saved && (canDiscard?.(r) ?? true) && (
+          <Button size="sm" variant="ghost" disabled={busy} aria-label={`${t('drafts.discardDraft')} · ${r.roomName}`} onClick={() => onDiscard(r)}>
+            <Trash2 aria-hidden className="h-3.5 w-3.5" />{t('drafts.discardDraft')}
+          </Button>
+        );
         return (
           <li key={r.roomId} className="space-y-2 px-4 py-2.5">
             <div className="flex items-center gap-2">
@@ -47,8 +55,14 @@ export function MemberDraftBar({ rows, hasRooms, busy, onSave, onReady, onUpload
               </span>
               {waiting && <StatusChip kind="roomDraft" value="READY" size="sm" />}
             </div>
-            {waiting ? <p className="text-xs text-slate-500">{t('drafts.waitingLead')}</p> : (
+            {waiting ? (
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-xs text-slate-500">{t('drafts.waitingLead')}</p>
+                {discard}
+              </div>
+            ) : (
               <div className="flex justify-end gap-2">
+                {discard}
                 {swaps && <Button size="sm" disabled={!r.dirty || busy} onClick={() => onSave(r)}>{t('drafts.saveDraft')}</Button>}
                 {r.count > 0 && <Button size="sm" variant={r === first ? 'primary' : 'secondary'} disabled={busy} onClick={() => onReady(r)}>{t('drafts.markReady')}</Button>}
               </div>
@@ -96,7 +110,7 @@ export function ChangeSummary({ line }: { line: ChangeLine }) {
 }
 
 /** Lead's list of the Members' drafts, above the Save bar. */
-export function RoomDraftsBlock({ drafts, avatars, elements, previewId, onPreview, onPickLine, commentText, comparing, canCompare, onCompare, onShowIgnored, onDownloadFile }: {
+export function RoomDraftsBlock({ drafts, avatars, elements, previewId, onPreview, onPickLine, commentText, comparing, canCompare, onCompare, onShowIgnored, onDownloadFile, onDiscard }: {
   drafts: RoomDraft[];
   /** Avatar letters by designer id (avatarLabels). */
   avatars: Record<string, string>;
@@ -113,6 +127,8 @@ export function RoomDraftsBlock({ drafts, avatars, elements, previewId, onPrevie
   onShowIgnored: (d: RoomDraft) => void;
   /** The DXF the Member uploaded. */
   onDownloadFile: (d: RoomDraft) => void;
+  /** Lead throws the draft away, e.g. when its moved items can't be merged without a Major round. */
+  onDiscard?: (d: RoomDraft) => void;
 }) {
   const [openId, setOpenId] = useState<string | null>(null);
   const shown = drafts.filter((d) => draftChangeCount(d) > 0);
@@ -174,9 +190,10 @@ export function RoomDraftsBlock({ drafts, avatars, elements, previewId, onPrevie
                     <span className="text-slate-600">{t('drafts.roomTotal')}</span>
                     <span className="font-semibold tabular-nums text-slate-900">{signedVnd(totalDelta(lines))}</span>
                   </p>
-                  {d.has_source_file && (
-                    <div className="border-t border-line px-2.5 py-1.5">
-                      <Button size="sm" variant="ghost" onClick={() => onDownloadFile(d)}><Download aria-hidden className="h-3.5 w-3.5" />{t('drafts.memberFile')}</Button>
+                  {(d.has_source_file || onDiscard) && (
+                    <div className="flex flex-wrap justify-between gap-2 border-t border-line px-2.5 py-1.5">
+                      {d.has_source_file ? <Button size="sm" variant="ghost" onClick={() => onDownloadFile(d)}><Download aria-hidden className="h-3.5 w-3.5" />{t('drafts.memberFile')}</Button> : <span />}
+                      {onDiscard && <Button size="sm" variant="ghost" onClick={() => onDiscard(d)}><Trash2 aria-hidden className="h-3.5 w-3.5" />{t('drafts.discardDraft')}</Button>}
                     </div>
                   )}
                   {!!handled.length && (

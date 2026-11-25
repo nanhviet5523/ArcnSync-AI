@@ -1,6 +1,5 @@
 import { Navigate, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import type { ReactNode } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { HomePage } from '@/features/home/HomePage';
 import { getCurrentUser } from '@/services/authService';
@@ -12,15 +11,14 @@ import { ForgotPasswordPage } from '@/features/auth/ForgotPasswordPage';
 import { NoApiPage } from '@/features/auth/NoApiPage';
 import { ResetPasswordPage } from '@/features/auth/ResetPasswordPage';
 import { AcceptInvitation } from '@/features/auth/AcceptInvitation';
-import { AcceptProjectInvitation } from '@/features/auth/AcceptProjectInvitation';
-import { ProjectRequirementsForm } from '@/features/homeowner/ProjectRequirementsForm';
-import { HomeownerConceptGallery } from '@/features/homeowner/HomeownerConceptGallery';
 import { HomeownerPayments } from '@/features/homeowner/HomeownerPayments';
 import { ProfileSettings } from '@/features/shared/ProfileSettings';
+import { MessagesPage } from '@/features/chat/MessagesPage';
+import { ChatRealtimeProvider } from '@/features/chat/ChatRealtimeProvider';
+import { CHAT_ROLES } from '@/features/chat/chatApi';
 import { CustomerDirectory } from '@/features/shared/CustomerDirectory';
 import { ApartmentManagement } from '@/features/shared/ApartmentManagement';
 import { ContractDetail } from '@/features/projects/ContractDetail';
-import { BookConsultation } from '@/features/shared/BookConsultation';
 import { AdminUsersPage } from '@/features/admin/users/AdminUsersPage';
 import { AdminMasterData } from '@/features/admin/AdminMasterData';
 import { AdminProducts } from '@/features/admin/AdminProducts';
@@ -39,19 +37,12 @@ import { AdminDashboard } from '@/features/admin/AdminDashboard';
 import { QuotationPage } from '@/features/quotations/QuotationPage';
 import { ReviewsPage } from '@/features/reviews/ReviewsPage';
 import { InquiriesPage } from '@/features/inquiries/InquiriesPage';
-// Pages still running on sample data (demoWorkspaceService), kept until their API exists
+import { ContactPage } from '@/features/inquiries/ContactPage';
 import { CreateContract } from '@/features/staff/CreateContract';
-import { StaffContracts } from '@/features/staff/StaffContracts';
-import { StaffContractDetail } from '@/features/staff/StaffContractDetail';
-import { AdminReports } from '@/features/admin/AdminReports';
-import { AdminAISettings } from '@/features/admin/AdminAISettings';
-import { AdminPromptDetail } from '@/features/admin/AdminPromptDetail';
-import { SupplierInquiries } from '@/features/supplier/SupplierInquiries';
-import { DesignerPortfolio } from '@/features/designer/DesignerPortfolio';
-import { DesignerAIStudio } from '@/features/designer/DesignerAIStudio';
+import { TermsPage } from '@/features/static/TermsPage';
+import { PrivacyPage } from '@/features/static/PrivacyPage';
 import { ProtectedRoute } from '@/routes/ProtectedRoute';
 import type { UserRole } from '@/types/role';
-import { t } from '@/i18n';
 
 const ALL_ROLES: UserRole[] = ['homeowner', 'designer', 'staff', 'supplier', 'admin'];
 
@@ -59,16 +50,6 @@ const ALL_ROLES: UserRole[] = ['homeowner', 'designer', 'staff', 'supplier', 'ad
 function RedirectKeepSearch({ to }: { to: string }) {
   const { search } = useLocation();
   return <Navigate to={{ pathname: to, search }} replace />;
-}
-
-/** Small strip on top of pages that still run on sample data. */
-function SampleData({ children }: { children: ReactNode }) {
-  return (
-    <>
-      <div role="note" className="bg-amber-100 px-4 py-1.5 text-center text-xs font-semibold text-amber-900">{t('common.sampleData')}</div>
-      {children}
-    </>
-  );
 }
 
 function App() {
@@ -111,12 +92,15 @@ function App() {
 
   const isAuthPage = location.pathname === '/login' || location.pathname === '/signup';
 
+  // overflow-x-clip, not -hidden: hidden makes this div the scroll container for position: sticky,
+  // so the sticky Header (and other sticky panels) would scroll away with the page.
   return (
-    <div
-      className={`w-full bg-white relative ${
-        isAuthPage ? 'h-screen overflow-hidden' : 'min-h-screen overflow-x-hidden'
-      }`}
-    >
+    <ChatRealtimeProvider>
+      <div
+        className={`w-full bg-white relative ${
+          isAuthPage ? 'h-screen overflow-hidden' : 'min-h-screen overflow-x-clip'
+        }`}
+      >
       <AnimatePresence mode="popLayout" initial={false}>
         <Routes location={location} key={location.pathname}>
           <Route
@@ -145,8 +129,6 @@ function App() {
           </Route>
           <Route element={<ProtectedRoute allowedRoles={['staff']} />}>
             <Route path="/staff-apartments" element={<ApartmentManagement />} />
-            <Route path="/staff-contracts" element={<SampleData><StaffContracts /></SampleData>} />
-            <Route path="/staff-contract-detail" element={<SampleData><StaffContractDetail /></SampleData>} />
             <Route path="/create-contract" element={<RedirectKeepSearch to="/staff-create-contract" />} />
             <Route path="/staff-create-contract" element={<CreateContract />} />
             <Route path="/staff-edit-contract" element={<CreateContract />} />
@@ -164,10 +146,6 @@ function App() {
             <Route path="/admin-dashboard" element={<AdminDashboard />} />
             <Route path="/admin/overview" element={<AdminDashboard />} />
             <Route path="/admin/dashboard" element={<AdminDashboard />} />
-            <Route path="/admin-reports" element={<SampleData><AdminReports /></SampleData>} />
-            <Route path="/admin-ai-settings" element={<SampleData><AdminAISettings /></SampleData>} />
-            <Route path="/admin/ai-settings" element={<SampleData><AdminAISettings /></SampleData>} />
-            <Route path="/admin-prompts/:promptId" element={<SampleData><AdminPromptDetail /></SampleData>} />
           </Route>
           <Route element={<ProtectedRoute allowedRoles={['supplier']} />}>
             <Route path="/supplier-dashboard" element={<SupplierDashboard />} />
@@ -176,14 +154,11 @@ function App() {
             <Route path="/supplier-products/new" element={<SupplierProductForm />} />
             <Route path="/supplier-products/:productId/edit" element={<SupplierProductForm />} />
             <Route path="/supplier-application" element={<SupplierApplicationStatus />} />
-            <Route path="/supplier-inquiries" element={<SampleData><SupplierInquiries /></SampleData>} />
           </Route>
           <Route element={<ProtectedRoute allowedRoles={['designer']} />}>
             <Route path="/designer/projects" element={<ProjectList />} />
             <Route path="/designer/projects/:id" element={<ProjectDetail />} />
             <Route path="/designer-catalog" element={<DesignerCatalog />} />
-            <Route path="/designer-ai-studio" element={<SampleData><DesignerAIStudio /></SampleData>} />
-            <Route path="/designer-portfolio" element={<SampleData><DesignerPortfolio /></SampleData>} />
           </Route>
           <Route element={<ProtectedRoute allowedRoles={['homeowner']} />}>
             <Route path="/homeowner-apartments" element={<ApartmentManagement />} />
@@ -197,8 +172,9 @@ function App() {
             <Route path="/projects/:projectId/workspace" element={<WorkspacePage />} />
             <Route path="/projects/:projectId/quotation" element={<QuotationPage />} />
           </Route>
-          <Route element={<ProtectedRoute allowedRoles={['homeowner']} />}>
-            <Route path="/consultation/book" element={<BookConsultation />} />
+          {/* Chat: everyone but admin (backend @Roles CUSTOMER, STAFF, DESIGNER, SUPPLIER; admin gets 403) */}
+          <Route element={<ProtectedRoute allowedRoles={CHAT_ROLES} />}>
+            <Route path="/messages" element={<MessagesPage />} />
           </Route>
           <Route element={<ProtectedRoute allowedRoles={ALL_ROLES} />}>
             <Route path="/settings" element={<ProfileSettings />} />
@@ -211,6 +187,8 @@ function App() {
             ['/designer-projects', '/designer/projects'], ['/designer-projects/:projectId', '/designer/projects'],
             ['/homeowner-dashboard', '/homeowner/projects'], ['/homeowner-projects', '/homeowner/projects'],
           ].map(([from, to]) => <Route key={from} path={from} element={<Navigate to={to} replace />} />)}
+          {/* "/register" is what the landing-page spec calls the sign-up page */}
+          <Route path="/register" element={<Navigate to="/signup" replace />} />
 
           {/* Auth Routes */}
           <Route
@@ -243,22 +221,25 @@ function App() {
             }
           />
 
+          {/* Retired info pages (old AI-era copy): the landing page covers them now */}
+          <Route path="/how-it-works" element={<Navigate to="/#how-it-works" replace />} />
+          {['/about', '/pricing', '/help'].map((path) => <Route key={path} path={path} element={<Navigate to="/" replace />} />)}
+          <Route path="/contact" element={<ContactPage />} />
+          <Route path="/terms" element={<TermsPage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
+
           <Route path="/verify-otp" element={<VerifyOtpPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/no-api" element={<NoApiPage />} />
-          <Route path="/accept-project-invitation" element={<AcceptProjectInvitation />} />
-          <Route path="/projects/invitation" element={<AcceptProjectInvitation />} />
-          <Route path="/homeowner/project-requirements" element={<ProjectRequirementsForm />} />
-          <Route path="/project-requirements" element={<ProjectRequirementsForm />} />
-          <Route path="/homeowner/concepts" element={<HomeownerConceptGallery />} />
           <Route path="/accept-invitation" element={<AcceptInvitation />} />
           <Route path="/auth/accept-invitation" element={<AcceptInvitation />} />
           <Route path="/accept-invite" element={<AcceptInvitation />} />
           <Route path="/activate-account" element={<AcceptInvitation />} />
         </Routes>
       </AnimatePresence>
-    </div>
+      </div>
+    </ChatRealtimeProvider>
   );
 }
 

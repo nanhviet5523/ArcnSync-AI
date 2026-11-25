@@ -1,79 +1,35 @@
-import React from 'react';
-import { Edit3, Sparkles, Users, Home } from 'lucide-react';
+import { t } from '@/i18n';
+import { PROJECT_STEPS } from '../landing';
 
-const STEPS = [
-  {
-    icon: Edit3,
-    step: 'Step 1',
-    title: 'Describe',
-    desc: 'Share your house type, size, budget and 2D / 3D plans in a short guided brief.',
-  },
-  {
-    icon: Sparkles,
-    step: 'Step 2',
-    title: 'AI Directions',
-    desc: 'AI suggests design directions for free. Compare styles before you talk to anyone.',
-  },
-  {
-    icon: Users,
-    step: 'Step 3',
-    title: 'Consult & Contract',
-    desc: 'Meet our designers by chat or video call. Our staff prepares your contract.',
-  },
-  {
-    icon: Home,
-    step: 'Step 4',
-    title: 'Design & Deliver',
-    desc: 'Review versions, approve, and receive drawings, 3D, furniture list and cost estimate.',
-  },
-];
-
-export const HowItWorksSection: React.FC = () => {
+/** Section 2: the 7 steps of a project, one per backend status, as a numbered timeline. */
+export function HowItWorksSection() {
   return (
-    <section className="w-full bg-slate-50 px-6 lg:px-12 py-20 text-center">
-      <div className="max-w-7xl mx-auto">
-        <span className="text-xs font-bold text-teal-600 tracking-widest uppercase">
-          HOW IT WORKS
-        </span>
-        <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-slate-900 mt-2 mb-12 tracking-tight">
-          Four steps from brief to finished design
-        </h2>
-
-        {/* Steps Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {STEPS.map((s, idx) => {
-            const Icon = s.icon;
-            return (
-              <div
-                key={idx}
-                className="relative bg-white border border-slate-100 rounded-2xl p-6 sm:p-7 text-left shadow-sm hover:shadow-md hover:border-blue-200 transition-all duration-200 flex flex-col justify-between"
-              >
-                {/* Badge Step */}
-                <span className="absolute top-6 right-6 text-xs font-medium text-slate-400">
-                  {s.step}
-                </span>
-
-                <div>
-                  {/* Icon Wrapper */}
-                  <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mb-5">
-                    <Icon className="w-5 h-5" />
-                  </div>
-
-                  {/* Content */}
-                  <h3 className="text-lg font-bold text-slate-900 mb-2">
-                    {s.title}
-                  </h3>
-                  <p className="text-xs sm:text-sm text-slate-500 leading-relaxed">
-                    {s.desc}
-                  </p>
-                </div>
-              </div>
-            );
-          })}
+    <section id="how-it-works" className="scroll-mt-16 border-y border-line bg-surface px-6 py-20 lg:px-12">
+      <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-12 lg:gap-16">
+        <div className="lg:sticky lg:top-28 lg:col-span-5 lg:self-start">
+          <p className="text-xs font-bold uppercase tracking-widest text-brand">{t('home.steps.eyebrow')}</p>
+          <h2 className="mt-2 text-3xl font-extrabold tracking-tight text-slate-900 md:text-4xl">{t('home.steps.title')}</h2>
+          <p className="mt-4 max-w-md text-sm leading-relaxed text-slate-600 sm:text-base">{t('home.steps.intro')}</p>
         </div>
+
+        <ol className="lg:col-span-7">
+          {PROJECT_STEPS.map((status, i) => (
+            <li key={status} className="relative flex gap-5 pb-8 last:pb-0">
+              {/* rule down to the next step */}
+              {i < PROJECT_STEPS.length - 1 && <span aria-hidden className="absolute bottom-0 left-5 top-10 w-px bg-line-strong" />}
+              <span aria-hidden className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-line-strong bg-canvas text-sm font-bold text-brand">
+                {i + 1}
+              </span>
+              <div className="min-w-0 pt-1.5">
+                <h3 className="text-base font-bold text-slate-900">{t(`home.steps.${status}.title`)}</h3>
+                <p className="mt-1 text-sm leading-relaxed text-slate-600">{t(`home.steps.${status}.body`)}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
       </div>
     </section>
   );
-};
+}
 
 export default HowItWorksSection;
