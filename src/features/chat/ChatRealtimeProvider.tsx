@@ -7,6 +7,7 @@ import { t } from '@/i18n';
 import { getCurrentUser } from '@/services/authService';
 import { onSignOut } from '@/services/signOut';
 import type {
+  CallSignalPayload,
   ChatContactUser,
   ConversationItem,
   IceServerItem,
@@ -103,10 +104,27 @@ export function ChatRealtimeProvider({ children }: { children: ReactNode }) {
     setCallError('');
   }, []);
 
+  /**
+   * Relay one signal and act on a refused ack. VIDEO_CALL_NOT_ONGOING: the call ended on the server (its `call.ended`
+   * may have been missed while the socket was down), so close it here. INVALID_SIGNAL: the payload is wrong, a
+   * frontend bug. UNAUTHENTICATED / SIGNAL_TIMEOUT / SOCKET_DISCONNECTED: the socket reconnects by itself.
+   */
+  const sendCallSignal = useCallback(async (payload: CallSignalPayload) => {
+    const ack = await chatSocket.emitCallSignal(payload);
+    if (ack.ok) return ack;
+    if (ack.code === 'INVALID_SIGNAL') {
+      console.error('call.signal rejected the payload', payload.kind, payload.callId);
+    } else if (ack.code === 'VIDEO_CALL_NOT_ONGOING' && activeCallRef.current?.id === payload.callId) {
+      resetCallState();
+      showNotice(t('chat.call.endedAlready'));
+    }
+    return ack;
+  }, [resetCallState, showNotice]);
+
   const createWebRtcSession = useCallback((callId: string, iceServers: IceServerItem[]) => {
     sessionRef.current?.dispose();
     const session = new WebRtcCallSession(callId, iceServers, {
-      sendSignal: (payload) => chatSocket.emitCallSignal(payload),
+      sendSignal: sendCallSignal,
       onLocalStream: (stream) => {
         setLocalStream(stream);
         setHasAudioTrack(session.hasAudioTrack());
@@ -127,7 +145,7 @@ export function ChatRealtimeProvider({ children }: { children: ReactNode }) {
       session.handleSignal(sig);
     }
     return session;
-  }, []);
+  }, [sendCallSignal]);
 
   /** Resolve peer profile from chatCache or GET /conversations/:id when an incoming call arrives on any route. */
   const resolvePeerForConversation = useCallback((conversationId: string) => {

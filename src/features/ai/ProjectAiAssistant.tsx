@@ -50,6 +50,9 @@ export function ProjectAiAssistant() {
   const threadRequest = useRef(0);
   const sendLock = useRef(false);
   const listRef = useRef<HTMLDivElement>(null);
+  /** The answer being streamed. Aborted when leaving the page or switching conversation, so the backend stops the model. */
+  const streamCtl = useRef<AbortController | null>(null);
+  useEffect(() => () => { streamCtl.current?.abort(); }, [selectedId]);
 
   const loadConversations = useCallback(async () => {
     const request = ++listRequest.current;
@@ -147,11 +150,14 @@ export function ProjectAiAssistant() {
     const tempUserId = `pending-user-${Date.now()}`;
     const tempAssistantId = `pending-assistant-${Date.now()}`;
     let userWasPersisted = false;
+    const controller = new AbortController();
+    streamCtl.current = controller;
     setMessages((current) => [...current, {
       id: tempUserId, conversationId: selectedId, role: 'USER', content, products: [], createdAt: new Date().toISOString(),
     }]);
     try {
       await aiApi.sendMessage(selectedId, content, (event) => {
+        if (controller.signal.aborted) return;
         if (event.event === 'message') {
           userWasPersisted = true;
           setMessages((current) => current.map((item) => item.id === tempUserId ? event.data : item));
@@ -177,9 +183,11 @@ export function ProjectAiAssistant() {
           setDetail((current) => current ? { ...current, quota: event.data.quota } : current);
           setStatus(null);
         }
-      });
+      }, controller.signal);
       await loadConversations();
     } catch (e) {
+      // Left the page or switched conversation: the thread on screen is another one, leave it alone.
+      if (controller.signal.aborted) return;
       setMessages((current) => current.filter((item) => item.id !== tempAssistantId && (userWasPersisted || item.id !== tempUserId)));
       setThreadError(errorMessage(e));
       setStatus(null);
@@ -187,6 +195,7 @@ export function ProjectAiAssistant() {
         setQuota((current) => current ? { ...current, used: current.limit } : current);
       }
     } finally {
+      if (streamCtl.current === controller) streamCtl.current = null;
       sendLock.current = false;
       setSending(false);
       setStatus(null);

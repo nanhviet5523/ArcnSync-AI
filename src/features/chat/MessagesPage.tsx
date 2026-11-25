@@ -114,9 +114,13 @@ export function MessagesPage() {
       );
     });
 
+    // After a reconnect, unread counts and last messages may be stale: reload the conversation list.
+    const offResync = chatSocket.onResync(() => chatCache.invalidate('conversations'));
+
     return () => {
       offMessage();
       offRead();
+      offResync();
     };
   }, [updateItems, updateConversation]);
 
@@ -240,6 +244,12 @@ function ConversationPanel({
       }
     });
   }, [c.id]);
+  // After a socket reconnect, messages sent while it was down never arrived: reload the latest page of this thread.
+  const resyncRef = useRef(thread.resync);
+  useEffect(() => {
+    resyncRef.current = thread.resync;
+  });
+  useEffect(() => chatSocket.onResync(() => resyncRef.current()), []);
 
   // Mark conversation as read (PUT /conversations/:id/read-marker) when opened or receiving messages while visible.
   const latestMessage = thread.messages[thread.messages.length - 1];

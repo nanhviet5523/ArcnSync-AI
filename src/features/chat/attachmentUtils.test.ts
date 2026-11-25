@@ -33,6 +33,13 @@ test('parseContentDispositionFileName decodes RFC 5987 UTF-8 Vietnamese filename
     'floor-plan.dxf',
   );
   assert.equal(parseContentDispositionFileName('attachment; filename=quote.xlsx'), 'quote.xlsx');
+  // Both forms present (RFC 6266): the UTF-8 name wins whatever the order.
+  assert.equal(
+    parseContentDispositionFileName("attachment; filename=\"Mat bang.pdf\"; filename*=UTF-8''M%E1%BA%B7t%20b%E1%BA%B1ng.pdf"),
+    'Mặt bằng.pdf',
+  );
+  // Only a non-UTF-8 filename*: never read as the plain name "*=…".
+  assert.equal(parseContentDispositionFileName("attachment; filename*=ISO-8859-1''abc.pdf"), null);
   assert.equal(parseContentDispositionFileName(null), null);
   assert.equal(parseContentDispositionFileName('inline'), null);
 });

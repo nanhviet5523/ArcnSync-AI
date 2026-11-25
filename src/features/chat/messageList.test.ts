@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { appendMessage, firstPage, mergeFirstPage, olderCursor, prependOlder } from './messageList.ts';
+import { appendMessage, firstPage, mergeFirstPage, mergeLatestPage, olderCursor, prependOlder } from './messageList.ts';
 
 const m = (id: string, v = 0) => ({ id, v });
 const ids = (rows: { id: string }[]) => rows.map((r) => r.id);
@@ -61,4 +61,22 @@ test('mergeFirstPage: a message sent while the page loaded stays, after the page
 test('mergeFirstPage: a held message the page also has shows once', () => {
   assert.deepEqual(ids(mergeFirstPage([m('m3')], [m('m3'), m('m2'), m('m1')])), ['m1', 'm2', 'm3']);
   assert.deepEqual(ids(mergeFirstPage([m('m3'), m('m5'), m('m4')], [m('m3'), m('m2')])), ['m2', 'm3', 'm5', 'm4']);
+});
+
+test('mergeLatestPage: older pages stay in front, missed messages join the end', () => {
+  // Held m1..m4 (m1, m2 from "load more"); while offline m5, m6 arrived. Latest page (limit 3): m6, m5, m4.
+  const r = mergeLatestPage([m('m1'), m('m2'), m('m3'), m('m4')], [m('m6'), m('m5'), m('m4')]);
+  assert.deepEqual(ids(r.messages), ['m1', 'm2', 'm3', 'm4', 'm5', 'm6']);
+  assert.equal(r.contiguous, true);
+});
+
+test('mergeLatestPage: the page copy replaces the held one; a message added during the wait stays last', () => {
+  const r = mergeLatestPage([m('m1'), m('m2', 0), m('m9')], [m('m3'), m('m2', 1)]);
+  assert.deepEqual(r.messages, [m('m1'), m('m2', 1), m('m3'), m('m9')]);
+});
+
+test('mergeLatestPage: no overlap (more than one page missed) → only the page, not contiguous', () => {
+  const r = mergeLatestPage([m('m1'), m('m2')], [m('m9'), m('m8')]);
+  assert.deepEqual(ids(r.messages), ['m8', 'm9']);
+  assert.equal(r.contiguous, false);
 });

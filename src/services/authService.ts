@@ -1,5 +1,6 @@
 import type { User, UserRole } from '@/types/role';
-import { runSignOutListeners } from './signOut.ts';
+import { onSignOut, runSignOutListeners } from './signOut.ts';
+import { parseContentDispositionFileName } from './contentDisposition.ts';
 
 // `?.`: under plain `node --test` import.meta.env does not exist.
 export const API_BASE_URL =
@@ -518,51 +519,157 @@ function redirectToLogin(): void {
   }
 }
 
-// Concurrent 401 responses share one refresh request.
+/**
+ * 401 codes after which a refresh cannot help: the session was revoked (signed in elsewhere: the backend keeps one
+ * session per user), the refresh token was reused or is unknown, or the account can no longer sign in.
+ */
+export const SESSION_ENDED_CODES: ReadonlySet<string> = new Set([
+  'TOKEN_REVOKED',
+  'REFRESH_TOKEN_REUSED',
+  'INVALID_REFRESH_TOKEN',
+  'ACCOUNT_LOCKED',
+  'ACCOUNT_INACTIVE',
+  'EMAIL_NOT_VERIFIED',
+]);
+
+/** Why the last session ended, for the login page. sessionStorage: it concerns this tab only. */
+const SIGN_OUT_REASON_KEY = 'archsync-sign-out-reason';
+
+/** The code that ended the last session in this tab, or null. Read-only: clear it with clearSignOutReason. */
+export function peekSignOutReason(): string | null {
+  try { return window.sessionStorage.getItem(SIGN_OUT_REASON_KEY); } catch { return null; }
+}
+
+export function clearSignOutReason(): void {
+  try { window.sessionStorage.removeItem(SIGN_OUT_REASON_KEY); } catch { /* storage blocked */ }
+}
+
+/** Clear the session, remember why (shown on the login page), and go to /login. */
+export function endSession(reason: string): void {
+  clearAuthSession();
+  try { window.sessionStorage.setItem(SIGN_OUT_REASON_KEY, reason || 'SESSION_EXPIRED'); } catch { /* storage blocked */ }
+  redirectToLogin();
+}
+
+/** Backend error code of a response body, upper-cased; '' when there is none. */
+function bodyCode(data: unknown): string {
+  const code = (data as { code?: unknown } | null)?.code;
+  return typeof code === 'string' ? code.toUpperCase() : '';
+}
+
+// ---------------------------------------------------------------------------
+// Token refresh, shared by every tab
+// ---------------------------------------------------------------------------
+//
+// The backend rotates the refresh token and treats a second use of an old one as theft (REFRESH_TOKEN_REUSED), which
+// revokes the whole session. So two tabs must never send the same refresh token:
+// - navigator.locks makes tabs refresh one at a time; inside the lock a tab first re-reads storage and, when another
+//   tab already rotated the token (shared localStorage), takes the new access token instead of refreshing again.
+// - sessionStorage is per tab, but "Duplicate tab" copies it, so a rotation is also announced on a BroadcastChannel and
+//   a tab holding the old refresh token adopts the new pair.
+
+const REFRESH_LOCK = 'archsync-refresh';
+const AUTH_CHANNEL = 'archsync-auth';
+/** The lock is held this long after a broadcast so a waiting tab gets the message before it re-reads storage. */
+const BROADCAST_SETTLE_MS = 150;
+
+interface RotationMessage { type: 'rotated'; from: string; accessToken: string; refreshToken: string }
+
+// Browser only: under `node --test` an open BroadcastChannel would keep the process from exiting.
+const authChannel: BroadcastChannel | null =
+  typeof window !== 'undefined' && typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel(AUTH_CHANNEL) : null;
+
+authChannel?.addEventListener('message', (event: MessageEvent<RotationMessage>) => {
+  const msg = event.data;
+  if (msg?.type !== 'rotated') return;
+  const storage = getSessionStorage();
+  // Only the tab still holding the token that was just rotated away takes the new pair.
+  if (!storage || storage.getItem(REFRESH_TOKEN_KEY) !== msg.from) return;
+  storage.setItem(ACCESS_TOKEN_KEY, msg.accessToken);
+  storage.setItem(REFRESH_TOKEN_KEY, msg.refreshToken);
+  dispatchAuthChange();
+});
+
+/** Run `task` under the cross-tab refresh lock (directly where the Web Locks API is missing). */
+function withRefreshLock(task: () => Promise<{ token: string; broadcast: boolean }>): Promise<string> {
+  const locks = typeof navigator !== 'undefined' ? navigator.locks : undefined;
+  if (!locks) return task().then((r) => r.token);
+  return new Promise<string>((resolve, reject) => {
+    locks.request(REFRESH_LOCK, async () => {
+      try {
+        const { token, broadcast } = await task();
+        resolve(token);
+        // Callers go on at once; the lock waits a little so the broadcast lands before the next tab reads storage.
+        if (broadcast) await new Promise((r) => setTimeout(r, BROADCAST_SETTLE_MS));
+      } catch (err) {
+        reject(err);
+      }
+    }).catch(reject);
+  });
+}
+
+// Concurrent 401 responses in this tab share one refresh.
 let refreshing: Promise<string> | null = null;
 
+/**
+ * New access token after a 401. Only a 401 from /auth/refresh (or no refresh token at all) ends the session;
+ * 429, 5xx and network errors keep it and throw, so the user can try again.
+ */
 export function refreshAccessToken(): Promise<string> {
   if (refreshing) return refreshing;
 
-  refreshing = (async () => {
+  // The refresh token this tab held when it decided to refresh.
+  const seen = getRefreshToken();
+
+  refreshing = withRefreshLock(async () => {
     const storage = getSessionStorage();
     const refreshToken = storage?.getItem(REFRESH_TOKEN_KEY);
 
     if (!storage || !refreshToken) {
-      throw new ApiError(
-        'Session expired. Please log in again.',
-        401,
-      );
+      endSession('SESSION_EXPIRED');
+      throw new ApiError('Session expired. Please log in again.', 401, [], {}, 'SESSION_EXPIRED');
     }
 
-    const response = await postJson<RefreshResponse>(
-      '/auth/refresh',
-      { refreshToken },
-      'Session expired',
-    );
+    // Another tab rotated the token while this one waited for the lock: use its result.
+    const access = storage.getItem(ACCESS_TOKEN_KEY);
+    if (seen && refreshToken !== seen && access) return { token: access, broadcast: false };
 
-    storage.setItem(
-      ACCESS_TOKEN_KEY,
-      response.accessToken,
-    );
-
-    storage.setItem(
-      REFRESH_TOKEN_KEY,
-      response.refreshToken,
-    );
-
-    return response.accessToken;
-  })()
-    .catch((err: unknown) => {
-      clearAuthSession();
-      redirectToLogin();
+    let response: RefreshResponse;
+    try {
+      response = await postJson<RefreshResponse>('/auth/refresh', { refreshToken }, 'Session expired');
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) endSession(err.code.toUpperCase() || 'SESSION_EXPIRED');
       throw err;
-    })
-    .finally(() => {
-      refreshing = null;
-    });
+    }
+
+    // Signed out (or another account signed in) while the request was out: don't write into that storage.
+    if (getSessionStorage() !== storage || storage.getItem(REFRESH_TOKEN_KEY) !== refreshToken) {
+      throw new ApiError('Session expired. Please log in again.', 401, [], {}, 'SESSION_EXPIRED');
+    }
+    storage.setItem(ACCESS_TOKEN_KEY, response.accessToken);
+    storage.setItem(REFRESH_TOKEN_KEY, response.refreshToken);
+    authChannel?.postMessage({
+      type: 'rotated', from: refreshToken, accessToken: response.accessToken, refreshToken: response.refreshToken,
+    } satisfies RotationMessage);
+    return { token: response.accessToken, broadcast: !!authChannel };
+  }).finally(() => {
+    refreshing = null;
+  });
 
   return refreshing;
+}
+
+/**
+ * What to do with a 401 from a private endpoint: a session-ended code signs out at once (returns null), anything else
+ * (TOKEN_EXPIRED, INVALID_TOKEN, UNAUTHENTICATED, no code) is worth one refresh (returns the new token).
+ */
+async function recoverFrom401(data: unknown): Promise<string | null> {
+  const code = bodyCode(data);
+  if (SESSION_ENDED_CODES.has(code)) {
+    endSession(code);
+    return null;
+  }
+  return refreshAccessToken();
 }
 
 export async function apiFetch(
@@ -590,29 +697,29 @@ export async function apiFetch(
     });
   };
 
-  let response: Response;
+  const sendOrFail = async (token: string | null) => {
+    try {
+      return await send(token);
+    } catch (err) {
+      // A caller's abort stays an AbortError so it is never shown as a connection problem.
+      if (init.signal?.aborted) throw err;
+      throw new ApiError(
+        'Cannot connect to the server. Please check your connection and try again.',
+      );
+    }
+  };
 
-  try {
-    response = await send(getAccessToken());
-  } catch {
-    throw new ApiError(
-      'Cannot connect to the server. Please check your connection and try again.',
-    );
-  }
+  const response = await sendOrFail(getAccessToken());
 
   if (response.status !== 401) {
     return response;
   }
 
-  const newToken = await refreshAccessToken();
+  const newToken = await recoverFrom401(await response.clone().json().catch(() => null));
+  // Session ended: hand back the 401 so the caller shows its error while the page goes to /login.
+  if (newToken === null) return response;
 
-  try {
-    return await send(newToken);
-  } catch {
-    throw new ApiError(
-      'Cannot connect to the server. Please check your connection and try again.',
-    );
-  }
+  return sendOrFail(newToken);
 }
 
 /**
@@ -644,8 +751,11 @@ export async function apiUpload<T>(
 
   let res = await send(getAccessToken());
   if (res.status === 401) {
-    onProgress?.(0);
-    res = await send(await refreshAccessToken());
+    const newToken = await recoverFrom401(res.data);
+    if (newToken !== null) {
+      onProgress?.(0);
+      res = await send(newToken);
+    }
   }
   if (res.status < 200 || res.status >= 300) {
     throw buildApiError(res.status, res.data, `Request failed (${res.status}). Please try again.`);
@@ -738,12 +848,18 @@ export function acceptInvite(payload: AcceptInvitePayload): Promise<AcceptInvite
 
 /** File cần Bearer token (ảnh, .glb, DXF): tải qua apiFetch rồi tạo blob URL. Lỗi giữ nguyên ApiError (có status, code). */
 const blobCache = new Map<string, Promise<string>>();
+/** Bumped on every revokeBlobUrls (sign-out): a download that started before it never lands in the new cache. */
+let blobGeneration = 0;
 export function fetchBlobUrl(path: string): Promise<string> {
   let p = blobCache.get(path);
   if (!p) {
+    const generation = blobGeneration;
     p = apiFetch(path).then(async (res) => {
       if (!res.ok) throw buildApiError(res.status, await res.json().catch(() => null), 'Không tải được file');
-      return URL.createObjectURL(await res.blob());
+      const blob = await res.blob();
+      // The session changed while downloading: this file belonged to the previous user.
+      if (generation !== blobGeneration) throw new ApiError('Session changed', 401, [], {}, 'SESSION_EXPIRED');
+      return URL.createObjectURL(blob);
     });
     p.catch(() => blobCache.delete(path));
     blobCache.set(path, p);
@@ -758,16 +874,20 @@ export function revokeBlobUrl(path: string) {
   p.then(URL.revokeObjectURL, () => undefined);
 }
 export function revokeBlobUrls() {
+  blobGeneration += 1;
   for (const p of blobCache.values()) p.then(URL.revokeObjectURL, () => undefined);
   blobCache.clear();
 }
+
+// Private files of one user must never be served from cache to the next one signing in on this tab.
+onSignOut(revokeBlobUrls);
 
 /** Downloads with the token. The server's file name wins unless `preferFallbackName` is set. */
 export async function downloadFile(path: string, fallbackName: string, opts: { preferFallbackName?: boolean } = {}) {
   const res = await apiFetch(path);
   if (!res.ok) throw buildApiError(res.status, await res.json().catch(() => null), 'Không tải được file');
   const name = opts.preferFallbackName ? fallbackName
-    : /filename="?([^";]+)"?/.exec(res.headers.get('Content-Disposition') ?? '')?.[1] ?? fallbackName;
+    : parseContentDispositionFileName(res.headers.get('Content-Disposition')) ?? fallbackName;
   const a = document.createElement('a');
   a.href = URL.createObjectURL(await res.blob());
   a.download = name;
