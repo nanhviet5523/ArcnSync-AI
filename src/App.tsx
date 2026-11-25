@@ -38,6 +38,8 @@ import { QuotationPage } from '@/features/quotations/QuotationPage';
 import { ReviewsPage } from '@/features/reviews/ReviewsPage';
 import { InquiriesPage } from '@/features/inquiries/InquiriesPage';
 import { ContactPage } from '@/features/inquiries/ContactPage';
+import { ProjectAiAssistant } from '@/features/ai/ProjectAiAssistant';
+import { AdminKnowledgeChunks } from '@/features/ai/AdminKnowledgeChunks';
 import { CreateContract } from '@/features/staff/CreateContract';
 import { TermsPage } from '@/features/static/TermsPage';
 import { PrivacyPage } from '@/features/static/PrivacyPage';
@@ -146,6 +148,7 @@ function App() {
             <Route path="/admin-dashboard" element={<AdminDashboard />} />
             <Route path="/admin/overview" element={<AdminDashboard />} />
             <Route path="/admin/dashboard" element={<AdminDashboard />} />
+            <Route path="/admin/ai-knowledge" element={<AdminKnowledgeChunks />} />
           </Route>
           <Route element={<ProtectedRoute allowedRoles={['supplier']} />}>
             <Route path="/supplier-dashboard" element={<SupplierDashboard />} />
@@ -169,6 +172,7 @@ function App() {
           </Route>
           {/* Design workspace (design-versions APIs): every project role; actions gated by can() in design-workspace/logic.ts */}
           <Route element={<ProtectedRoute allowedRoles={['homeowner', 'designer', 'staff', 'admin']} />}>
+            <Route path="/projects/:projectId/ai" element={<ProjectAiAssistant />} />
             <Route path="/projects/:projectId/workspace" element={<WorkspacePage />} />
             <Route path="/projects/:projectId/quotation" element={<QuotationPage />} />
           </Route>

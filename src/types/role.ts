@@ -66,6 +66,7 @@ export const ROLE_CONFIG: Record<UserRole, { defaultPath: string; badge: string;
       { label: 'Products', path: '/admin-products' },
       { label: 'Product categories', path: '/admin/categories' },
       { label: 'Master Data', path: '/admin-master-data' },
+      { label: 'AI knowledge', path: '/admin/ai-knowledge' },
       { label: 'Customers', path: '/customers' },
       { label: t('nav.inquiries'), path: '/staff/inquiries' },
       { label: t('nav.reviews'), path: '/reviews' },
