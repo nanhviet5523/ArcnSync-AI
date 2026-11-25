@@ -811,10 +811,7 @@ export const ContractDetail: React.FC = () => {
                           onClick={() => navigate(`/homeowner/payments?projectId=${encodeURIComponent(projectId)}&milestoneId=${encodeURIComponent(m.id)}`)}
                           className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-blue-700"
                         >
-
                           Pay now
-                          Thanh toán
-
                         </button>
                       )}
                     </td>
