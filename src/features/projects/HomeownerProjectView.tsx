@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, Ban, CircleCheck, Clock, CreditCard } from 'lucide-react';
+import { ArrowRight, Ban, CircleCheck, Clock, CreditCard, Sparkles } from 'lucide-react';
 
 import { AppShell, Button, Card, PageHeader, Skeleton, StatusChip, Stepper } from '@/components/ui';
 import { formatDate, formatDateTime, t, tList } from '@/i18n';
@@ -86,7 +86,10 @@ export function HomeownerProjectView({ project, onProjectChanged }: { project: P
         description={t('homeownerDetail.meta', {
           designer: project.designer?.fullName ?? t('projectDetail.notAssigned'), staff: project.staff.fullName,
         })}
-        secondary={<Button onClick={() => navigate(`/project-contract?projectId=${encodeURIComponent(project.id)}`)}>{t('projectDetail.contract')}</Button>}
+        secondary={<>
+          <Button onClick={() => navigate(`/projects/${encodeURIComponent(project.id)}/ai`)}><Sparkles aria-hidden className="h-4 w-4" />AI assistant</Button>
+          <Button onClick={() => navigate(`/project-contract?projectId=${encodeURIComponent(project.id)}`)}>{t('projectDetail.contract')}</Button>
+        </>}
       />
 
       {project.status !== 'CANCELLED' && (
