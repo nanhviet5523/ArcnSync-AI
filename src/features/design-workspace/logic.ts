@@ -1,6 +1,8 @@
-import { formatDateTime, formatMoney, t } from '../../i18n/index.ts';
+import { errorText, formatDateTime, formatMoney, t } from '../../i18n/index.ts';
+import { sumMoney } from './rooms.ts';
 import type { DesignerOption, ProjectTeam } from '../projects/projectApi';
-import type { Comment, CommentReply, CommentTarget, DesignElement, DesignVersion, Product, Project, ProjectRole, Role, VersionSummary } from './types';
+import type { Comment, CommentReply, CommentTarget, DesignElement, DesignVersion, Product, Project, ProjectRole, Role, RoomDraft, VersionSummary } from './types';
+import type { PaymentMilestoneResponse } from '../projects/services/contractsApi';
 
 /** Money and time formatting live in src/i18n; re-exported for the workspace components. */
 export const formatVnd = formatMoney;
@@ -84,13 +86,13 @@ export interface HintAnchor { x: number; y: number; w: number; h: number }
 export interface CanvasUi {
   selEl: string | null;
   selComment: string | null;
-  target: CommentTarget | null;
+  /** The comment popover: the only way to comment on an item or a spot (comment mode). */
   quick: QuickAnchor | null;
   hint: HintAnchor | null;
   commentMode: boolean;
 }
 /** State after changing version or floor. */
-export const CLEAR_CANVAS: CanvasUi = { selEl: null, selComment: null, target: null, quick: null, hint: null, commentMode: false };
+export const CLEAR_CANVAS: CanvasUi = { selEl: null, selComment: null, quick: null, hint: null, commentMode: false };
 /** At Products a comment on an item is a request to change its model, colour or material. */
 export const commentPlaceholder = (target: CommentTarget | null, isRender: boolean) =>
   t(isRender && target?.kind === 'element' ? 'comments.placeholderItem' : 'comments.placeholder');
@@ -184,7 +186,10 @@ export const isOffTeam = (e: unknown, role: Role) => {
 export type StatusFilter = 'UNRESOLVED' | 'ALL';
 export const statusMatches = (c: Comment, f: StatusFilter) => f === 'ALL' || c.status !== 'RESOLVED';
 
-/** Ghim 2D: bỏ RESOLVED trừ khi đang chọn thẻ đó. */
+/**
+ * Ghim 2D: bỏ RESOLVED trừ khi đang chọn thẻ đó. Comment theo món luôn có pin_position (backend lấy vị trí món), nên
+ * món đã bị xoá ở bản sau vẫn có ghim: pinPoint rơi về pin_position khi thread.element là null.
+ */
 export const pinsToShow = (threads: CommentThread[], selectedId: string | null) =>
   threads.filter((t) => t.num !== null && (t.root.status !== 'RESOLVED' || t.root.id === selectedId));
 
@@ -219,12 +224,16 @@ export type Action =
   /** Choosing Major when creating a version: uses one change round. */
   | 'majorRevision'
   /** Download DXF, export .glb, save .png: only the project's design team (skill ui-nghiep-vu §7). */
-  | 'exportFiles';
+  | 'exportFiles'
+  /** Throw away a room draft (DELETE room-drafts/:roomId): the Lead any draft, a Member the drafts of their rooms. */
+  | 'discardRoomDraft'
+  /** Homeowner suggests another product of the same category in an item comment, at Products. */
+  | 'suggestProduct';
 
 export interface CanCtx {
   role: Role;
-  /** Null: the project has no version yet. */
-  version: Pick<DesignVersion, 'status' | 'version_type'> | null;
+  /** Null: the project has no version yet. awaiting_designer absent = false. */
+  version: (Pick<DesignVersion, 'status' | 'version_type'> & { awaiting_designer?: boolean }) | null;
   project: Pick<Project, 'status'>;
   /** Null or absent: not on the design team, so no team rights. Never assumed to be Lead. */
   projectRole?: ProjectRole | null;
@@ -256,12 +265,17 @@ export function ignoredReasonText(reason: string, room: string | null, owner?: s
   }
 }
 
-/** Why this version cannot be approved yet, one line each, worded for the viewer. */
-export function approveBlockers(action: 'approveLayout' | 'approveProducts', { role, openCount = 0, unknownCount = 0, notChosenCount = 0 }: Pick<CanCtx, 'role' | 'openCount' | 'unknownCount' | 'notChosenCount'>): string[] {
+/**
+ * Why this version cannot be approved yet, one line each, worded for the viewer.
+ * awaitingDesigner: the system-made Products version the Lead has not saved yet. The homeowner gets its own line in the
+ * decision block (awaitingNotice) instead; designers and staff read it here.
+ */
+export function approveBlockers(action: 'approveLayout' | 'approveProducts', { role, openCount = 0, unknownCount = 0, notChosenCount = 0, awaitingDesigner = false }: Pick<CanCtx, 'role' | 'openCount' | 'unknownCount' | 'notChosenCount'> & { awaitingDesigner?: boolean }): string[] {
   const unknown = role !== 'designer' ? t('reasons.unknownCustomer')
     : action === 'approveLayout' ? `${t('reasons.unknownItems', { n: unknownCount })}: ${t('reasons.unknownHint')}`
     : t('reasons.unknownItems', { n: unknownCount });
   return [
+    action === 'approveProducts' && awaitingDesigner && role !== 'homeowner' ? t('reasons.awaitingDesigner') : '',
     openCount ? t('reasons.openComments', { n: openCount }) : '',
     unknownCount ? unknown : '',
     action === 'approveProducts' && notChosenCount ? t('reasons.notChosen', { n: notChosenCount }) : '',
@@ -298,6 +312,8 @@ export function can(action: Action, { role, version, project, projectRole = null
   const locked = closed || (version.status === 'SUPERSEDED' && !earlierApprovable) || version.status === 'APPROVED';
   if (locked) return no;
   const choosing = render && project.status === 'PRODUCT_SELECTION';
+  // Backend 422 VERSION_NOT_SUBMITTED_BY_DESIGNER on approve and on revision requests until the Lead's first save.
+  const awaiting = render && !!version.awaiting_designer;
   // Room drafts: product swaps at Products; at Layout only the Members' DXF uploads (backend lockDraftableVersion).
   const drafting = choosing || (layout && project.status === 'IN_DESIGN');
   const ctx = { role, openCount, unknownCount, notChosenCount };
@@ -323,10 +339,100 @@ export function can(action: Action, { role, version, project, projectRole = null
     case 'addressComment': return lead && (version.status === 'SUBMITTED' || version.status === 'REVISION_REQUESTED') ? yes : no;
     case 'requestChanges':
       // No button when out of rounds; the decision block says why (workspace.noRoundsLeft).
-      if (!customer || !(layout || render) || revisionsLeft === 0) return no;
+      if (!customer || !(layout || render) || revisionsLeft === 0 || awaiting) return no;
       return openCount ? yes : { ok: false, reason: t('reasons.commentFirst') };
     case 'approveLayout': return customer && layout ? blocked('approveLayout') : no;
-    case 'approveProducts': return customer && render ? blocked('approveProducts') : no;
+    case 'approveProducts': return customer && render && !awaiting ? blocked('approveProducts') : no;
+    // Backend DELETE room-drafts/:roomId: the draft owner or the Lead, on the newest version (409 VERSION_NOT_CURRENT).
+    case 'discardRoomDraft': return drafting && (lead || (member && inRoom)) ? yes : no;
+    // Backend proposedProductId: CUSTOMER, root item comment, RENDER_3D (422 INVALID_PROPOSED_PRODUCT otherwise).
+    case 'suggestProduct': return customer && choosing ? yes : no;
   }
   return no;
+}
+
+/** Fields of a contract payment milestone the workspace reads (GET /projects/:id/contract). */
+export type StageMilestone = Pick<PaymentMilestoneResponse, 'id' | 'stageType' | 'status' | 'amount' | 'dueDate' | 'reviewDeadline' | 'approvedVersionId' | 'autoApproved'>;
+
+/** The payment milestone of a design stage: Layout → LAYOUT_2D, Products → RENDER_3D. Concept has none. */
+export const stageMilestone = <M extends Pick<StageMilestone, 'stageType'>>(milestones: readonly M[], versionType: string | null | undefined): M | null =>
+  versionType === 'LAYOUT_2D' || versionType === 'RENDER_3D' ? milestones.find((m) => m.stageType === versionType) ?? null : null;
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** Review deadline of a version awaiting the homeowner: `soon` when less than 24 hours are left. */
+export function reviewDue(milestone: Pick<StageMilestone, 'reviewDeadline'> | null, version: Pick<DesignVersion, 'status'>, now = Date.now()): { at: string; soon: boolean } | null {
+  if (!milestone?.reviewDeadline || version.status !== 'SUBMITTED') return null;
+  return { at: milestone.reviewDeadline, soon: new Date(milestone.reviewDeadline).getTime() - now < DAY_MS };
+}
+
+/** Payment shown after a stage is approved. Only the homeowner pays, and only while it is due. */
+export function paymentState(milestone: Pick<StageMilestone, 'status'> | null, role: Role): { status: 'INVOICED' | 'OVERDUE' | 'PAID'; canPay: boolean } | null {
+  const status = milestone?.status;
+  if (status !== 'INVOICED' && status !== 'OVERDUE' && status !== 'PAID') return null;
+  return { status, canPay: role === 'homeowner' && status !== 'PAID' };
+}
+
+/** The version the scheduler approved when the review window ran out. */
+export const isAutoApproved = (versionId: string, milestones: readonly Pick<StageMilestone, 'approvedVersionId' | 'autoApproved'>[]) =>
+  milestones.some((m) => m.autoApproved && m.approvedVersionId === versionId);
+
+export const payUrl = (projectId: string, milestoneId: string) =>
+  `/homeowner/payments?projectId=${encodeURIComponent(projectId)}&milestoneId=${encodeURIComponent(milestoneId)}`;
+
+/**
+ * What the Save dialog shows for Minor / Major.
+ * - first: the Lead's first save of the system-made Products version. The backend ignores revisionType and always
+ *   records MINOR, even when merging drafts with moved items, and uses no change round.
+ * - layoutMajor: merging moved items always makes a Major version.
+ * - pick: the Lead chooses.
+ */
+export const revisionMode = (version: { awaiting_designer?: boolean } | null, mergingLayout: boolean): 'first' | 'layoutMajor' | 'pick' =>
+  version?.awaiting_designer ? 'first' : mergingLayout ? 'layoutMajor' : 'pick';
+
+/** The homeowner's line in the decision block while the designer has not submitted the products yet. */
+export const awaitingNotice = (role: Role, version: { awaiting_designer?: boolean } | null) =>
+  role === 'homeowner' && !!version?.awaiting_designer ? t('workspace.awaitingDesigner') : null;
+
+/**
+ * Comments a Member marked addressed in the drafts being merged. The backend marks them ADDRESSED itself when the Lead
+ * merges, so the Save dialog lists them read-only instead of sending them. Only comments still OPEN, once each.
+ */
+export function draftAddressedNotes(drafts: readonly Pick<RoomDraft, 'addressed_comment_ids' | 'designer_name'>[], open: readonly Pick<Comment, 'id' | 'content' | 'status'>[]) {
+  const seen = new Set<string>();
+  return drafts.flatMap((d) => d.addressed_comment_ids.flatMap((id) => {
+    const c = open.find((x) => x.id === id && x.status === 'OPEN');
+    if (!c || seen.has(id)) return [];
+    seen.add(id);
+    return [{ commentId: id, content: c.content, member: d.designer_name }];
+  }));
+}
+
+/** Suggested price minus the item's current price; null when the item has no product yet. Exact, never as floats. */
+export const proposalDelta = (proposedPrice: string, currentPrice: string | null | undefined) =>
+  currentPrice ? sumMoney([proposedPrice, currentPrice.startsWith('-') ? currentPrice.slice(1) : `-${currentPrice}`]) : null;
+
+/** Discard draft: these codes mean something else there than in the generic messages. */
+export function discardErrorText(e: unknown): string {
+  const code = (e as { code?: string } | null)?.code;
+  return code === 'ROOM_NOT_ASSIGNED' || code === 'ROOM_DRAFT_NOT_FOUND' || code === 'VERSION_NOT_CURRENT' ? t(`drafts.discardErr.${code}`) : errorText(e);
+}
+
+/**
+ * Category model URLs: an Admin upload is served by the API (/product-categories/:id/model-3d, needs the token);
+ * anything else (/models/placeholders/ph-*.glb) is a static file of the frontend.
+ */
+export const isApiModelPath = (url: string) => url.startsWith('/product-categories/');
+
+/**
+ * The first layout needs a chosen concept (backend: 422 CONCEPT_NOT_APPROVED).
+ * 'create' = in design, no layout, no concept sent yet; 'waiting' = sent, the homeowner hasn't chosen;
+ * null = nothing blocks the layout; undefined = not known yet.
+ */
+export function conceptGate({ status, hasLayout, approved, submittedCount = 0 }: {
+  status: string; hasLayout?: boolean; approved?: boolean; submittedCount?: number;
+}): 'create' | 'waiting' | null | undefined {
+  if (status !== 'IN_DESIGN' || hasLayout === true || approved === true) return null;
+  if (hasLayout === undefined || approved === undefined) return undefined;
+  return submittedCount > 0 ? 'waiting' : 'create';
 }

@@ -3,10 +3,12 @@ import { formatNumber, t, tList } from '@/i18n';
 import type { UserRole } from '@/types/role';
 import { designApi } from '@/features/design-workspace/designApi';
 import type { Role, VersionStatus, VersionType } from '@/features/design-workspace/types';
-import { awaitingInScope, versionLabel } from '@/features/design-workspace/logic';
+import { awaitingInScope, conceptGate, versionLabel } from '@/features/design-workspace/logic';
+import { conceptApi, conceptSummary } from '@/features/concepts/conceptApi';
 import { unreadyDraftRooms } from '@/features/design-workspace/roomDrafts';
 import { isPreparing, nextStep, projectApi, stepIndex } from './projectApi';
 import type { Project } from './projectApi';
+import { PROJECT_STEPS } from './steps';
 
 /*
  * TODO: when the project list API returns latestVersionStatus and floorCount, read them from the list
@@ -14,7 +16,7 @@ import type { Project } from './projectApi';
  * TODO: when it also returns awaitingReplyCount, drop the per-project comments request in useLatestVersions.
  */
 
-const STEPS_TOTAL = 7;
+const STEPS_TOTAL = PROJECT_STEPS.length;
 const MAX_PARALLEL = 4;
 
 /**
@@ -54,8 +56,11 @@ export const awaitingCount = (p: Pick<Project, 'status'>, latest: LatestState | 
  * - Member of the design team: only comments in their own rooms; the stage itself is the Lead's to move.
  * - Homeowner: the latest version was sent to them (SUBMITTED).
  */
-export function needsAction(role: UserRole, p: Pick<Project, 'status' | 'myProjectRole'>, latest: LatestState | undefined) {
+export function needsAction(role: UserRole, p: Pick<Project, 'status' | 'myProjectRole'>, latest: LatestState | undefined, gate?: ConceptGate) {
   if (versionUnknown(latest)) return false;
+  // concepts sent, none chosen yet: the homeowner has to choose, the Lead waits
+  if (gate === 'waiting' && role === 'homeowner') return true;
+  if (gate === 'waiting' && role === 'designer' && p.myProjectRole === 'LEAD') return false;
   // a comment waiting for my reply puts the project in "Needs your action" for both sides
   if ((role === 'designer' || role === 'homeowner') && awaitingCount(p, latest) > 0) return true;
   if (p.myProjectRole === 'MEMBER') return !!knownVersion(latest)?.draftRooms.length;
@@ -68,12 +73,12 @@ export function needsAction(role: UserRole, p: Pick<Project, 'status' | 'myProje
  * "Next" line that agrees with the latest version, so a card never says "act" while sitting under "Waiting on others".
  * Falls back to the per-status sentence (nextStep) when no version is known.
  */
-export function nextFor(role: UserRole, p: Pick<Project, 'status' | 'designer' | 'myProjectRole'>, latest: LatestState | undefined): string {
+export function nextFor(role: UserRole, p: Pick<Project, 'status' | 'designer' | 'myProjectRole'>, latest: LatestState | undefined, gate?: ConceptGate): string {
   // a closed project has nothing left to decide, whatever its version check returned
   if (isClosed(p.status)) return nextStep(role, p as Project);
   if (versionUnknown(latest)) return '';
   // the decision for this stage leads; waiting replies follow as a second sentence (the chip carries the count too)
-  const main = stageSentence(role, p, latest);
+  const main = stageSentence(role, p, latest, gate);
   const replies = awaitingCount(p, latest);
   if (!replies || (role !== 'designer' && role !== 'homeowner')) return main;
   const tail = t(`next.replies.${role}`, { n: replies });
@@ -83,9 +88,12 @@ export function nextFor(role: UserRole, p: Pick<Project, 'status' | 'designer' |
 /** "Draft for Kitchen, Bedroom 1 not ready"; empty when there is none. */
 export const draftNote = (rooms: readonly string[]) => (rooms.length ? t('next.memberDraft', { room: [...new Set(rooms)].join(', ') }) : '');
 
-function stageSentence(role: UserRole, p: Pick<Project, 'status' | 'designer' | 'myProjectRole'>, latest: LatestState | undefined): string {
+function stageSentence(role: UserRole, p: Pick<Project, 'status' | 'designer' | 'myProjectRole'>, latest: LatestState | undefined, gate?: ConceptGate): string {
   // "Upload the layout" and the like are the Lead's next steps; a Member's own is their draft
   if (p.myProjectRole === 'MEMBER') return draftNote(knownVersion(latest)?.draftRooms ?? []);
+  // no concept chosen yet: the concept comes before the layout
+  if (gate && role === 'designer' && p.myProjectRole === 'LEAD') return t(gate === 'waiting' ? 'concepts.nextLeadWaiting' : 'concepts.nextLead');
+  if (gate === 'waiting' && role === 'homeowner') return t('concepts.nextHomeowner');
   const designing = p.status === 'IN_DESIGN' || p.status === 'PRODUCT_SELECTION';
   if (!designing || latest === undefined || (role !== 'designer' && role !== 'homeowner')) return nextStep(role, p as Project);
   const stage = p.status === 'IN_DESIGN' ? 'layout' : 'products';
@@ -111,9 +119,6 @@ export const designLabel = (label: string) => versionLabel(label, 'homeowner');
 
 /** Completed or cancelled: nothing left to act on, so never "needs action" or "couldn't check". */
 export const isClosed = (s: Project['status']) => s === 'COMPLETED' || s === 'CANCELLED';
-
-/** The AI concept stage is not built yet: shown as an optional step, never auto-checked. index = its position in the step list. */
-export const conceptStep = (index: number) => ({ index, tag: t('steps.conceptTag'), hint: t('steps.conceptHint') });
 
 /**
  * Progress along the 7 project steps; null for a cancelled project.
@@ -216,4 +221,30 @@ export function useLatestVersions(projects: Project[] | null, me: Role) {
   // closed projects never hold the list (or the greeting) back
   const ready = !!projects && projects.every((p) => !needsCheck(p) || isClosed(p.status) || p.id in latest);
   return { latest: (id: string): LatestState | undefined => latest[id], ready, retry, retryAll };
+}
+
+/** In design with no layout yet and no concept chosen ('create' / 'waiting'); null = not blocked; undefined = unknown. */
+export type ConceptGate = 'create' | 'waiting' | null | undefined;
+
+/**
+ * Concept gate per project, for the cards. Only projects in design whose version check found no version at all
+ * (so no layout) ask GET /projects/:id/concepts, once each; a failed request stays undefined, so the card keeps its old link.
+ */
+export function useConceptGates(projects: Project[] | null, latest: (id: string) => LatestState | undefined) {
+  const [gates, setGates] = useState<Record<string, ConceptGate>>({});
+  const requested = useRef(new Set<string>());
+  useEffect(() => {
+    for (const p of projects ?? []) {
+      if (p.status !== 'IN_DESIGN' || latest(p.id) !== null || requested.current.has(p.id)) continue;
+      requested.current.add(p.id);
+      queued(() => conceptApi.list(p.id)).then(
+        (list) => {
+          const { approved, submittedCount } = conceptSummary(list);
+          setGates((x) => ({ ...x, [p.id]: conceptGate({ status: p.status, hasLayout: false, approved: !!approved, submittedCount }) }));
+        },
+        () => undefined,
+      );
+    }
+  }, [projects, latest]);
+  return useCallback((id: string): ConceptGate => gates[id], [gates]);
 }

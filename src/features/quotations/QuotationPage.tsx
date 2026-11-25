@@ -1,27 +1,43 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
-import { Download, Sparkles } from 'lucide-react';
+import { Link, useParams } from 'react-router-dom';
+import { ChevronDown, ChevronRight, Download, Sparkles } from 'lucide-react';
 import { AppShell, Banner, Button, Card, DetailList, EmptyState, ErrorState, PageHeader, Skeleton, StatusChip } from '@/components/ui';
-import { errorText, formatDate, formatDateTime, formatMoney, t } from '@/i18n';
+import { errorText, formatDate, formatMoney, t } from '@/i18n';
 import { getCurrentUser } from '@/services/authService';
 import { projectApi } from '@/features/projects/projectApi';
 import type { Project } from '@/features/projects/projectApi';
-import { budgetStatusOf, estimateWith, quotationApi, signedMoney, todayVn } from './quotationApi';
-import type { ProductOption, Quotation, QuotationItem, QuotationSummary } from './quotationApi';
-import { ConfirmDialog, OptionsDialog, RejectDialog, TermsDialog } from './QuotationDialogs';
-import type { TermsValue } from './QuotationDialogs';
+import { designApi } from '@/features/design-workspace/designApi';
+import { budgetStatusOf, COST_GROUPS, estimateWith, quotationApi, signedMoney, todayVn } from './quotationApi';
+import type { CostCategory, ProductOption, Quotation, QuotationFileFormat, QuotationItem, QuotationSummary } from './quotationApi';
+import { ConfirmDialog, OptionsDialog, RequestChangesDialog, ValidUntilDialog } from './QuotationDialogs';
+import { collapseKey, defaultCollapsed } from './bomView';
 
 type Dialog =
-  | { kind: 'create' } | { kind: 'terms' } | { kind: 'send' } | { kind: 'withdraw' } | { kind: 'approve' } | { kind: 'reject' }
-  | { kind: 'options'; item: QuotationItem };
+  | { kind: 'validUntil' } | { kind: 'send' } | { kind: 'accept' } | { kind: 'requestChanges' }
+  | { kind: 'options'; item: QuotationItem; elementId: string };
+
+/** What the page needs from the approved design version: its label and the design items per product (for "Try options"). */
+interface VersionInfo { label: string; elementsByProduct: Map<string, string[]> }
+
+/** Collapsed cost groups remembered for this tab; null when nothing is stored (or storage is blocked). */
+const readCollapsed = (quotationId: string): CostCategory[] | null => {
+  try {
+    const v: unknown = JSON.parse(sessionStorage.getItem(collapseKey(quotationId)) ?? 'null');
+    return Array.isArray(v) ? (v as CostCategory[]) : null;
+  } catch { return null; }
+};
+const writeCollapsed = (quotationId: string, groups: CostCategory[]) => {
+  try { sessionStorage.setItem(collapseKey(quotationId), JSON.stringify(groups)); } catch { /* private mode: just not remembered */ }
+};
 
 const projectHome = (role: string, id: string) =>
   role === 'homeowner' ? `/homeowner/projects/${id}` : role === 'designer' ? `/designer/projects/${id}` : `/staff/projects/${id}`;
 
 /**
- * Quotation / BOM of a project (/projects/:projectId/quotation): lines grouped by category, comparison with the budget,
- * "Try options" per line, revisions. Staff in charge (or admin) creates, edits, swaps products and sends;
- * the homeowner approves (project completes) or asks for changes with the products they tried.
+ * Quotation / BOM of a project (/projects/:projectId/quotation): lines grouped by cost group, design fee, comparison
+ * with the budget, "Try options" per line (estimate only), revisions. The backend creates the draft when the homeowner
+ * approves the products; staff in charge (or admin) sets the expiry and sends it; the homeowner accepts it or asks for
+ * changes. Lead / members and other staff only read and download.
  */
 export function QuotationPage() {
   const { projectId = '' } = useParams();
@@ -30,24 +46,29 @@ export function QuotationPage() {
   const [project, setProject] = useState<Project | null>(null);
   const [revisions, setRevisions] = useState<QuotationSummary[] | null>(null);
   const [quotation, setQuotation] = useState<Quotation | null>(null);
+  const [version, setVersion] = useState<VersionInfo | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [actionError, setActionError] = useState('');
   const [dialog, setDialog] = useState<Dialog | null>(null);
-  /** Product picked per line: a what-if option, or (staff, draft) a swap waiting to be saved. */
+  /** What-if product per line (homeowner and team trying options); never saved. */
   const [picked, setPicked] = useState<Record<string, ProductOption>>({});
-  const [saving, setSaving] = useState(false);
+  /** Collapsed cost groups of the BOM table, per quotation (also kept in sessionStorage). */
+  const [collapsedBy, setCollapsedBy] = useState<Record<string, CostCategory[]>>({});
 
   const load = useCallback(async (id?: string | null) => {
     setError('');
     try {
       const [p, list] = await Promise.all([projectApi.get(projectId), quotationApi.list(projectId)]);
+      const target = id && list.some((q) => q.id === id) ? id : list[0]?.id ?? null;
+      const q = target ? await quotationApi.get(target) : null;
       setProject(p);
       setRevisions(list);
-      const target = id && list.some((q) => q.id === id) ? id : list[0]?.id ?? null;
       setSelectedId(target);
-      setQuotation(target ? await quotationApi.get(target) : null);
+      setQuotation(q);
       setPicked({});
+      setVersion(null);
+      if (q) loadVersion(q.designVersionId).then(setVersion);
     } catch (e) { setError(errorText(e)); }
   }, [projectId, setPicked]);
   useEffect(() => { Promise.resolve().then(() => load()); }, [load]);
@@ -57,17 +78,10 @@ export function QuotationPage() {
   const latest = revisions?.[0] ?? null;
   const isLatest = !!quotation && quotation.id === latest?.id;
   const draft = manager && isLatest && quotation?.status === 'DRAFT';
-  const swapMode = draft;
-  const expired = !!quotation?.validUntil && quotation.status === 'SENT' && quotation.validUntil < todayVn();
-  const canCreate = manager && project?.status === 'QUOTING' && (!latest || latest.status === 'REJECTED');
+  const open = isLatest && quotation?.status === 'SENT';
+  const expired = open && !!quotation?.validUntil && quotation.validUntil < todayVn();
   const pickedCount = Object.keys(picked).length;
-  // what-if total (homeowner trying options) or the total after saving staff's pending swaps
   const estimate = useMemo(() => (quotation && pickedCount ? estimateWith(quotation, picked) : null), [quotation, picked, pickedCount]);
-  /** Create (or the next revision) always starts from the latest one, so its requested changes are offered. */
-  const startCreate = async () => {
-    if (latest && quotation?.id !== latest.id) await load(latest.id);
-    setDialog({ kind: 'create' });
-  };
 
   /** Runs an action that returns the updated quotation, then refreshes the revision list. */
   const act = async (fn: () => Promise<Quotation>) => {
@@ -76,18 +90,10 @@ export function QuotationPage() {
     await load(q.id);
   };
 
-  const saveSwaps = async () => {
-    if (!quotation) return;
-    setSaving(true); setActionError('');
-    try {
-      await act(() => quotationApi.update(quotation.id, { replacements: Object.entries(picked).map(([itemId, o]) => ({ itemId, productId: o.id })) }));
-    } catch (e) { setActionError(errorText(e)); } finally { setSaving(false); }
-  };
-
-  const exportCsv = async () => {
-    if (!quotation) return;
+  const download = async (format: QuotationFileFormat) => {
+    if (!quotation || !project) return;
     setActionError('');
-    try { await quotationApi.exportCsv(quotation); } catch (e) { setActionError(errorText(e)); }
+    try { await quotationApi.download(quotation, project.code, format); } catch (e) { setActionError(errorText(e)); }
   };
 
   const back = { to: projectHome(role, projectId), label: t('quotation.back') };
@@ -102,78 +108,86 @@ export function QuotationPage() {
     );
   }
 
-  // ----- no quotation yet -----
+  // ----- no quotation yet (the backend creates it when the homeowner approves the products) -----
   if (!quotation) {
-    const message = canCreate ? t('quotation.empty.staff')
-      : project.status === 'QUOTING' ? t(homeowner ? 'quotation.empty.waitingStaff' : 'quotation.empty.waitingTeam')
-      : t('quotation.empty.notQuoting');
+    const message = project.status !== 'QUOTING' ? t('quotation.empty.notQuoting')
+      : homeowner ? t('quotation.empty.waitingStaff') : t('quotation.empty.waitingTeam');
     return (
       <AppShell wide>
         <PageHeader back={back} title={t('quotation.title')} description={`${project.code} · ${project.title}`} />
-        <EmptyState title={message} action={canCreate ? <Button variant="primary" onClick={() => setDialog({ kind: 'create' })}>{t('quotation.create')}</Button> : undefined} />
-        {dialog?.kind === 'create' && (
-          <TermsDialog title={t('quotation.createTitle')} hint={t('quotation.createHint')} submitLabel={t('quotation.create')}
-            initial={{ discountAmount: '0', note: '', validUntil: '', applyRequestedChanges: false }}
-            onSubmit={(v) => act(() => quotationApi.create(projectId, createBody(v)))} onClose={() => setDialog(null)} />
-        )}
+        <EmptyState title={message} />
       </AppShell>
     );
   }
 
   const q = quotation;
-  const byCategory = groupItems(q.items);
-  const shownTotal = estimate?.total ?? Number(q.total);
-  const shownStatus = estimate ? budgetStatusOf(estimate.total, q.budget) : q.budget.status;
-  const diff = shownTotal - Number(q.budget.max);
-  const requestedCount = latest?.status === 'REJECTED' && latest.id === q.id ? q.requestedChanges.length : 0;
+  const byGroup = groupItems(q.items);
+  const shownTotal = estimate?.total ?? Number(q.totalAmount);
+  const shownStatus = budgetStatusOf(shownTotal, q.budget);
+  const overMax = shownTotal - Number(q.budget.max);
+  const overLimit = shownTotal - Number(q.budget.limit);
+  // anyone may try options while the latest quotation waits for the homeowner; older revisions are read-only
+  const canTry = open;
+  const triedLines = q.items.filter((i) => picked[i.id]).map((i) =>
+    t('quotation.changeLine', { from: i.productName, to: picked[i.id].name, price: formatMoney(picked[i.id].price) }));
+  const groupTotal = Number(q.totalAmount) || 1;
+  const groups = byGroup.map(([g]) => g);
+  const collapsed = collapsedBy[q.id] ?? readCollapsed(q.id) ?? (defaultCollapsed(q.items.length) ? groups : []);
+  const allCollapsed = groups.length > 0 && groups.every((g) => collapsed.includes(g));
+  const setCollapsed = (next: CostCategory[]) => {
+    setCollapsedBy((m) => ({ ...m, [q.id]: next }));
+    writeCollapsed(q.id, next);
+  };
+  const toggleGroup = (g: CostCategory) => setCollapsed(collapsed.includes(g) ? collapsed.filter((x) => x !== g) : [...collapsed, g]);
 
   // exactly one primary action per state
-  // unsaved swaps would not be sent: save or undo them first
-  const primary = draft ? <Button variant="primary" disabled={pickedCount > 0} title={pickedCount > 0 ? t('quotation.saveSwapsFirst') : undefined} onClick={() => setDialog({ kind: 'send' })}>{t('quotation.send')}</Button>
-    : homeowner && isLatest && q.status === 'SENT' ? <Button variant="primary" disabled={expired} title={expired ? t('quotation.expired', { date: formatDate(q.validUntil!) }) : undefined} onClick={() => setDialog({ kind: 'approve' })}>{t('quotation.approve')}</Button>
-    : canCreate ? <Button variant="primary" onClick={startCreate}>{t('quotation.createRevision', { n: (latest?.revisionNo ?? 0) + 1 })}</Button>
+  const primary = draft ? <Button variant="primary" onClick={() => setDialog({ kind: 'send' })}>{t('quotation.send')}</Button>
+    : homeowner && open ? <Button variant="primary" disabled={expired} title={expired ? t('quotation.expired', { date: formatDate(q.validUntil!) }) : undefined} onClick={() => setDialog({ kind: 'accept' })}>{t('quotation.accept')}</Button>
     : null;
   const secondary = (
     <>
-      <Button onClick={exportCsv}><Download aria-hidden className="h-4 w-4" />{t('quotation.exportCsv')}</Button>
-      {draft && <Button onClick={() => setDialog({ kind: 'terms' })}>{t('quotation.edit')}</Button>}
-      {manager && isLatest && q.status === 'SENT' && <Button onClick={() => setDialog({ kind: 'withdraw' })}>{t('quotation.withdraw')}</Button>}
-      {homeowner && isLatest && q.status === 'SENT' && <Button onClick={() => setDialog({ kind: 'reject' })}>{t('quotation.requestChanges')}</Button>}
+      <Button onClick={() => download('csv')}><Download aria-hidden className="h-4 w-4" />{t('quotation.downloadCsv')}</Button>
+      <Button onClick={() => download('pdf')}><Download aria-hidden className="h-4 w-4" />{t('quotation.downloadPdf')}</Button>
+      {draft && <Button onClick={() => setDialog({ kind: 'validUntil' })}>{t('quotation.editValidUntil')}</Button>}
+      {homeowner && open && !expired && <Button onClick={() => setDialog({ kind: 'requestChanges' })}>{t('quotation.requestChanges')}</Button>}
     </>
   );
 
+  const workspaceLink = <Link to={`/projects/${projectId}/workspace`} className="font-semibold underline">{t('quotation.openWorkspace')}</Link>;
+  const banner = !isLatest ? <Banner>{t('quotation.oldRevision', { n: latest?.revisionNo ?? q.revisionNo })}</Banner>
+    : expired || q.status === 'EXPIRED' ? <Banner tone="amber">{q.validUntil ? t('quotation.expired', { date: formatDate(q.validUntil) }) : t('quotation.expiredNoDate')}</Banner>
+    : q.status === 'ACCEPTED' ? <Banner>{t('quotation.acceptedBanner')} <Link to={back.to} className="font-semibold underline">{t('quotation.openHandover')}</Link></Banner>
+    : q.status === 'CHANGES_REQUESTED' ? <Banner tone="amber">{homeowner ? t('quotation.changesRequestedHomeowner') : <>{t('quotation.changesRequestedTeam')} {workspaceLink}</>}</Banner>
+    : q.status === 'SENT' && !homeowner ? <Banner tone="amber">{t('quotation.sentBanner')}</Banner>
+    : q.status === 'DRAFT' ? <Banner tone="amber">{t('quotation.draftBanner')}</Banner>
+    : null;
+
+  const lineNo = new Map(byGroup.flatMap(([, items]) => items).map((item, i) => [item.id, i + 1]));
   return (
     <AppShell wide>
       <PageHeader
         back={back}
-        title={<>{t('quotation.title')} · {t('quotation.revision', { n: q.revisionNo })}</>}
-        chip={<StatusChip kind="quotation" value={q.status} />}
-        description={<>{q.project.code} · {q.project.title}<span className="mx-2 text-slate-300">|</span>{t('quotation.fromDesign', { label: q.designVersion.label || '—' })}</>}
+        title={<>{t('quotation.title')} {q.quotationNo} · {t('quotation.revision', { n: q.revisionNo })}</>}
+        chip={<StatusChip kind="quotation" value={expired ? 'EXPIRED' : q.status} />}
+        description={<>{project.code} · {project.title}<span className="mx-2 text-slate-300">|</span>{t('quotation.fromDesign', { label: version?.label || '—' })}</>}
         primary={primary}
         secondary={secondary}
       />
 
       <div className="mb-5 space-y-3">
-        {expired ? <Banner tone="amber">{t('quotation.expired', { date: formatDate(q.validUntil!) })}</Banner>
-          : q.status === 'APPROVED' ? <Banner>{t('quotation.approvedBanner')}</Banner>
-          : q.status === 'SENT' && !homeowner ? <Banner tone="amber">{t('quotation.sentBanner')}</Banner>
-          : q.status === 'DRAFT' ? <Banner tone="amber">{t('quotation.draftBanner')}</Banner>
-          : null}
+        {banner}
         {actionError && <ErrorState message={actionError} />}
       </div>
 
       <div className="grid items-start gap-5 lg:grid-cols-3">
-        {/* BOM lines, grouped by category */}
+        {/* BOM lines, grouped by cost group */}
         <Card className="lg:col-span-2" bodyClassName="p-0"
           title={t('quotation.lines', { n: q.items.length })}
-          description={<>{q.validUntil ? t('quotation.validUntil', { date: formatDate(q.validUntil) }) : t('quotation.noExpiry')}{q.sentAt && <> · {t('quotation.sentOn', { date: formatDateTime(q.sentAt) })}</>}</>}
-          actions={swapMode && pickedCount > 0 ? (
-            <>
-              <span className="text-xs font-medium text-amber-700">{t('quotation.swapPending', { n: pickedCount })}</span>
-              <Button size="sm" onClick={() => setPicked({})}>{t('quotation.undo')}</Button>
-              <Button size="sm" variant="primary" loading={saving} onClick={saveSwaps}>{t('quotation.saveSwaps')}</Button>
-            </>
-          ) : !swapMode && pickedCount > 0 ? <Button size="sm" onClick={() => setPicked({})}>{t('quotation.resetOptions')}</Button> : undefined}>
+          description={q.validUntil ? t('quotation.validUntil', { date: formatDate(q.validUntil) }) : t('quotation.noExpiry')}
+          actions={<>
+            {pickedCount > 0 && <Button size="sm" onClick={() => setPicked({})}>{t('quotation.resetOptions')}</Button>}
+            {groups.length > 0 && <Button size="sm" variant="ghost" onClick={() => setCollapsed(allCollapsed ? [] : groups)}>{t(allCollapsed ? 'quotation.expandAll' : 'quotation.collapseAll')}</Button>}
+          </>}>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[640px] text-left text-sm">
               <thead className="border-b border-line bg-slate-50/70 text-[13px] text-slate-500">
@@ -185,42 +199,54 @@ export function QuotationPage() {
                   <th scope="col" className="px-4 py-2.5 text-right font-medium">{t('quotation.col.lineTotal')}</th>
                 </tr>
               </thead>
-              {byCategory.map(([category, items]) => (
-                <tbody key={category} className="divide-y divide-slate-100 border-b border-line last:border-b-0">
-                  <tr className="bg-slate-50/40">
-                    <th scope="rowgroup" colSpan={4} className="px-4 py-2 text-[13px] font-semibold text-slate-700">{category}</th>
-                    <td className="px-4 py-2 text-right text-[13px] font-semibold tabular-nums text-slate-700">{formatMoney(items.reduce((s, i) => s + Number(i.lineTotal), 0))}</td>
-                  </tr>
-                  {items.map((item) => {
-                    const pick = picked[item.id];
-                    // staff swaps on their draft; everyone else tries options while the homeowner still has to decide
-                    const canTry = !!item.categoryId && item.elementIds.length > 0 && (swapMode || (isLatest && q.status === 'SENT'));
-                    return (
-                      <tr key={item.id} className="align-top">
-                        <td className="px-4 py-3 tabular-nums text-slate-500">{item.lineNo}</td>
-                        <td className="px-2 py-3">
-                          <p className={`font-medium ${pick ? 'text-slate-400 line-through' : 'text-slate-900'}`}>{item.productName}</p>
-                          <p className="text-xs text-slate-500">{[item.supplierName, item.sku].filter(Boolean).join(' · ')}</p>
-                          {pick && (
-                            <p className="mt-1 text-xs font-medium text-brand">
-                              → {pick.name} · {formatMoney(pick.price)} ({signedMoney((Number(pick.price) - Number(item.unitPrice)) * Number(item.quantity))})
-                            </p>
-                          )}
-                          {canTry && (
-                            <button type="button" onClick={() => setDialog({ kind: 'options', item })}
-                              className="mt-1 inline-flex items-center gap-1 rounded text-xs font-semibold text-brand hover:underline focus-visible:outline-2 focus-visible:outline-brand">
-                              <Sparkles aria-hidden className="h-3.5 w-3.5" />{t('quotation.tryOptions')}
-                            </button>
-                          )}
-                        </td>
-                        <td className="px-2 py-3 text-right tabular-nums text-slate-700">{Number(item.quantity).toLocaleString('en-US')}</td>
-                        <td className="px-2 py-3 text-right tabular-nums text-slate-700">{formatMoney(item.unitPrice)}</td>
-                        <td className="px-4 py-3 text-right font-semibold tabular-nums text-slate-900">{formatMoney(item.lineTotal)}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              ))}
+              {byGroup.map(([group, items]) => {
+                const shut = collapsed.includes(group);
+                const Chevron = shut ? ChevronRight : ChevronDown;
+                return (
+                  <tbody key={group} className="divide-y divide-slate-100 border-b border-line last:border-b-0">
+                    <tr className="bg-slate-50/40">
+                      <th scope="rowgroup" colSpan={4} className="px-4 py-2 text-[13px] font-semibold text-slate-700">
+                        <button type="button" aria-expanded={!shut} onClick={() => toggleGroup(group)}
+                          className="-mx-1 inline-flex items-center gap-1.5 rounded px-1 text-left hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-brand">
+                          <Chevron aria-hidden className="h-4 w-4 text-slate-500" />
+                          {t(`quotation.group.${group}`)}
+                          {shut && <span className="font-normal text-slate-500">· {t('quotation.groupLines', { n: items.length })}</span>}
+                        </button>
+                      </th>
+                      <td className="px-4 py-2 text-right text-[13px] font-semibold tabular-nums text-slate-700">{formatMoney(q.costBreakdown[group] ?? items.reduce((s, i) => s + Number(i.lineTotal), 0))}</td>
+                    </tr>
+                    {!shut && items.map((item) => {
+                      const pick = picked[item.id];
+                      const elementId = version?.elementsByProduct.get(item.productId)?.[0];
+                      return (
+                        <tr key={item.id} className="align-top">
+                          <td className="px-4 py-3 tabular-nums text-slate-500">{lineNo.get(item.id)}</td>
+                          <td className="px-2 py-3">
+                            <p className={`font-medium ${pick ? 'text-slate-400 line-through' : 'text-slate-900'}`}>{item.productName}</p>
+                            {item.supplierName && <p className="text-xs text-slate-500">{item.supplierName}</p>}
+                            {pick && (
+                              <p className="mt-1 text-xs font-medium text-brand">
+                                → {pick.name} · {formatMoney(pick.price)} ({signedMoney((Number(pick.price) - Number(item.unitPrice)) * Number(item.quantity))})
+                              </p>
+                            )}
+                            {canTry && elementId && (
+                              <button type="button" onClick={() => setDialog({ kind: 'options', item, elementId })}
+                                className="mt-1 inline-flex items-center gap-1 rounded text-xs font-semibold text-brand hover:underline focus-visible:outline-2 focus-visible:outline-brand">
+                                <Sparkles aria-hidden className="h-3.5 w-3.5" />{t('quotation.tryOptions')}
+                              </button>
+                            )}
+                          </td>
+                          <td className="px-2 py-3 text-right tabular-nums text-slate-700">
+                            {Number(item.quantity).toLocaleString('en-US')} <span className="text-xs text-slate-500">{t(`quotation.unit.${item.unit}`)}</span>
+                          </td>
+                          <td className="px-2 py-3 text-right tabular-nums text-slate-700">{formatMoney(item.unitPrice)}</td>
+                          <td className="px-4 py-3 text-right font-semibold tabular-nums text-slate-900">{formatMoney(item.lineTotal)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                );
+              })}
             </table>
           </div>
         </Card>
@@ -229,17 +255,18 @@ export function QuotationPage() {
           {/* totals */}
           <Card title={t('quotation.total')}>
             <DetailList items={[
-              { label: t('quotation.subtotal'), value: <span className="tabular-nums">{formatMoney(q.subtotal)}</span> },
-              { label: t('quotation.discount'), value: <span className="tabular-nums">{Number(q.discountAmount) ? `−${formatMoney(q.discountAmount)}` : formatMoney(0)}</span> },
+              { label: t('quotation.productsSubtotal'), value: <span className="tabular-nums">{formatMoney(q.productsSubtotal)}</span> },
+              { label: t('quotation.designFee'), value: <span className="tabular-nums">{formatMoney(q.designFee)}</span> },
             ]} />
             <div className="mt-4 border-t border-line pt-4">
               <p className="text-[13px] text-slate-500">{t('quotation.total')}</p>
-              <p className="text-2xl font-bold tabular-nums text-slate-900">{formatMoney(q.total)}</p>
+              <p className="text-2xl font-bold tabular-nums text-slate-900">{formatMoney(q.totalAmount)}</p>
               {estimate && (
                 <div className="mt-3 rounded-lg bg-brand-soft px-3 py-2">
-                  <p className="text-[13px] font-medium text-brand">{t(swapMode ? 'quotation.afterSave' : 'quotation.whatIf')} · {t('quotation.whatIfChanges', { n: pickedCount })}</p>
+                  <p className="text-[13px] font-medium text-brand">{t('quotation.whatIf')} · {t('quotation.whatIfChanges', { n: pickedCount })}</p>
                   <p className="text-lg font-bold tabular-nums text-slate-900">{formatMoney(estimate.total)}</p>
-                  <p className="text-xs tabular-nums text-slate-600">{signedMoney(estimate.total - Number(q.total))}</p>
+                  <p className="text-xs tabular-nums text-slate-600">{signedMoney(estimate.total - Number(q.totalAmount))}</p>
+                  <p className="mt-1 text-xs text-slate-600">{t('quotation.whatIfNotSaved')}</p>
                 </div>
               )}
             </div>
@@ -247,51 +274,37 @@ export function QuotationPage() {
 
           {/* budget */}
           <Card title={t('quotation.budget')} actions={<StatusChip kind="budget" value={shownStatus} size="sm" />}>
-            <BudgetBar total={shownTotal} min={Number(q.budget.min)} max={Number(q.budget.max)} ceiling={Number(q.budget.ceiling)} />
+            <BudgetBar total={shownTotal} min={Number(q.budget.min)} max={Number(q.budget.max)} limit={Number(q.budget.limit)} />
             <p className="mt-3 text-sm text-slate-700">{t('quotation.budgetRange', { min: formatMoney(q.budget.min), max: formatMoney(q.budget.max) })}</p>
-            <p className="text-xs text-slate-500">{t('quotation.tolerance', { p: Number(q.budget.tolerancePercent), ceiling: formatMoney(q.budget.ceiling) })}</p>
-            <p className={`mt-2 text-sm font-medium ${diff > 0 ? 'text-rose-700' : 'text-emerald-700'}`}>
-              {t(diff > 0 ? 'quotation.overMax' : 'quotation.underMax', { amount: formatMoney(Math.abs(diff)) })}
+            <p className="text-xs text-slate-500">{t('quotation.tolerance', { p: Number(q.budget.tolerancePercent), limit: formatMoney(q.budget.limit) })}</p>
+            <p className={`mt-2 text-sm font-medium ${overMax > 0 ? (overLimit > 0 ? 'text-rose-700' : 'text-amber-700') : 'text-emerald-700'}`}>
+              {t(overMax > 0 ? 'quotation.overMax' : 'quotation.underMax', { amount: formatMoney(Math.abs(overMax)) })}
             </p>
+            {overLimit > 0 && <p className="text-sm font-medium text-rose-700">{t('quotation.overLimit', { amount: formatMoney(overLimit) })}</p>}
+            {estimate && <p className="mt-1 text-xs text-slate-500">{t('quotation.budgetUsesEstimate')}</p>}
           </Card>
 
           {/* cost groups */}
           <Card title={t('quotation.groups')}>
             <ul className="space-y-3">
-              {q.groups.map((g) => (
-                <li key={g.categoryId ?? g.categoryName}>
-                  <div className="flex items-baseline justify-between gap-3 text-sm">
-                    <span className="truncate font-medium text-slate-800">{g.categoryName}</span>
-                    <span className="tabular-nums text-slate-900">{formatMoney(g.subtotal)}</span>
-                  </div>
-                  <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-100" aria-hidden>
-                    <div className="h-full rounded-full bg-brand" style={{ width: `${Math.min(100, Number(g.sharePercent))}%` }} />
-                  </div>
-                  <p className="mt-0.5 text-xs text-slate-500">{t('quotation.groupLine', { lines: t('quotation.lines', { n: g.lineCount }), share: g.sharePercent })}</p>
-                </li>
-              ))}
+              {COST_GROUPS.filter((g) => g === 'DESIGN_FEE' || Number(q.costBreakdown[g] ?? 0) > 0).map((g) => {
+                const amount = Number(q.costBreakdown[g] ?? 0);
+                const share = Math.round((amount / groupTotal) * 1000) / 10;
+                return (
+                  <li key={g}>
+                    <div className="flex items-baseline justify-between gap-3 text-sm">
+                      <span className="truncate font-medium text-slate-800">{t(`quotation.group.${g}`)}</span>
+                      <span className="tabular-nums text-slate-900">{formatMoney(amount)}</span>
+                    </div>
+                    <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-100" aria-hidden>
+                      <div className="h-full rounded-full bg-brand" style={{ width: `${Math.min(100, share)}%` }} />
+                    </div>
+                    <p className="mt-0.5 text-xs text-slate-500">{t('quotation.groupShare', { share })}</p>
+                  </li>
+                );
+              })}
             </ul>
           </Card>
-
-          {q.note && (
-            <Card title={t('quotation.noteLabel')}>
-              <p className="whitespace-pre-line text-sm text-slate-700">{q.note}</p>
-            </Card>
-          )}
-
-          {q.status === 'REJECTED' && (
-            <Card title={t('quotation.rejected')} description={q.respondedAt && q.respondedBy ? t('quotation.respondedOn', { date: formatDateTime(q.respondedAt), name: q.respondedBy.fullName }) : undefined}>
-              {q.rejectionReason && <p className="whitespace-pre-line text-sm text-slate-700">{q.rejectionReason}</p>}
-              {q.requestedChanges.length > 0 && (
-                <div className="mt-3 border-t border-line pt-3">
-                  <h3 className="mb-1.5 text-[13px] font-medium text-slate-700">{t('quotation.requestedChanges')}</h3>
-                  <ul className="space-y-1 text-[13px] text-slate-700">
-                    {q.requestedChanges.map((c) => <li key={c.itemId}>{t('quotation.changeLine', { from: c.currentProductName, to: c.productName, price: formatMoney(c.unitPrice) })}</li>)}
-                  </ul>
-                </div>
-              )}
-            </Card>
-          )}
 
           {revisions.length > 1 && (
             <Card title={t('quotation.history')} bodyClassName="p-2">
@@ -300,7 +313,7 @@ export function QuotationPage() {
                   <li key={r.id}>
                     <button type="button" onClick={() => load(r.id)} aria-current={r.id === q.id ? 'true' : undefined}
                       className={`flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-slate-50 ${r.id === q.id ? 'bg-slate-50 font-semibold' : ''}`}>
-                      <span>{t('quotation.revision', { n: r.revisionNo })} · <span className="tabular-nums">{formatMoney(r.total)}</span></span>
+                      <span>{t('quotation.revision', { n: r.revisionNo })} · <span className="tabular-nums">{formatMoney(r.totalAmount)}</span></span>
                       <StatusChip kind="quotation" value={r.status} size="sm" />
                     </button>
                   </li>
@@ -312,44 +325,32 @@ export function QuotationPage() {
       </div>
 
       {/* dialogs */}
-      {dialog?.kind === 'create' && (
-        <TermsDialog title={t('quotation.createTitle')} hint={t('quotation.createHint')} requestedCount={requestedCount}
-          submitLabel={t('quotation.createRevision', { n: (latest?.revisionNo ?? 0) + 1 })}
-          initial={{ discountAmount: latest?.discountAmount ?? '0', note: q.note ?? '', validUntil: '', applyRequestedChanges: requestedCount > 0 }}
-          onSubmit={(v) => act(() => quotationApi.create(projectId, createBody(v)))} onClose={() => setDialog(null)} />
-      )}
-      {dialog?.kind === 'terms' && (
-        <TermsDialog title={t('quotation.editTitle')} submitLabel={t('common.save')}
-          initial={{ discountAmount: q.discountAmount, note: q.note ?? '', validUntil: q.validUntil ?? '', applyRequestedChanges: false }}
-          // pending swaps are saved together with the terms instead of being dropped by the reload
-          onSubmit={(v) => act(() => quotationApi.update(q.id, {
-            discountAmount: v.discountAmount, note: v.note || null, validUntil: v.validUntil || null,
-            ...(pickedCount ? { replacements: Object.entries(picked).map(([itemId, o]) => ({ itemId, productId: o.id })) } : {}),
-          }))}
-          onClose={() => setDialog(null)} />
+      {dialog?.kind === 'validUntil' && (
+        <ValidUntilDialog initial={q.validUntil} onClose={() => setDialog(null)}
+          onSubmit={(v) => act(() => quotationApi.updateValidUntil(q.id, v))} />
       )}
       {dialog?.kind === 'send' && (
-        <ConfirmDialog title={t('quotation.send')} body={t('quotation.sendConfirm', { name: project.customer.fullName })} confirm={t('quotation.send')}
-          onConfirm={() => act(() => quotationApi.send(q.id))} onClose={() => setDialog(null)} />
-      )}
-      {dialog?.kind === 'withdraw' && (
-        <ConfirmDialog title={t('quotation.withdraw')} body={t('quotation.withdrawConfirm')} confirm={t('quotation.withdraw')}
-          onConfirm={() => act(() => quotationApi.withdraw(q.id))} onClose={() => setDialog(null)} />
-      )}
-      {dialog?.kind === 'approve' && (
-        <ConfirmDialog title={t('quotation.approve')} confirm={t('quotation.approve')}
+        <ConfirmDialog title={t('quotation.send')} confirm={t('quotation.send')} onClose={() => setDialog(null)}
           body={<>
-            <p>{t('quotation.approveConfirm', { total: formatMoney(q.total) })}</p>
-            {pickedCount > 0 && <p className="rounded-lg bg-amber-50 px-3 py-2 text-amber-900">{t('quotation.approveIgnoresTried')}</p>}
+            <p>{t('quotation.sendConfirm', { name: project.customer.fullName })}</p>
+            <p className="text-slate-500">{q.validUntil ? t('quotation.validUntil', { date: formatDate(q.validUntil) }) : t('quotation.sendDefaultExpiry')}</p>
           </>}
-          onConfirm={() => act(() => quotationApi.approve(q.id))} onClose={() => setDialog(null)} />
+          onConfirm={() => act(() => quotationApi.send(q.id))} />
       )}
-      {dialog?.kind === 'reject' && (
-        <RejectDialog triedCount={pickedCount} onClose={() => setDialog(null)}
-          onSubmit={(reason, include) => act(() => quotationApi.reject(q.id, reason, include ? Object.entries(picked).map(([itemId, o]) => ({ itemId, productId: o.id })) : []))} />
+      {dialog?.kind === 'accept' && (
+        <ConfirmDialog title={t('quotation.accept')} confirm={t('quotation.accept')} onClose={() => setDialog(null)}
+          body={<>
+            <p>{t('quotation.acceptConfirm', { total: formatMoney(q.totalAmount) })}</p>
+            {pickedCount > 0 && <p className="rounded-lg bg-amber-50 px-3 py-2 text-amber-900">{t('quotation.acceptIgnoresTried')}</p>}
+          </>}
+          onConfirm={() => act(() => quotationApi.accept(q.id))} />
+      )}
+      {dialog?.kind === 'requestChanges' && (
+        <RequestChangesDialog triedLines={triedLines} onClose={() => setDialog(null)}
+          onSubmit={(reason) => act(() => quotationApi.requestChanges(q.id, reason))} />
       )}
       {dialog?.kind === 'options' && (
-        <OptionsDialog item={dialog.item} picked={picked[dialog.item.id]} mode={swapMode ? 'swap' : 'try'} onClose={() => setDialog(null)}
+        <OptionsDialog item={dialog.item} elementId={dialog.elementId} picked={picked[dialog.item.id]} onClose={() => setDialog(null)}
           onPick={(o) => setPicked((x) => {
             const next = { ...x };
             if (o) next[dialog.item.id] = o; else delete next[dialog.item.id];
@@ -360,31 +361,40 @@ export function QuotationPage() {
   );
 }
 
-function createBody(v: TermsValue) {
-  return {
-    discountAmount: v.discountAmount,
-    ...(v.note ? { note: v.note } : {}),
-    ...(v.validUntil ? { validUntil: v.validUntil } : {}),
-    applyRequestedChanges: v.applyRequestedChanges,
-  };
+/**
+ * Label of the approved version and its design items per product. Quotation lines don't carry the design item yet, so
+ * "Try options" matches lines to items by product (same product → same category, so the same options). Failing to load
+ * only hides "Try options".
+ */
+async function loadVersion(versionId: string): Promise<VersionInfo> {
+  try {
+    const v = await designApi.getVersion(versionId);
+    const elementsByProduct = new Map<string, string[]>();
+    for (const e of v.elements) {
+      if (e.product) elementsByProduct.set(e.product.id, [...(elementsByProduct.get(e.product.id) ?? []), e.id]);
+    }
+    return { label: v.label, elementsByProduct };
+  } catch {
+    return { label: '', elementsByProduct: new Map() };
+  }
 }
 
-/** Lines in category order (the backend already sorts them by category, then product). */
-function groupItems(items: QuotationItem[]): [string, QuotationItem[]][] {
-  const groups = new Map<string, QuotationItem[]>();
-  for (const item of items) groups.set(item.categoryName, [...(groups.get(item.categoryName) ?? []), item]);
-  return [...groups.entries()];
+/** Lines in cost-group order (the backend sorts them by group, then name). */
+function groupItems(items: QuotationItem[]): [CostCategory, QuotationItem[]][] {
+  const groups = new Map<CostCategory, QuotationItem[]>();
+  for (const item of items) groups.set(item.costCategory, [...(groups.get(item.costCategory) ?? []), item]);
+  return COST_GROUPS.flatMap((g) => (g !== 'DESIGN_FEE' && groups.has(g) ? [[g, groups.get(g)!] as [CostCategory, QuotationItem[]]] : []));
 }
 
-/** Horizontal scale from 0 to a bit past the tolerance ceiling: budget band, tolerance band and the total's marker. */
-function BudgetBar({ total, min, max, ceiling }: { total: number; min: number; max: number; ceiling: number }) {
-  const end = Math.max(ceiling, total) * 1.08 || 1;
+/** Horizontal scale from 0 to a bit past the budget limit: budget band, tolerance band and the total's marker. */
+function BudgetBar({ total, min, max, limit }: { total: number; min: number; max: number; limit: number }) {
+  const end = Math.max(limit, total) * 1.08 || 1;
   const pct = (v: number) => `${Math.min(100, Math.max(0, (v / end) * 100))}%`;
-  const color = total < min ? 'bg-sky-500' : total <= max ? 'bg-emerald-600' : total <= ceiling ? 'bg-amber-500' : 'bg-rose-600';
+  const color = total < min ? 'bg-sky-500' : total <= max ? 'bg-emerald-600' : total <= limit ? 'bg-amber-500' : 'bg-rose-600';
   return (
     <div aria-hidden className="relative h-3 rounded-full bg-slate-100">
       <div className="absolute inset-y-0 rounded-full bg-emerald-100" style={{ left: pct(min), width: `calc(${pct(max)} - ${pct(min)})` }} />
-      <div className="absolute inset-y-0 bg-amber-100" style={{ left: pct(max), width: `calc(${pct(ceiling)} - ${pct(max)})` }} />
+      <div className="absolute inset-y-0 bg-amber-100" style={{ left: pct(max), width: `calc(${pct(limit)} - ${pct(max)})` }} />
       <div className={`absolute -top-1 h-5 w-1.5 -translate-x-1/2 rounded-full ${color}`} style={{ left: pct(total) }} />
     </div>
   );

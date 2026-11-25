@@ -165,7 +165,7 @@ export const AcceptInvitation: React.FC = () => {
             </div>
 
             <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-              You're invited to ArchSync AI
+              You're invited to ArcnSync AI
             </h1>
             <p className="text-xs text-slate-500 mt-1">
               Set a password to activate your account.

@@ -13,10 +13,12 @@ export interface DesignApi {
   getVersion(versionId: string): Promise<DesignVersion>;
   uploadDxf(projectId: string, input: UploadInput): Promise<DesignVersion>;
   listComments(versionId: string): Promise<Comment[]>;
-  createComment(versionId: string, input: { content: string; floor_id: string | null; design_element_id: string | null; pin_position: { x: number; y: number } | null }): Promise<void>;
+  /** proposed_product_id: homeowner only, on an item comment at Products (else 422 INVALID_PROPOSED_PRODUCT). */
+  createComment(versionId: string, input: { content: string; floor_id: string | null; design_element_id: string | null; pin_position: { x: number; y: number } | null; proposed_product_id?: string | null }): Promise<void>;
   replyComment(versionId: string, parentId: string, content: string): Promise<void>;
-  acceptComment(commentId: string): Promise<void>;
-  reopenComment(commentId: string, reply: string): Promise<void>;
+  /** viewVersionId: the version on screen, so the backend answers with the thread as seen from it. */
+  acceptComment(commentId: string, viewVersionId: string): Promise<void>;
+  reopenComment(commentId: string, reply: string, viewVersionId: string): Promise<void>;
   requestChanges(versionId: string, content: string): Promise<void>;
   /** Duyệt layout hoặc sản phẩm (theo loại version). Trả bản đã duyệt. */
   approve(versionId: string): Promise<VersionSummary>;
@@ -28,12 +30,14 @@ export interface DesignApi {
   /** Replaces the whole draft of the room and puts it back to DRAFT. */
   saveRoomDraft(versionId: string, roomId: string, input: RoomDraftInput): Promise<void>;
   markRoomDraftReady(versionId: string, roomId: string): Promise<void>;
+  /** Draft owner or Lead throws away the room's draft (product swaps and DXF moves). 204. */
+  deleteRoomDraft(versionId: string, roomId: string): Promise<void>;
   /** Member: the edited DXF of their rooms goes into the room drafts. No version is made. floorId is required on a multi-floor version. */
   uploadRoomDrafts(versionId: string, file: File, floorId: string | null, onProgress?: (fraction: number) => void): Promise<RoomDraftUploadResult>;
   /** Path of the DXF the Member last uploaded into the room's draft (for downloadFile). */
   roomDraftFilePath(versionId: string, roomId: string): string;
   /** Designer: comment needed no drawing change (e.g. a question). */
-  addressComment(commentId: string, addressedInVersionId: string): Promise<void>;
+  addressComment(commentId: string, addressedInVersionId: string, viewVersionId: string): Promise<void>;
   compare(versionId: string, withId: string, floorId?: string): Promise<VersionComparison>;
   /** Đường dẫn model 3D của món theo sản phẩm (route theo dự án, mọi vai). */
   elementModelPath(elementId: string, productId: string): string;
@@ -79,6 +83,7 @@ const summary = (v: Raw): VersionSummary => ({
   revision_type: v.revisionType, source_type: v.sourceType, status: v.status, title: v.title, description: v.description,
   parent_version_id: v.parentVersionId, created_at: v.createdAt, created_by_name: v.createdBy?.fullName ?? '',
   floors: (v.floors ?? []).map(floorRef),
+  awaiting_designer: v.awaitingDesigner ?? false,
 });
 
 const detail = (v: Raw): DesignVersion => ({
@@ -90,10 +95,14 @@ const detail = (v: Raw): DesignVersion => ({
 });
 
 const ref = (r: Raw): ElementRef | null => r && { id: r.id, floor_id: r.floorId, dxf_handle: r.dxfHandle, block_name: r.blockName, name: r.name };
+const proposed = (p: Raw) => p && {
+  id: p.id, name: p.name, price: p.price, supplier_name: p.supplier?.companyName ?? '', thumbnail_url: p.thumbnailUrl ?? null, available: p.available ?? true,
+};
 const reply = (r: Raw): CommentReply => ({ id: r.id, design_version_id: r.designVersionId, content: r.content, author: author(r.author), created_at: r.createdAt });
 const comment = (c: Raw): Comment => ({
   ...reply(c), version_label: c.versionLabel, kind: c.kind, status: c.status, floor_id: c.floorId, room_id: c.roomId ?? null, pin_position: c.pinPosition,
   element: ref(c.element), current_element: ref(c.currentElement), addressed_in_version_id: c.addressedInVersionId,
+  proposed_product: proposed(c.proposedProduct) ?? null,
   replies: (c.replies ?? []).map(reply),
 });
 const compared = (e: Raw): ComparedElement => ({ id: e.id, floor_id: e.floorId, dxf_handle: e.dxfHandle, name: e.name });
@@ -154,20 +163,21 @@ export const designApi: DesignApi = {
       ...(c.design_element_id ? { designElementId: c.design_element_id } : {}),
       ...(c.floor_id ? { floorId: c.floor_id } : {}),
       ...(c.pin_position && !c.design_element_id ? { pinPosition: c.pin_position } : {}),
+      ...(c.proposed_product_id && c.design_element_id ? { proposedProductId: c.proposed_product_id } : {}),
     }));
   },
   async replyComment(versionId, parentId, content) {
     await apiRequest(`/design-versions/${versionId}/comments`, post({ content, parentCommentId: parentId }));
   },
-  async acceptComment(id) { await apiRequest(`/comments/${id}/status`, post({ action: 'ACCEPT' }, 'PATCH')); },
-  async reopenComment(id, text) { await apiRequest(`/comments/${id}/status`, post({ action: 'REOPEN', reply: text }, 'PATCH')); },
+  async acceptComment(id, viewVersionId) { await apiRequest(`/comments/${id}/status${qs({ viewVersionId })}`, post({ action: 'ACCEPT' }, 'PATCH')); },
+  async reopenComment(id, text, viewVersionId) { await apiRequest(`/comments/${id}/status${qs({ viewVersionId })}`, post({ action: 'REOPEN', reply: text }, 'PATCH')); },
   async requestChanges(id, content) { await apiRequest(`/design-versions/${id}/revision-requests`, post({ content })); },
   approve: async (id) => summary(await apiRequest<Raw>(`/design-versions/${id}/approval`, { method: 'POST' })),
   async listProductOptions(elementId) {
     const r = await apiRequest<Raw>(`/design-elements/${elementId}/product-options?limit=100`);
     return r.items.map((o: Raw): ProductOption => ({ ...product(o, o.id), fit: o.fit, current: o.current }));
   },
-  async addressComment(id, addressedInVersionId) { await apiRequest(`/comments/${id}/status`, post({ action: 'ADDRESS', addressedInVersionId }, 'PATCH')); },
+  async addressComment(id, addressedInVersionId, viewVersionId) { await apiRequest(`/comments/${id}/status${qs({ viewVersionId })}`, post({ action: 'ADDRESS', addressedInVersionId }, 'PATCH')); },
   async saveEdits(id, { title, revision_type, edits, choose_all_remaining, addressed_comment_ids, room_draft_ids }) {
     const selections = edits.filter((e) => e.product_id).map((e) => ({ elementId: e.element_id, productId: e.product_id }));
     const overrides = edits.filter((e) => e.overrides).map((e) => ({ elementId: e.element_id, overrides: e.overrides }));
@@ -187,6 +197,7 @@ export const designApi: DesignApi = {
     }, 'PUT'));
   },
   async markRoomDraftReady(id, roomId) { await apiRequest(`/design-versions/${id}/room-drafts/${roomId}`, post({ status: 'READY' }, 'PATCH')); },
+  async deleteRoomDraft(id, roomId) { await apiRequest(`/design-versions/${id}/room-drafts/${roomId}`, { method: 'DELETE' }); },
   async uploadRoomDrafts(id, file, floorId, onProgress) {
     const form = new FormData();
     form.append('file', file, file.name);

@@ -14,7 +14,11 @@ import { NotOnTeam } from './NotOnTeam';
 import { HomeownerProjectView } from './HomeownerProjectView';
 import { RoomAssignmentsTab } from './RoomAssignmentsTab';
 import { ReviewCard } from '@/features/reviews/ReviewCard';
-import { conceptStep, nextFor, useLatestVersions } from './projectView';
+import { HandoverCard } from '@/features/quotations/HandoverCard';
+import { nextFor, useLatestVersions } from './projectView';
+import { ConceptCard } from '@/features/concepts/ConceptCard';
+import { useProjectConcepts } from '@/features/concepts/useProjectConcepts';
+import { conceptSummary } from '@/features/concepts/conceptApi';
 import { CreateContractModal } from './CreateContractModal';
 import { EditProjectModal } from './EditProjectModal';
 import type { ContractToast } from './CreateContractModal';
@@ -84,6 +88,8 @@ export function ProjectDetail() {
 
   const forVersions = useMemo(() => (designer && project ? [project] : null), [designer, project]);
   const { latest, ready } = useLatestVersions(forVersions, 'designer');
+  // the homeowner's view loads its own concepts
+  const conceptData = useProjectConcepts(staff || designer ? project : null);
 
   // The kickoff is not idempotent: the ref blocks a second click before the loading state renders.
   const kickoffRunning = useRef(false);
@@ -141,23 +147,33 @@ export function ProjectDetail() {
       onProjectChanged={() => void load()} className={className} />
   );
   const open = () => navigate(`/projects/${project.id}/workspace`);
+  const projectRole = designer ? resolveProjectRole(project, userId) : null;
+  // In design before a concept is chosen, the Lead's next step is the concept, not the layout.
+  const conceptNext = projectRole === 'LEAD' && conceptData.conceptDone === false && conceptData.concepts
+    ? t(conceptSummary(conceptData.concepts).submittedCount ? 'concepts.nextLeadWaiting' : 'concepts.nextLead')
+    : '';
   // one sentence for this page and the project's card; a designer waits for the version check
   const next = waitingDeposit
     ? t('nextStep.staffWaitingDeposit')
-    : designer && !ready ? '' : nextFor(role, project, designer ? latest(project.id) : undefined);
+    : conceptNext || (designer && !ready ? '' : nextFor(role, project, designer ? latest(project.id) : undefined));
 
   // quotation stage: staff's next step is the quotation, the workspace stays one click away
   const quoting = project.status === 'QUOTING' || project.status === 'COMPLETED';
   const quotationFirst = staff && project.status === 'QUOTING';
   const openQuotation = () => navigate(`/projects/${project.id}/quotation`);
   const workspaceLabel = t(role === 'admin' ? 'projectDetail.openViewOnly' : 'projectDetail.openWorkspace');
-  const secondary = quotationFirst
+  // In design before a concept is chosen the Lead's main action is the concept card on this page; the workspace stays one click away.
+  const conceptFirst = projectRole === 'LEAD' && project.status === 'IN_DESIGN' && conceptData.conceptDone === false;
+  const toConcepts = () => document.getElementById('concept')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const secondary = quotationFirst || conceptFirst
     ? (workspace ? <Button onClick={open}>{workspaceLabel}</Button> : undefined)
     : quoting ? <Button onClick={openQuotation}>{t('projectDetail.openQuotation')}</Button> : undefined;
 
   // exactly one primary action, following the next step
   const primary = quotationFirst
     ? <Button variant="primary" onClick={openQuotation}>{t('projectDetail.openQuotation')}</Button>
+    : conceptFirst
+    ? <Button variant="primary" onClick={toConcepts}>{t('projectDetail.workOnConcepts')}</Button>
     : workspace
     ? <Button variant="primary" onClick={open}>{workspaceLabel}</Button>
     : canKickoff
@@ -191,7 +207,7 @@ export function ProjectDetail() {
 
       {project.status !== 'CANCELLED' && (
         <Card className="mb-5" bodyClassName="px-4 py-4 sm:px-6">
-          <Stepper steps={tList('steps.project')} current={stepIndex(project.status)} optional={conceptStep(2)} />
+          <Stepper steps={tList('steps.project')} current={stepIndex(project.status)} />
         </Card>
       )}
 
@@ -204,6 +220,8 @@ export function ProjectDetail() {
         </div>
       )}
 
+      {/* after the homeowner accepts the quotation: Lead prepares the package, staff and members follow it */}
+      {quoting && <HandoverCard className="mb-5" project={project} role={role} projectRole={projectRole} onChanged={() => void load()} />}
 
       <div className="grid items-start gap-5 lg:grid-cols-2">
         {/* a new project has no home until the site survey is confirmed: the survey takes the Home card's place */}
@@ -260,6 +278,8 @@ export function ProjectDetail() {
         </Card>
       </div>
       {a && showSurvey && surveyCard('mt-5')}
+      <ConceptCard className="mt-5" projectId={project.id} projectStatus={project.status} role={role} projectRole={projectRole}
+        data={conceptData} />
       <div className="mt-5">
         <RoomAssignmentsTab projectId={project.id} leadDesignerId={project.designer?.id ?? null} apartmentRooms={project.apartment?.rooms} floors={project.apartment?.floors} leadName={project.designer?.fullName} members={project.members} closed={project.status === 'COMPLETED' || project.status === 'CANCELLED'} reloadKey={roomsKey} />
       </div>

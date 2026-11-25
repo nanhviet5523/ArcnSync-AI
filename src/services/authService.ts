@@ -1,7 +1,9 @@
 import type { User, UserRole } from '@/types/role';
+import { runSignOutListeners } from './signOut.ts';
 
-const API_BASE_URL =
-  import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
+// `?.`: under plain `node --test` import.meta.env does not exist.
+export const API_BASE_URL =
+  import.meta.env?.VITE_API_URL ?? 'http://localhost:3000';
 
 const SESSION_KEY = 'archsync-auth-session';
 const LEGACY_DEMO_SESSION_KEY = 'archsync-demo-session';
@@ -350,6 +352,8 @@ function dispatchAuthChange(): void {
 }
 
 export function clearAuthSession(): void {
+  // Per-user caches (chat...) go first, whatever happens next.
+  runSignOutListeners();
   if (typeof window === 'undefined') return;
 
   for (const storage of [
@@ -746,15 +750,24 @@ export function fetchBlobUrl(path: string): Promise<string> {
   }
   return p;
 }
+/** Free one blob URL made by fetchBlobUrl (a preview that unmounts). The next fetchBlobUrl(path) downloads again. */
+export function revokeBlobUrl(path: string) {
+  const p = blobCache.get(path);
+  if (!p) return;
+  blobCache.delete(path);
+  p.then(URL.revokeObjectURL, () => undefined);
+}
 export function revokeBlobUrls() {
   for (const p of blobCache.values()) p.then(URL.revokeObjectURL, () => undefined);
   blobCache.clear();
 }
 
-export async function downloadFile(path: string, fallbackName: string) {
+/** Downloads with the token. The server's file name wins unless `preferFallbackName` is set. */
+export async function downloadFile(path: string, fallbackName: string, opts: { preferFallbackName?: boolean } = {}) {
   const res = await apiFetch(path);
   if (!res.ok) throw buildApiError(res.status, await res.json().catch(() => null), 'Không tải được file');
-  const name = /filename="?([^";]+)"?/.exec(res.headers.get('Content-Disposition') ?? '')?.[1] ?? fallbackName;
+  const name = opts.preferFallbackName ? fallbackName
+    : /filename="?([^";]+)"?/.exec(res.headers.get('Content-Disposition') ?? '')?.[1] ?? fallbackName;
   const a = document.createElement('a');
   a.href = URL.createObjectURL(await res.blob());
   a.download = name;

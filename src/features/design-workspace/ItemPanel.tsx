@@ -29,6 +29,8 @@ interface Props {
   onTakeOver?: () => void;
   /** Old → new product of this item, shown during Compare before merge. */
   change?: ReactNode;
+  /** Homeowner at Products: suggest an alternative in an item comment (can('suggestProduct')). Nothing changes yet. */
+  onSuggest?: (p: ProductOption) => void;
 }
 
 /** Product image behind auth: fetched as a blob URL. */
@@ -46,7 +48,7 @@ export function Thumb({ path, className = 'h-10 w-10' }: { path: string | null; 
 
 const ALT_SHOWN = 6;
 
-export function ItemPanel({ role, element: e, elements, editable, onSelect, onChange, onChooseAllRemaining, onBrowse, canComment, leadTools, note, noteAvatar, onTakeOver, change }: Props) {
+export function ItemPanel({ role, element: e, elements, editable, onSelect, onChange, onChooseAllRemaining, onBrowse, canComment, leadTools, note, noteAvatar, onTakeOver, change, onSuggest }: Props) {
   const designer = role === 'designer';
   const [options, setOptions] = useState<ProductOption[] | null>(null);
   const [error, setError] = useState('');
@@ -150,7 +152,8 @@ export function ItemPanel({ role, element: e, elements, editable, onSelect, onCh
                   <p className="truncate text-slate-500">{p.supplier_name}</p>
                   <div className="mt-auto flex items-center justify-between gap-1 pt-1.5">
                     <span className="font-semibold tabular-nums text-slate-900">{formatVnd(p.unit_price)}</span>
-                    {editable && <Button size="sm" className="h-7 px-2 text-xs" onClick={() => onChange({ product: p, choice: 'CHOSEN' })}>{t('ws.swap')}</Button>}
+                    {editable ? <Button size="sm" className="h-7 px-2 text-xs" onClick={() => onChange({ product: p, choice: 'CHOSEN' })}>{t('ws.swap')}</Button>
+                      : onSuggest && <Button size="sm" className="h-7 px-2 text-xs" onClick={() => onSuggest(p)}>{t('ws.suggestThis')}</Button>}
                   </div>
                 </li>
               ))}
