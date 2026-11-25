@@ -165,7 +165,10 @@ export const siteSurveyApi = {
   /** POST /site-surveys/:id/rejection: the homeowner sends the result back with a reason → REJECTED. */
   reject: (id: string, reason: string) => apiRequest<SiteSurvey>(`${survey(id)}/rejection`, json('POST', { reason })),
 
-  /** POST /site-survey-floors/:id/photos (multipart `files`): up to 10 per request, PNG/JPEG/WebP ≤ 10 MB, 30 per floor. */
+  /**
+   * POST /site-survey-floors/:id/photos (multipart `files`): up to 10 per request, PNG/JPEG/WebP ≤ 10 MB, 30 per floor.
+   * Returns EVERY photo of the floor after the upload, not only the new ones.
+   */
   async uploadPhotos(floorId: string, files: File[], onProgress?: (fraction: number) => void): Promise<SurveyPhoto[]> {
     const form = new FormData();
     files.forEach((file) => form.append('files', file));

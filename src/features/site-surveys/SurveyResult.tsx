@@ -40,9 +40,10 @@ function PhotoThumb({ floorId, photo, onDelete }: { floorId: string; photo: Surv
   );
 }
 
-function FloorPhotos({ floor, editable, onChange, onMessage }: {
+function FloorPhotos({ floor, editable, onChange, onStale, onMessage }: {
   floor: SurveyFloor; editable: boolean;
   onChange: (photos: SurveyPhoto[]) => void;
+  onStale: () => Promise<void>;
   onMessage: (tone: 'success' | 'error', message: string) => void;
 }) {
   const input = useRef<HTMLInputElement>(null);
@@ -56,17 +57,16 @@ function FloorPhotos({ floor, editable, onChange, onMessage }: {
     const bad = files.find((f) => !PHOTO_TYPES.includes(f.type) || f.size > MAX_PHOTO_BYTES);
     if (bad) { onMessage('error', t('siteSurvey.photoBadFile', { name: bad.name })); return; }
     if (files.length > left) { onMessage('error', t('siteSurvey.photoTooMany', { left })); return; }
-    let photos = floor.photos;
     let added = 0;
     try {
       // the backend takes at most 10 files per request
       for (let i = 0; i < files.length; i += MAX_PHOTOS_PER_UPLOAD) {
         const chunk = files.slice(i, i + MAX_PHOTOS_PER_UPLOAD);
         setProgress(i / files.length);
-        const created = await siteSurveyApi.uploadPhotos(floor.id, chunk, (f) => setProgress((i + f * chunk.length) / files.length));
-        photos = [...photos, ...created];
-        added += created.length;
-        onChange(photos);
+        // the response is every photo of the floor (not just the new ones): it replaces the list
+        const all = await siteSurveyApi.uploadPhotos(floor.id, chunk, (f) => setProgress((i + f * chunk.length) / files.length));
+        added += chunk.length;
+        onChange(all);
       }
       onMessage('success', t('siteSurvey.done.photosAdded', { n: added }));
     } catch (e) {
@@ -86,7 +86,12 @@ function FloorPhotos({ floor, editable, onChange, onMessage }: {
       onChange(floor.photos.filter((p) => p.id !== photo.id));
       onMessage('success', t('siteSurvey.done.photoDeleted'));
     } catch (e) {
-      onMessage('error', surveyErrorText(e));
+      const code = (e as { code?: string }).code;
+      // the photo (or the floor, after a re-measure) is already gone: show what the server has now
+      if (code === 'SURVEY_PHOTO_NOT_FOUND' || code === 'SITE_SURVEY_FLOOR_NOT_FOUND') {
+        onMessage('error', t('siteSurvey.photoGone'));
+        await onStale();
+      } else onMessage('error', surveyErrorText(e));
     } finally {
       setDeleting(false);
       setPending(null);
@@ -128,10 +133,12 @@ function FloorPhotos({ floor, editable, onChange, onMessage }: {
 }
 
 /** Measured home details and every floor with its rooms and photos. The Lead can add and delete photos while `photosEditable`. */
-export function SurveyResult({ survey, photosEditable, onFloorPhotos, onMessage }: {
+export function SurveyResult({ survey, photosEditable, onFloorPhotos, onStale, onMessage }: {
   survey: SiteSurvey;
   photosEditable: boolean;
   onFloorPhotos: (floorId: string, photos: SurveyPhoto[]) => void;
+  /** The shown photos no longer match the server (e.g. DELETE answered 404): reload the survey. */
+  onStale: () => Promise<void>;
   onMessage: (tone: 'success' | 'error', message: string) => void;
 }) {
   if (!survey.floors.length) return <p className="text-sm text-slate-500">{t('siteSurvey.noResult')}</p>;
@@ -170,7 +177,7 @@ export function SurveyResult({ survey, photosEditable, onFloorPhotos, onMessage 
                 </tbody>
               </table>
             ) : <p className="mt-2 text-xs text-slate-500">{t('siteSurvey.noRooms')}</p>}
-            <FloorPhotos floor={f} editable={photosEditable} onChange={(photos) => onFloorPhotos(f.id, photos)} onMessage={onMessage} />
+            <FloorPhotos floor={f} editable={photosEditable} onChange={(photos) => onFloorPhotos(f.id, photos)} onStale={onStale} onMessage={onMessage} />
           </section>
         ))}
       </div>

@@ -49,6 +49,11 @@ export function SiteSurveyCard({ project, viewer, canCancel = viewer !== 'member
     finally { setLoading(false); }
   }, [project.id]);
   useEffect(() => { Promise.resolve().then(load); }, [load]);
+  /** Quiet re-sync with the server (no loading state): the shown photos were out of date. */
+  const refresh = async () => {
+    try { setSurveys(await siteSurveyApi.listByProject(project.id)); }
+    catch (e) { setMessage({ tone: 'error', text: surveyErrorText(e) }); }
+  };
 
   // newest first: the first one is the current survey (possibly cancelled)
   const survey = surveys?.[0] ?? null;
@@ -57,10 +62,10 @@ export function SiteSurveyCard({ project, viewer, canCancel = viewer !== 'member
   const say = (tone: 'success' | 'error', text: string) => setMessage({ tone, text });
   const replace = (next: SiteSurvey) => setSurveys((list) => (list?.some((s) => s.id === next.id) ? list.map((s) => (s.id === next.id ? next : s)) : [next, ...(list ?? [])]));
   const done = (next: SiteSurvey, key: string) => { replace(next); setDialog(''); say('success', t(`siteSurvey.done.${key}`)); };
-  const setFloorPhotos = (floorId: string, photos: SurveyPhoto[]) => {
-    if (!survey) return;
-    replace({ ...survey, floors: survey.floors.map((f) => (f.id === floorId ? { ...f, photos } : f)) });
-  };
+  // from the latest state: uploads on two floors at once must not overwrite each other
+  const setFloorPhotos = (floorId: string, photos: SurveyPhoto[]) => setSurveys((list) => list?.map((s) => (
+    s.floors.some((f) => f.id === floorId) ? { ...s, floors: s.floors.map((f) => (f.id === floorId ? { ...f, photos } : f)) } : s
+  )) ?? list);
 
   const run = async (kind: 'submit' | 'confirm', call: () => Promise<SiteSurvey>, key: string) => {
     if (busy) return;
@@ -183,7 +188,7 @@ export function SiteSurveyCard({ project, viewer, canCancel = viewer !== 'member
                   <Button size="sm" variant="ghost" aria-expanded={resultOpen} onClick={() => setShowResult((v) => !v)}>{t(resultOpen ? 'siteSurvey.hideResult' : 'siteSurvey.showResult')}</Button>
                 )}
               </div>
-              {resultOpen && <SurveyResult survey={survey} photosEditable={photosEditable} onFloorPhotos={setFloorPhotos} onMessage={say} />}
+              {resultOpen && <SurveyResult survey={survey} photosEditable={photosEditable} onFloorPhotos={setFloorPhotos} onStale={refresh} onMessage={say} />}
             </div>
           )}
 

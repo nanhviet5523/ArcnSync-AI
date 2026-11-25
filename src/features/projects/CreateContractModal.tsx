@@ -4,6 +4,7 @@ import { Banner, Button, ErrorState, Field, Input, Modal, Select, Textarea } fro
 import { errorText, formatNumber, t } from '@/i18n';
 import { ApiError } from '@/services/authService';
 import { createContract } from './services/contractsApi';
+import { MAX_REVISIONS_RANGE, REVIEW_WINDOW_RANGE, parseIntInRange } from './contractTerms';
 import type { CreateContractPayload, StageType } from './services/contractsApi';
 
 export type ContractToast = { tone: 'success' | 'error' | 'warning'; message: string };
@@ -38,8 +39,8 @@ const money = (v: bigint | string) => formatNumber(String(v));
 /** Staff: create the project's contract draft and payment schedule (POST /projects/:id/contract). */
 export function CreateContractModal({ projectId, onClose, onCreated, onAlreadyExists, onToast }: Props) {
   const [totalDesignFee, setTotalDesignFee] = useState('');
-  const [maxRevisions, setMaxRevisions] = useState('2');
-  const [reviewDays, setReviewDays] = useState('7');
+  const [maxRevisions, setMaxRevisions] = useState(String(MAX_REVISIONS_RANGE.default));
+  const [reviewDays, setReviewDays] = useState(String(REVIEW_WINDOW_RANGE.default));
   const [note, setNote] = useState('');
   const [rows, setRows] = useState<MilestoneRow[]>(defaultRows);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -62,10 +63,8 @@ export function CreateContractModal({ projectId, onClose, onCreated, onAlreadyEx
     const e: Record<string, string> = {};
     const required = t('common.required');
     if (!isAmount(totalDesignFee)) e.totalDesignFee = totalDesignFee.trim() ? t('common.positive') : required;
-    const rev = Number(maxRevisions);
-    if (maxRevisions.trim() === '' || !Number.isInteger(rev) || rev < 0 || rev > 20) e.maxRevisionsPerStage = t('newContract.maxRevisionsHint');
-    const days = Number(reviewDays);
-    if (reviewDays.trim() === '' || !Number.isInteger(days) || days < 1 || days > 60) e.reviewWindowDays = t('newContract.reviewDaysHint');
+    if (parseIntInRange(maxRevisions, MAX_REVISIONS_RANGE) === null) e.maxRevisionsPerStage = t('newContract.maxRevisionsInvalid');
+    if (parseIntInRange(reviewDays, REVIEW_WINDOW_RANGE) === null) e.reviewWindowDays = t('newContract.reviewDaysInvalid');
     rows.forEach((r, i) => {
       if (!r.name.trim()) e[`milestones.${i}.name`] = required;
       if (!isAmount(r.amount)) e[`milestones.${i}.amount`] = r.amount.trim() ? t('common.positive') : required;
@@ -77,8 +76,9 @@ export function CreateContractModal({ projectId, onClose, onCreated, onAlreadyEx
   /** Exactly the whitelisted DTO fields: the backend rejects anything else. */
   const payload = (): CreateContractPayload => ({
     totalDesignFee: totalDesignFee.trim(),
-    maxRevisionsPerStage: Number(maxRevisions),
-    reviewWindowDays: Number(reviewDays),
+    // validate() ran first, so both parse
+    maxRevisionsPerStage: parseIntInRange(maxRevisions, MAX_REVISIONS_RANGE)!,
+    reviewWindowDays: parseIntInRange(reviewDays, REVIEW_WINDOW_RANGE)!,
     ...(note.trim() ? { note: note.trim() } : {}),
     milestones: rows.map((r, i) => ({
       seqNo: i + 1,
@@ -150,11 +150,11 @@ export function CreateContractModal({ projectId, onClose, onCreated, onAlreadyEx
           <Field label={t('newContract.totalFee')} error={errors.totalDesignFee} className="sm:col-span-3">
             {(f) => <Input {...f} inputMode="numeric" value={totalDesignFee} invalid={!!errors.totalDesignFee} onChange={(e) => setTotalDesignFee(e.target.value.replace(/\D/g, ''))} placeholder="e.g. 50000000" />}
           </Field>
-          <Field label={t('newContract.maxRevisions')} hint={t('newContract.maxRevisionsHint')} error={errors.maxRevisionsPerStage}>
-            {(f) => <Input {...f} type="number" min={0} max={20} value={maxRevisions} invalid={!!errors.maxRevisionsPerStage} onChange={(e) => setMaxRevisions(e.target.value)} />}
+          <Field label={t('newContract.maxRevisions')} hint={t('newContract.maxRevisionsTooltip')} error={errors.maxRevisionsPerStage}>
+            {(f) => <Input {...f} type="number" min={MAX_REVISIONS_RANGE.min} max={MAX_REVISIONS_RANGE.max} step={1} title={t('newContract.maxRevisionsTooltip')} value={maxRevisions} invalid={!!errors.maxRevisionsPerStage} onChange={(e) => setMaxRevisions(e.target.value)} />}
           </Field>
           <Field label={t('newContract.reviewDays')} hint={t('newContract.reviewDaysHint')} error={errors.reviewWindowDays}>
-            {(f) => <Input {...f} type="number" min={1} max={60} value={reviewDays} invalid={!!errors.reviewWindowDays} onChange={(e) => setReviewDays(e.target.value)} />}
+            {(f) => <Input {...f} type="number" min={REVIEW_WINDOW_RANGE.min} max={REVIEW_WINDOW_RANGE.max} step={1} value={reviewDays} invalid={!!errors.reviewWindowDays} onChange={(e) => setReviewDays(e.target.value)} />}
           </Field>
         </div>
 

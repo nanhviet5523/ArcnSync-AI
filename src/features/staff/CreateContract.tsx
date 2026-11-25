@@ -15,6 +15,7 @@ import {
   type PaymentMilestoneInput,
   type StageType,
 } from '@/features/projects/services/contractsApi';
+import { changedTerms, MAX_REVISIONS_RANGE, parseIntInRange, REVIEW_WINDOW_RANGE } from '@/features/projects/contractTerms';
 
 const STAGE_TYPES: { value: StageType; label: string }[] = [
   { value: 'DEPOSIT', label: 'Đặt cọc (DEPOSIT)' },
@@ -70,8 +71,8 @@ export const CreateContract: React.FC<CreateContractProps> = ({ onAlreadyExists 
 
   const [projectId, setProjectId] = useState(params.get('projectId') ?? '');
   const [totalDesignFee, setTotalDesignFee] = useState('');
-  const [maxRevisionsPerStage, setMaxRevisionsPerStage] = useState('3');
-  const [reviewWindowDays, setReviewWindowDays] = useState('7');
+  const [maxRevisionsPerStage, setMaxRevisionsPerStage] = useState(String(MAX_REVISIONS_RANGE.default));
+  const [reviewWindowDays, setReviewWindowDays] = useState(String(REVIEW_WINDOW_RANGE.default));
   const [note, setNote] = useState('');
   const [milestones, setMilestones] = useState<MilestoneRow[]>([
     { ...EMPTY_MILESTONE, name: 'Đặt cọc thiết kế' },
@@ -83,6 +84,10 @@ export const CreateContract: React.FC<CreateContractProps> = ({ onAlreadyExists 
   const [loadingContract, setLoadingContract] = useState(editing);
   /** An unsigned PDF is already uploaded: it goes stale once the terms change. */
   const [hasUnsignedFile, setHasUnsignedFile] = useState(false);
+  /** Edit mode: the terms as loaded, so the PATCH only sends what the Staff changed. */
+  const [original, setOriginal] = useState<CreateContractPayload | null>(null);
+  /** Edit mode: the contract is no longer DRAFT / NOT_SENT, so the form is read-only. */
+  const [locked, setLocked] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -109,24 +114,32 @@ export const CreateContract: React.FC<CreateContractProps> = ({ onAlreadyExists 
           window.setTimeout(() => navigate(-1), 1500);
           return;
         }
+        // Show the saved terms either way; a contract past DRAFT / NOT_SENT is shown read-only.
         if (c.status !== 'DRAFT' || c.esignStatus !== 'NOT_SENT') {
-          setToast({ tone: 'error', message: t('editContract.notEditable') });
-          window.setTimeout(() => navigate(`/project-contract?projectId=${encodeURIComponent(c.projectId)}`), 1500);
-          return;
+          setLocked(true);
+          setToast({ tone: 'error', message: t('contractPage.editNotEditable') });
         }
         const money = (v: string) => v.replace(/\.0+$/, ''); // "50000000.00" -> "50000000"
+        const rows = c.milestones.map((m, i): MilestoneRow => ({
+          name: m.name,
+          stageType: i === 0 ? 'DEPOSIT' : m.stageType,
+          amount: money(m.amount),
+          dueTrigger: i === 0 ? 'ON_CONTRACT_ACTIVE' : 'ON_STAGE_APPROVED',
+        }));
         setProjectId(c.projectId);
         setHasUnsignedFile(c.unsignedFile !== null);
         setTotalDesignFee(money(c.totalDesignFee));
         setMaxRevisionsPerStage(String(c.maxRevisionsPerStage));
         setReviewWindowDays(String(c.reviewWindowDays));
         setNote(c.note ?? '');
-        setMilestones(c.milestones.map((m, i) => ({
-          name: m.name,
-          stageType: i === 0 ? 'DEPOSIT' : m.stageType,
-          amount: money(m.amount),
-          dueTrigger: i === 0 ? 'ON_CONTRACT_ACTIVE' : 'ON_STAGE_APPROVED',
-        })));
+        setMilestones(rows);
+        setOriginal({
+          totalDesignFee: money(c.totalDesignFee),
+          maxRevisionsPerStage: c.maxRevisionsPerStage,
+          reviewWindowDays: c.reviewWindowDays,
+          ...(c.note ? { note: c.note.trim() } : {}),
+          milestones: rows.map((r, i) => ({ seqNo: i + 1, ...r, name: r.name.trim(), amount: r.amount.trim() })),
+        });
       })
       .catch((err) => {
         if (cancelled) return;
@@ -173,10 +186,20 @@ export const CreateContract: React.FC<CreateContractProps> = ({ onAlreadyExists 
   const totalsMatch = feeValid && milestonesTotal === feeNumber;
   const projectIdValid = isUuid(projectId);
 
+  const revisionsValue = parseIntInRange(maxRevisionsPerStage, MAX_REVISIONS_RANGE);
+  const reviewDaysValue = parseIntInRange(reviewWindowDays, REVIEW_WINDOW_RANGE);
+
+  /** Client checks for the integer terms; the backend's VALIDATION_ERROR lands on the same keys. */
+  const termErrors = (): Record<string, string> => ({
+    ...(revisionsValue === null ? { maxRevisionsPerStage: t('newContract.maxRevisionsInvalid') } : {}),
+    ...(reviewDaysValue === null ? { reviewWindowDays: t('newContract.reviewDaysInvalid') } : {}),
+  });
+
+  /** Only call after termErrors() came back empty. */
   const buildPayload = (): CreateContractPayload => ({
     totalDesignFee: totalDesignFee.trim(),
-    maxRevisionsPerStage: Number(maxRevisionsPerStage),
-    reviewWindowDays: Number(reviewWindowDays),
+    maxRevisionsPerStage: revisionsValue!,
+    reviewWindowDays: reviewDaysValue!,
     ...(note.trim() ? { note: note.trim() } : {}),
     milestones: milestones.map((row, index): PaymentMilestoneInput => ({
       seqNo: index + 1,
@@ -201,8 +224,8 @@ export const CreateContract: React.FC<CreateContractProps> = ({ onAlreadyExists 
         return;
       case 'CONTRACT_NOT_FOUND': setToast({ tone: 'error', message: t('contractPage.editNotFound') }); return;
       case 'CONTRACT_NOT_EDITABLE':
+        setLocked(true);
         setToast({ tone: 'error', message: t('contractPage.editNotEditable') });
-        window.setTimeout(() => navigate(`/project-contract?projectId=${encodeURIComponent(projectId.trim())}`), 1500);
         return;
       case 'PROJECT_NOT_FOUND': setToast({ tone: 'error', message: t('newContract.projectNotFound') }); return;
       case 'CONTRACT_ALREADY_EXISTS':
@@ -238,18 +261,22 @@ export const CreateContract: React.FC<CreateContractProps> = ({ onAlreadyExists 
     setSuccess(null);
     setFieldErrors({});
     setToast(null);
+    const clientErrors = termErrors();
+    if (Object.keys(clientErrors).length) {
+      setFieldErrors(clientErrors);
+      setError(t('errors.VALIDATION_ERROR'));
+      return;
+    }
     setSubmitting(true);
     try {
       if (editing) {
-        // Always send the fee and the whole schedule together so the backend compares matching values.
-        const { totalDesignFee: fee, maxRevisionsPerStage: revisions, reviewWindowDays: days, milestones: rows } = buildPayload();
-        await updateContractDraft(contractId, {
-          totalDesignFee: fee,
-          maxRevisionsPerStage: revisions,
-          reviewWindowDays: days,
-          note: note.trim() ? note.trim() : null,
-          milestones: rows,
-        });
+        const next = buildPayload();
+        const changes = changedTerms(original, next);
+        if (!Object.keys(changes).length) {
+          setToast({ tone: 'warning', message: t('editContract.noChanges') });
+          return;
+        }
+        await updateContractDraft(contractId, changes);
         setSuccess(t('editContract.success'));
         if (hasUnsignedFile) setToast({ tone: 'warning', message: t('contractPage.stalePdf') });
         window.setTimeout(() => navigate(`/project-contract?projectId=${encodeURIComponent(projectId.trim())}`), hasUnsignedFile ? 2500 : 1000);
@@ -306,7 +333,16 @@ export const CreateContract: React.FC<CreateContractProps> = ({ onAlreadyExists 
           </div>
         )}
 
+        {locked && (
+          <div role="status" className="mb-6 flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50 p-3.5 text-sm text-amber-800">
+            <AlertCircle size={18} className="mt-0.5 shrink-0 text-amber-600" />
+            <span>{t('editContract.locked')}</span>
+          </div>
+        )}
+
         <div className="space-y-6">
+          {/* Terms and schedule: read-only once the contract has left DRAFT / NOT_SENT. */}
+          <fieldset disabled={locked} className="m-0 min-w-0 space-y-6 border-0 p-0">
           {/* Terms */}
           <section className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
             <h2 className="text-sm font-bold text-slate-900 mb-4">Thông tin hợp đồng</h2>
@@ -339,24 +375,36 @@ export const CreateContract: React.FC<CreateContractProps> = ({ onAlreadyExists 
                 {fieldError('totalDesignFee')}
               </div>
               <div>
-                <label className={labelClass}>Số lần sửa tối đa / giai đoạn (0–20)</label>
+                <label htmlFor="contract-max-revisions" className={labelClass} title={t('newContract.maxRevisionsTooltip')}>
+                  {t('newContract.maxRevisions')} ({MAX_REVISIONS_RANGE.min}–{MAX_REVISIONS_RANGE.max})
+                </label>
                 <input
-                  type="number" min="0" max="20"
+                  id="contract-max-revisions"
+                  type="number" min={MAX_REVISIONS_RANGE.min} max={MAX_REVISIONS_RANGE.max} step={1} inputMode="numeric"
                   value={maxRevisionsPerStage}
                   onChange={(e) => setMaxRevisionsPerStage(e.target.value)}
-                  className={inputClass}
+                  title={t('newContract.maxRevisionsTooltip')}
+                  aria-describedby="contract-max-revisions-help"
+                  aria-invalid={revisionsValue === null || !!fieldErrors.maxRevisionsPerStage}
+                  className={`${inputClass} ${revisionsValue === null ? 'border-red-300 focus:ring-red-500' : ''}`}
                 />
-                {fieldError('maxRevisionsPerStage')}
+                {fieldErrors.maxRevisionsPerStage ? fieldError('maxRevisionsPerStage')
+                  : revisionsValue === null
+                    ? <p role="alert" className="mt-1 text-[11px] font-semibold text-red-600">{t('newContract.maxRevisionsInvalid')}</p>
+                    : <p id="contract-max-revisions-help" className="mt-1 text-[11px] text-slate-500">{t('newContract.maxRevisionsTooltip')}</p>}
               </div>
               <div>
-                <label className={labelClass}>Số ngày xem xét (1–60)</label>
+                <label htmlFor="contract-review-days" className={labelClass}>{t('newContract.reviewDays')} ({REVIEW_WINDOW_RANGE.min}–{REVIEW_WINDOW_RANGE.max})</label>
                 <input
-                  type="number" min="1" max="60"
+                  id="contract-review-days"
+                  type="number" min={REVIEW_WINDOW_RANGE.min} max={REVIEW_WINDOW_RANGE.max} step={1} inputMode="numeric"
                   value={reviewWindowDays}
                   onChange={(e) => setReviewWindowDays(e.target.value)}
-                  className={inputClass}
+                  aria-invalid={reviewDaysValue === null || !!fieldErrors.reviewWindowDays}
+                  className={`${inputClass} ${reviewDaysValue === null ? 'border-red-300 focus:ring-red-500' : ''}`}
                 />
-                {fieldError('reviewWindowDays')}
+                {fieldErrors.reviewWindowDays ? fieldError('reviewWindowDays')
+                  : reviewDaysValue === null && <p role="alert" className="mt-1 text-[11px] font-semibold text-red-600">{t('newContract.reviewDaysInvalid')}</p>}
               </div>
             </div>
 
@@ -473,6 +521,7 @@ export const CreateContract: React.FC<CreateContractProps> = ({ onAlreadyExists 
               )}
             </div>
           </section>
+          </fieldset>
 
           <div className="flex justify-end gap-3">
             <button
@@ -484,7 +533,7 @@ export const CreateContract: React.FC<CreateContractProps> = ({ onAlreadyExists 
             </button>
             <button
               type="button"
-              disabled={submitting || loadingContract || !projectIdValid || !totalsMatch}
+              disabled={submitting || loadingContract || locked || !projectIdValid || !totalsMatch || revisionsValue === null || reviewDaysValue === null}
               onClick={() => void handleSubmit()}
               className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-xs font-bold text-white shadow-md transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
             >

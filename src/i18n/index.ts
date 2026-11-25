@@ -64,6 +64,9 @@ export function errorText(e: unknown): string {
     }
     if (err.code === 'COMMENTS_OPEN') return t('errors.COMMENTS_OPEN', { n: Number(d.openComments ?? 1) });
     if (err.code === 'PRODUCTS_NOT_CHOSEN') return t('errors.PRODUCTS_NOT_CHOSEN', { n: Number(d.unchosen ?? 1) });
+    if (err.code === 'REVISION_LIMIT_REACHED' && d.used !== undefined && d.limit !== undefined) {
+      return t('errors.REVISION_LIMIT_REACHED_COUNT', { used: Number(d.used), limit: Number(d.limit) });
+    }
     if (err.code === 'PREVIOUS_MILESTONE_UNPAID') return milestoneUnpaidText(typeof d.stageType === 'string' ? d.stageType : null);
     if (err.code === 'DOWNLOAD_FORBIDDEN' && d.reason === 'PAYMENT_REQUIRED') return t('errors.DOWNLOAD_PAYMENT_REQUIRED');
     if (err.code === 'DOWNLOAD_FORBIDDEN' && d.reason === 'NOT_SUBMITTED') return t('errors.DOWNLOAD_NOT_SUBMITTED');

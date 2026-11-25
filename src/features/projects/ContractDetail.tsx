@@ -516,6 +516,9 @@ export const ContractDetail: React.FC = () => {
           <p className="mt-1 text-sm text-slate-500">
             Tổng phí thiết kế: <span className="font-semibold text-slate-800">{formatVnd(contract.totalDesignFee)}</span>
           </p>
+          <p className="mt-0.5 text-sm text-slate-500" title={t('newContract.maxRevisionsTooltip')}>
+            {t('contractPage.maxRevisions', { n: contract.maxRevisionsPerStage })}
+          </p>
         </div>
         <div className="flex gap-2">
           <span className={`rounded-full px-3 py-1 text-xs font-bold ${STATUS_BADGE[status]}`}>{STATUS_LABEL[status]}</span>

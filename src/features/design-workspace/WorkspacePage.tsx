@@ -71,11 +71,16 @@ const watchNarrow = (cb: () => void) => {
 };
 
 function RevisionPicker({ value, onChange, limit, major }: { value: RevisionType; onChange: (r: RevisionType) => void; limit: RevisionLimit | null; major: { ok: boolean; reason?: string } }) {
+  /** The stage's Major rounds (limit = the contract's maxRevisionsPerStage) are used up: only Minor is left. */
+  const exhausted = limit?.remaining === 0;
+  const majorOff = !major.ok || exhausted;
+  // a reload can use up the last round while Major is picked
+  useEffect(() => { if (majorOff && value === 'MAJOR') onChange('MINOR'); }, [majorOff, value, onChange]);
   return (
     <fieldset>
       <div className="grid grid-cols-2 gap-2">
         {(['MINOR', 'MAJOR'] as const).map((r) => {
-          const off = r === 'MAJOR' && !major.ok;
+          const off = r === 'MAJOR' && majorOff;
           return (
             <label key={r} className={`rounded-lg border p-3 text-sm transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-brand ${off ? 'cursor-not-allowed border-line opacity-60' : value === r ? 'cursor-pointer border-brand bg-brand-soft' : 'cursor-pointer border-line hover:border-line-strong'}`}>
               <input type="radio" name="revision" className="sr-only" checked={value === r} disabled={off} onChange={() => onChange(r)} />
@@ -85,7 +90,8 @@ function RevisionPicker({ value, onChange, limit, major }: { value: RevisionType
           );
         })}
       </div>
-      {major.reason ? <p className="mt-1.5 text-xs text-rose-600">{major.reason}</p>
+      {exhausted && limit ? <p className="mt-1.5 text-xs text-rose-600">{t('workspace.majorExhausted', { used: limit.used, limit: limit.limit })}</p>
+        : major.reason ? <p className="mt-1.5 text-xs text-rose-600">{major.reason}</p>
         : limit && <p className="mt-1.5 text-xs text-slate-500">{t('workspace.revisionsLeft', { remaining: limit.remaining, limit: limit.limit })}</p>}
     </fieldset>
   );
