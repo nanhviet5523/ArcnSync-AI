@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
-import { Banner, Button, ErrorState, Field, Input, Modal, Select, Textarea } from '@/components/ui';
+import { Banner, Button, ErrorState, Field, Input, Modal, Textarea } from '@/components/ui';
 import { errorText, formatNumber, t } from '@/i18n';
 import { ApiError } from '@/services/authService';
 import { createContract } from './services/contractsApi';
-import { MAX_REVISIONS_RANGE, REVIEW_WINDOW_RANGE, parseIntInRange } from './contractTerms';
+import { MAX_REVISIONS_RANGE, REVIEW_WINDOW_RANGE, STAGE_ORDER, dueTriggerFor, fixedSchedule, parseIntInRange, splitAmounts } from './contractTerms';
 import type { CreateContractPayload, StageType } from './services/contractsApi';
 
 export type ContractToast = { tone: 'success' | 'error' | 'warning'; message: string };
@@ -19,17 +19,16 @@ interface Props {
   onToast: (toast: ContractToast) => void;
 }
 
-type MilestoneRow = { name: string; stageType: StageType; amount: string };
+/**
+ * One row per stage of STAGE_ORDER; the stage and due trigger are fixed. `typed` is the amount the Staff set by hand,
+ * '' while the row takes its share of the fee automatically (see splitAmounts).
+ */
+type MilestoneRow = { name: string; typed: string };
 
-/** Stages after the deposit, in contract order; each may appear once. */
-const LATER_STAGES: StageType[] = ['LAYOUT_2D', 'RENDER_3D', 'FINAL_PACKAGE'];
-const MAX_MILESTONES = 4;
 const stageName = (s: StageType) => t(`newContract.stageType.${s}`);
-
-const defaultRows = (): MilestoneRow[] => [
-  { name: stageName('DEPOSIT'), stageType: 'DEPOSIT', amount: '' },
-  ...LATER_STAGES.map((s) => ({ name: stageName(s), stageType: s, amount: '' })),
-];
+const defaultRows = (): MilestoneRow[] => STAGE_ORDER.map((s) => ({ name: stageName(s), typed: '' }));
+/** "25" / "12.5": the row's share of the fee, to one decimal. */
+const percentOf = (part: bigint, whole: bigint) => String(Number((part * 1000n) / whole) / 10);
 
 /** Whole VND only; anything else is not a valid amount. */
 const isAmount = (v: string) => /^\d+$/.test(v.trim()) && BigInt(v.trim()) > 0n;
@@ -47,17 +46,17 @@ export function CreateContractModal({ projectId, onClose, onCreated, onAlreadyEx
   const [formError, setFormError] = useState('');
   const [busy, setBusy] = useState(false);
 
-  const sum = useMemo(() => rows.reduce((n, r) => n + toBig(r.amount), 0n), [rows]);
+  /** Row whose amount field has focus: left blank while the Staff clears it, instead of refilling mid-typing. */
+  const [focused, setFocused] = useState<number | null>(null);
+
+  const amounts = useMemo(() => splitAmounts(totalDesignFee, rows.map((r) => r.typed)), [totalDesignFee, rows]);
+  const sum = useMemo(() => amounts.reduce((n, a) => n + toBig(a), 0n), [amounts]);
   const total = toBig(totalDesignFee);
-  const mismatch = isAmount(totalDesignFee) && rows.every((r) => isAmount(r.amount)) && sum !== total;
+  const mismatch = isAmount(totalDesignFee) && amounts.every(isAmount) && sum !== total;
+  const anyTyped = rows.some((r) => r.typed.trim());
 
   const setRow = (i: number, patch: Partial<MilestoneRow>) => setRows((rs) => rs.map((r, j) => (j === i ? { ...r, ...patch } : r)));
-  const usedStages = (except: number) => rows.filter((_, j) => j !== except).map((r) => r.stageType);
-  const addRow = () => setRows((rs) => {
-    const free = LATER_STAGES.find((s) => !rs.some((r) => r.stageType === s));
-    return free && rs.length < MAX_MILESTONES ? [...rs, { name: stageName(free), stageType: free, amount: '' }] : rs;
-  });
-  const removeRow = () => setRows((rs) => (rs.length > 1 ? rs.slice(0, -1) : rs));
+  const resetSplit = () => setRows((rs) => rs.map((r) => ({ ...r, typed: '' })));
 
   const validate = () => {
     const e: Record<string, string> = {};
@@ -67,8 +66,7 @@ export function CreateContractModal({ projectId, onClose, onCreated, onAlreadyEx
     if (parseIntInRange(reviewDays, REVIEW_WINDOW_RANGE) === null) e.reviewWindowDays = t('newContract.reviewDaysInvalid');
     rows.forEach((r, i) => {
       if (!r.name.trim()) e[`milestones.${i}.name`] = required;
-      if (!isAmount(r.amount)) e[`milestones.${i}.amount`] = r.amount.trim() ? t('common.positive') : required;
-      if (i > 0 && usedStages(i).includes(r.stageType)) e[`milestones.${i}.stageType`] = t('newContract.stageDuplicate');
+      if (!isAmount(amounts[i])) e[`milestones.${i}.amount`] = amounts[i] ? t('common.positive') : required;
     });
     return e;
   };
@@ -80,13 +78,7 @@ export function CreateContractModal({ projectId, onClose, onCreated, onAlreadyEx
     maxRevisionsPerStage: parseIntInRange(maxRevisions, MAX_REVISIONS_RANGE)!,
     reviewWindowDays: parseIntInRange(reviewDays, REVIEW_WINDOW_RANGE)!,
     ...(note.trim() ? { note: note.trim() } : {}),
-    milestones: rows.map((r, i) => ({
-      seqNo: i + 1,
-      name: r.name.trim(),
-      stageType: i === 0 ? 'DEPOSIT' : r.stageType,
-      amount: r.amount.trim(),
-      dueTrigger: i === 0 ? 'ON_CONTRACT_ACTIVE' : 'ON_STAGE_APPROVED',
-    })),
+    milestones: fixedSchedule(rows.map((r, i) => ({ name: r.name, amount: amounts[i] }))),
   });
 
   const fail = (err: unknown) => {
@@ -138,16 +130,14 @@ export function CreateContractModal({ projectId, onClose, onCreated, onAlreadyEx
     } catch (err) { fail(err); } finally { setBusy(false); }
   };
 
-  const freeStage = LATER_STAGES.some((s) => !rows.some((r) => r.stageType === s));
-
   return (
     <Modal size="md" title={t('newContract.title')} onClose={busy ? () => {} : onClose} footer={<>
       <Button onClick={onClose} disabled={busy}>{t('common.cancel')}</Button>
       <Button type="submit" form="create-contract-form" variant="primary" loading={busy} disabled={mismatch}>{busy ? t('newContract.creating') : t('newContract.create')}</Button>
     </>}>
       <form id="create-contract-form" onSubmit={submit} noValidate className="space-y-4">
-        <div className="grid gap-4 sm:grid-cols-3">
-          <Field label={t('newContract.totalFee')} error={errors.totalDesignFee} className="sm:col-span-3">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label={t('newContract.totalFee')} error={errors.totalDesignFee} className="sm:col-span-2">
             {(f) => <Input {...f} inputMode="numeric" value={totalDesignFee} invalid={!!errors.totalDesignFee} onChange={(e) => setTotalDesignFee(e.target.value.replace(/\D/g, ''))} placeholder="e.g. 50000000" />}
           </Field>
           <Field label={t('newContract.maxRevisions')} hint={t('newContract.maxRevisionsTooltip')} error={errors.maxRevisionsPerStage}>
@@ -159,36 +149,33 @@ export function CreateContractModal({ projectId, onClose, onCreated, onAlreadyEx
         </div>
 
         <fieldset>
-          <legend className="mb-2 text-[13px] font-medium text-slate-700">{t('newContract.milestones')}</legend>
+          <legend className="text-[13px] font-medium text-slate-700">{t('newContract.milestones')}</legend>
+          <div className="mb-2 mt-0.5 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+            <p className="text-xs text-slate-500">{t('newContract.splitHelp')}</p>
+            {anyTyped && <Button size="sm" variant="ghost" onClick={resetSplit}>{t('newContract.resetSplit')}</Button>}
+          </div>
           <ul className="space-y-3">
             {rows.map((r, i) => (
-              <li key={i} className="rounded-lg border border-slate-200 p-3">
-                <p className="mb-2 text-xs font-medium text-slate-500">{t('newContract.milestone', { n: i + 1 })} · {t(`newContract.dueTrigger.${i === 0 ? 'ON_CONTRACT_ACTIVE' : 'ON_STAGE_APPROVED'}`)}</p>
-                <div className="grid gap-3 sm:grid-cols-3">
+              <li key={STAGE_ORDER[i]} className="rounded-lg border border-slate-200 p-3">
+                <p className="mb-2 text-xs text-slate-500">
+                  <span className="font-semibold text-slate-800">{t('newContract.milestone', { n: i + 1 })} · {stageName(STAGE_ORDER[i])}</span>
+                  {' · '}{t(`newContract.dueTrigger.${dueTriggerFor(STAGE_ORDER[i])}`)}
+                </p>
+                <div className="grid gap-3 sm:grid-cols-2">
                   <Field label={t('newContract.name')} error={errors[`milestones.${i}.name`]}>
                     {(f) => <Input {...f} maxLength={150} value={r.name} invalid={!!errors[`milestones.${i}.name`]} onChange={(e) => setRow(i, { name: e.target.value })} />}
                   </Field>
-                  <Field label={t('newContract.stage')} error={errors[`milestones.${i}.stageType`]}>
-                    {(f) => (
-                      <Select {...f} value={i === 0 ? 'DEPOSIT' : r.stageType} disabled={i === 0} invalid={!!errors[`milestones.${i}.stageType`]}
-                        onChange={(e) => setRow(i, { stageType: e.target.value as StageType })}>
-                        {i === 0
-                          ? <option value="DEPOSIT">{stageName('DEPOSIT')}</option>
-                          : LATER_STAGES.map((s) => <option key={s} value={s} disabled={usedStages(i).includes(s)}>{stageName(s)}</option>)}
-                      </Select>
-                    )}
-                  </Field>
-                  <Field label={t('newContract.amount')} error={errors[`milestones.${i}.amount`]}>
-                    {(f) => <Input {...f} inputMode="numeric" value={r.amount} invalid={!!errors[`milestones.${i}.amount`]} onChange={(e) => setRow(i, { amount: e.target.value.replace(/\D/g, '') })} />}
+                  <Field label={t('newContract.amount')} error={errors[`milestones.${i}.amount`]}
+                    hint={total > 0n ? t(r.typed.trim() ? 'newContract.shareTyped' : 'newContract.shareAuto', { pct: percentOf(toBig(amounts[i]), total) }) : undefined}>
+                    {(f) => <Input {...f} inputMode="numeric" invalid={!!errors[`milestones.${i}.amount`]}
+                      value={focused === i && !r.typed ? '' : amounts[i]}
+                      onFocus={() => setFocused(i)} onBlur={() => setFocused(null)}
+                      onChange={(e) => setRow(i, { typed: e.target.value.replace(/\D/g, '') })} />}
                   </Field>
                 </div>
               </li>
             ))}
           </ul>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {rows.length < MAX_MILESTONES && freeStage && <Button size="sm" onClick={addRow}>{t('newContract.addMilestone')}</Button>}
-            {rows.length > 1 && <Button size="sm" onClick={removeRow}>{t('newContract.removeMilestone')}</Button>}
-          </div>
           <p className="mt-3 text-xs tabular-nums text-slate-600">{t('newContract.sum', { sum: money(sum), total: money(total) })}</p>
           {mismatch && <div className="mt-2"><Banner tone="amber">{t('newContract.mismatch', { sum: money(sum), total: money(total) })}</Banner></div>}
         </fieldset>

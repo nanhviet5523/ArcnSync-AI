@@ -113,6 +113,8 @@ export const ContractDetail: React.FC = () => {
   const backToProject = projectId
     ? `${role === 'staff' || role === 'admin' ? '/staff/projects' : role === 'designer' ? '/designer/projects' : '/homeowner/projects'}/${encodeURIComponent(projectId)}`
     : role === 'staff' || role === 'admin' ? '/staff/projects' : role === 'designer' ? '/designer/projects' : '/homeowner/projects';
+  /** Arrived straight from "Create contract draft": upload the PDF, then go back to the project. */
+  const uploadThenBack = isStaff && params.get('next') === 'upload' && projectId !== '';
 
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -131,6 +133,36 @@ export const ContractDetail: React.FC = () => {
   const [otpRequesting, setOtpRequesting] = useState(false);
   const otpInFlight = useRef(false);
   const [now, setNow] = useState(() => Date.now());
+  /**
+   * The server refused a new OTP as too soon (429) while this page knew of none: a code was sent moments ago (before a
+   * reload, or from another tab) and is still valid, so the code box is shown without a known expiry.
+   */
+  const [otpEarlier, setOtpEarlier] = useState(false);
+
+  // Remember the OTP timers for this contract across reloads in this tab, so a reload doesn't hide the code box.
+  const otpKey = (contractId: string) => `contract-otp:${contractId}`;
+  const saveOtpTimers = (contractId: string, timers: { expiresAt: number; cooldownUntil: number } | null) => {
+    try {
+      if (timers) sessionStorage.setItem(otpKey(contractId), JSON.stringify(timers));
+      else sessionStorage.removeItem(otpKey(contractId));
+    } catch { /* storage blocked: the timers just don't survive a reload */ }
+  };
+  const awaitingCustomerId = contract?.esignStatus === 'AWAITING_CUSTOMER' && isCustomer ? contract.id : null;
+  useEffect(() => {
+    if (!awaitingCustomerId) return;
+    let saved: { expiresAt?: unknown; cooldownUntil?: unknown } | null = null;
+    try {
+      saved = JSON.parse(sessionStorage.getItem(otpKey(awaitingCustomerId)) ?? 'null');
+    } catch { /* unreadable: start without timers */ }
+    const start = Date.now();
+    if (!saved || typeof saved.expiresAt !== 'number' || saved.expiresAt <= start) return;
+    const { expiresAt, cooldownUntil } = saved;
+    Promise.resolve().then(() => {
+      setNow(start);
+      setOtpExpiresAt(expiresAt);
+      if (typeof cooldownUntil === 'number') setOtpCooldownUntil(cooldownUntil);
+    });
+  }, [awaitingCustomerId]);
 
   // Tick once a second only while a countdown is running.
   const timersRunning = otpCooldownUntil > now || (otpExpiresAt !== null && otpExpiresAt > now);
@@ -246,6 +278,10 @@ export const ContractDetail: React.FC = () => {
     setActionMessage(null);
     try {
       const updated = await sendSigningRequest(contractId);
+      if (uploadThenBack) {
+        navigate(backToProject, { replace: true, state: { toast: { tone: 'success', message: t('contractSigning.successBack') } } });
+        return;
+      }
       setContract(updated);
       setConfirmSigning(false);
       setToast({ type: 'success', message: t('contractSigning.success') });
@@ -369,6 +405,8 @@ export const ContractDetail: React.FC = () => {
       setNow(start);
       setOtpExpiresAt(start + expiresInMinutes * 60_000);
       setOtpCooldownUntil(start + OTP_RESEND_COOLDOWN_SECONDS * 1000);
+      saveOtpTimers(contractId, { expiresAt: start + expiresInMinutes * 60_000, cooldownUntil: start + OTP_RESEND_COOLDOWN_SECONDS * 1000 });
+      setOtpEarlier(false);
       setOtpValue('');
       setToast({ type: 'success', message: t('contractPage.otpSent') });
     } catch (err) {
@@ -378,10 +416,14 @@ export const ContractDetail: React.FC = () => {
       if (code === 'OTP_RESEND_TOO_SOON' || status === 429) {
         const retry = Number(apiErr?.details.retryAfterSeconds);
         startCooldown(Number.isFinite(retry) && retry > 0 ? Math.ceil(retry) : OTP_RESEND_COOLDOWN_SECONDS);
-        setToast({ type: 'warning', message: t('contractPage.otpTooSoon') });
+        // a code went out moments ago and is still valid: let the customer enter it
+        if (otpExpiresAt === null) setOtpEarlier(true);
+        setToast({ type: 'warning', message: t(otpExpiresAt === null ? 'contractPage.otpUseEarlier' : 'contractPage.otpTooSoon') });
       } else if (code === 'CONTRACT_NOT_AWAITING_SIGNATURE' && status === 422) {
         fail(t('contractPage.otpNotAwaiting'));
         setOtpExpiresAt(null);
+        setOtpEarlier(false);
+        saveOtpTimers(contractId, null);
         await loadContract();
       } else if (code === 'CONTRACT_NOT_AWAITING_SIGNATURE') fail(t('signatureOtp.notAwaitingState'));
       else if (code === 'USER_NOT_FOUND') {
@@ -413,6 +455,8 @@ export const ContractDetail: React.FC = () => {
       const updated = await submitContractSignature(contractId, { otp });
       setContract(updated);
       setOtpExpiresAt(null);
+      setOtpEarlier(false);
+      saveOtpTimers(contractId, null);
       setOtpValue('');
       setToast({ type: 'success', message: t('contractPage.signSuccess') });
     } catch (err) {
@@ -621,6 +665,15 @@ export const ContractDetail: React.FC = () => {
         </div>
       )}
 
+      {uploadThenBack && status === 'DRAFT' && esignStatus === 'NOT_SENT' && (
+        <div role="status" className="mb-6 flex items-start gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 p-3.5 text-sm text-emerald-800">
+          <CheckCircle2 size={18} className="mt-0.5 shrink-0 text-emerald-600" />
+          {contract.unsignedFile
+            ? <span><span className="font-semibold">{t('contractPage.pdfReadyTitle')}</span> {t('contractPage.pdfReadyNext')}</span>
+            : <span><span className="font-semibold">{t('contractPage.draftCreatedTitle')}</span> {t('contractPage.draftCreatedNext')}</span>}
+        </div>
+      )}
+
       {/* ---- DRAFT + NOT_SENT: Staff soạn hợp đồng, chưa gửi khách ký ---- */}
       {status === 'DRAFT' && esignStatus === 'NOT_SENT' && isStaff && (
         <section className="mb-6 rounded-2xl border border-slate-100 bg-white p-6">
@@ -719,7 +772,7 @@ export const ContractDetail: React.FC = () => {
             </button>
           )}
 
-          {otpExpiresAt === null ? (
+          {otpExpiresAt === null && !otpEarlier ? (
             <>
               <button
                 type="button"
@@ -734,13 +787,13 @@ export const ContractDetail: React.FC = () => {
             </>
           ) : (
             <>
-            <p className="mb-1 text-[11px] text-slate-500">{t('signatureOtp.sentNotice')}</p>
+            <p className="mb-1 text-[11px] text-slate-500">{t(otpExpiresAt === null ? 'signatureOtp.earlierNotice' : 'signatureOtp.sentNotice')}</p>
             <p className="mb-3 text-[11px] text-slate-500">{t('signatureOtp.attemptsNotice')}</p>
             {otpExpired && <p role="alert" className="mb-3 text-xs font-semibold text-red-700">{t('signatureOtp.expired')}</p>}
             <div className="flex flex-wrap items-end gap-3">
               <div>
                 <label className="mb-1.5 block text-[11px] font-bold text-slate-500">
-                  {t('signatureOtp.validFor', { time: formatCountdown(otpSecondsLeft ?? 0) })}
+                  {otpSecondsLeft === null ? t('signatureOtp.codeLabel') : t('signatureOtp.validFor', { time: formatCountdown(otpSecondsLeft) })}
                 </label>
                 <input
                   type="text"

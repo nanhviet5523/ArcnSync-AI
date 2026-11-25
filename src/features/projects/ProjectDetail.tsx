@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { AppShell, Banner, Button, Card, DetailList, ErrorState, PageHeader, Skeleton, StatusChip, Stepper } from '@/components/ui';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { AppShell, Banner, Button, Card, DetailList, ErrorState, PageHeader, Skeleton, StatusChip } from '@/components/ui';
 import { Sparkles } from 'lucide-react';
-import { errorText, formatDate, formatMoney, formatNumber, t, tList } from '@/i18n';
+import { errorText, formatDate, formatMoney, formatNumber, t } from '@/i18n';
 import { getCurrentUser } from '@/services/authService';
-import { canOpenWorkspace, kickoffErrorText, kickoffProjectDesign, projectApi, stepIndex } from './projectApi';
+import { canOpenWorkspace, kickoffErrorText, kickoffProjectDesign, projectApi } from './projectApi';
 import type { DesignerOption, Project } from './projectApi';
 import { TeamCard } from '@/features/design-workspace/TeamCard';
 import { isOffTeam, resolveProjectRole } from '@/features/design-workspace/logic';
@@ -21,6 +21,7 @@ import { ConceptCard } from '@/features/concepts/ConceptCard';
 import { useProjectConcepts } from '@/features/concepts/useProjectConcepts';
 import { conceptSummary } from '@/features/concepts/conceptApi';
 import { CreateContractModal } from './CreateContractModal';
+import { ProjectStepper } from './ProjectStepper';
 import { EditProjectModal } from './EditProjectModal';
 import type { ContractToast } from './CreateContractModal';
 import { getProjectContract } from './services/contractsApi';
@@ -57,6 +58,15 @@ export function ProjectDetail() {
     setToasts((list) => [...list, { ...next, id: toastId }]);
     setTimeout(() => setToasts((list) => list.filter((x) => x.id !== toastId)), 3500);
   }, []);
+
+  // A toast handed over by the page we came back from (the contract page after the PDF upload), shown once.
+  const location = useLocation();
+  useEffect(() => {
+    const handed = (location.state as { toast?: ContractToast } | null)?.toast;
+    if (!handed) return;
+    setToast(handed);
+    navigate(location.pathname, { replace: true, state: null });
+  }, [location.state, location.pathname, navigate, setToast]);
 
   const load = useCallback(async () => {
     setError('');
@@ -207,11 +217,9 @@ export function ProjectDetail() {
       {staff && kickoffReady && !project.designer && <p className="-mt-4 mb-5 text-right text-xs text-amber-700">{t('projectDetail.startDesignHint')}</p>}
       {staff && project.status === 'DRAFT' && project.apartment === null && contract === null && <p className="-mt-4 mb-5 text-right text-xs text-slate-500">{t('projectDetail.createContractLocked')}</p>}
 
-      {project.status !== 'CANCELLED' && (
-        <Card className="mb-5" bodyClassName="px-4 py-4 sm:px-6">
-          <Stepper steps={tList('steps.project')} current={stepIndex(project.status)} />
-        </Card>
-      )}
+      <Card className="mb-5" bodyClassName="px-4 py-4 sm:px-6">
+        <ProjectStepper status={project.status} />
+      </Card>
 
       {next && (
         <div className="mb-5">
@@ -299,7 +307,8 @@ export function ProjectDetail() {
           projectId={project.id}
           onClose={() => setContractOpen(false)}
           onToast={setToast}
-          onCreated={() => { setContractOpen(false); void load(); void loadContract(); }}
+          // next step is the contract PDF: the contract page takes the upload, then brings the Staff back here
+          onCreated={() => { setContractOpen(false); navigate(`${contractPage}&next=upload`); }}
           onAlreadyExists={() => { setContractOpen(false); void load(); void loadContract(); setTimeout(() => navigate(contractPage), 1200); }}
         />
       )}

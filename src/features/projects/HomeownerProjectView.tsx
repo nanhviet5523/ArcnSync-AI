@@ -2,9 +2,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight, Ban, CircleCheck, Clock, CreditCard, Sparkles } from 'lucide-react';
 
-import { AppShell, Button, Card, PageHeader, Skeleton, StatusChip, Stepper } from '@/components/ui';
-import { formatDate, formatDateTime, t, tList } from '@/i18n';
-import { canOpenWorkspace, stepIndex } from './projectApi';
+import { AppShell, Button, Card, PageHeader, Skeleton, StatusChip } from '@/components/ui';
+import { formatDate, formatDateTime, t } from '@/i18n';
+import { canOpenWorkspace } from './projectApi';
+import { ProjectStepper } from './ProjectStepper';
 import { ConceptCard } from '@/features/concepts/ConceptCard';
 import { useProjectConcepts } from '@/features/concepts/useProjectConcepts';
 import { conceptSummary } from '@/features/concepts/conceptApi';
@@ -92,11 +93,9 @@ export function HomeownerProjectView({ project, onProjectChanged }: { project: P
         </>}
       />
 
-      {project.status !== 'CANCELLED' && (
-        <Card className="mb-5" bodyClassName="px-4 py-5 sm:px-6">
-          <Stepper steps={tList('steps.project')} current={stepIndex(project.status)} emphasis />
-        </Card>
-      )}
+      <Card className="mb-5" bodyClassName="px-4 py-5 sm:px-6">
+        <ProjectStepper status={project.status} emphasis />
+      </Card>
 
 
       {(project.status === 'QUOTING' || project.status === 'COMPLETED') && <QuotationSummaryCard projectId={project.id} homeowner />}

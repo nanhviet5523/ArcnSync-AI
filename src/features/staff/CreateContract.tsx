@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Plus, Trash2, Send, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Send, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Header } from '@/components/layout';
 import { Footer } from '@/components/layout';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -11,42 +11,22 @@ import {
   isUuid,
   updateContractDraft,
   type CreateContractPayload,
-  type DueTrigger,
-  type PaymentMilestoneInput,
   type StageType,
 } from '@/features/projects/services/contractsApi';
-import { changedTerms, MAX_REVISIONS_RANGE, parseIntInRange, REVIEW_WINDOW_RANGE } from '@/features/projects/contractTerms';
+import {
+  changedTerms, dueTriggerFor, fixedSchedule, MAX_REVISIONS_RANGE, parseIntInRange, REVIEW_WINDOW_RANGE, rowsFromMilestones, splitAmounts, STAGE_ORDER,
+} from '@/features/projects/contractTerms';
 
-const STAGE_TYPES: { value: StageType; label: string }[] = [
-  { value: 'DEPOSIT', label: 'Deposit (DEPOSIT)' },
-  { value: 'LAYOUT_2D', label: '2D layout (LAYOUT_2D)' },
-  { value: 'RENDER_3D', label: '3D render (RENDER_3D)' },
-  { value: 'FINAL_PACKAGE', label: 'Final package (FINAL_PACKAGE)' },
-];
-
-const DUE_TRIGGERS: { value: DueTrigger; label: string }[] = [
-  { value: 'ON_CONTRACT_ACTIVE', label: 'When the contract becomes active (ON_CONTRACT_ACTIVE)' },
-  { value: 'ON_STAGE_APPROVED', label: 'When the stage is approved (ON_STAGE_APPROVED)' },
-];
-
-/** The trigger the backend expects for a given stage (DEPOSIT is paid on activation). */
-function defaultTrigger(stageType: StageType): DueTrigger {
-  return stageType === 'DEPOSIT' ? 'ON_CONTRACT_ACTIVE' : 'ON_STAGE_APPROVED';
-}
-
+/**
+ * One row per stage of STAGE_ORDER; the stage and due trigger are fixed. `typed` is the amount set by hand,
+ * '' while the row takes its share of the fee automatically (see splitAmounts).
+ */
 interface MilestoneRow {
   name: string;
-  stageType: StageType;
-  amount: string;
-  dueTrigger: DueTrigger;
+  typed: string;
 }
 
-const EMPTY_MILESTONE: MilestoneRow = {
-  name: '',
-  stageType: 'DEPOSIT',
-  amount: '',
-  dueTrigger: 'ON_CONTRACT_ACTIVE',
-};
+const stageName = (s: StageType) => t(`newContract.stageType.${s}`);
 
 /** Parse a VND string into a number for display/comparison; NaN when invalid. */
 function toNumber(value: string): number {
@@ -61,10 +41,6 @@ interface CreateContractProps {
   onAlreadyExists?: () => void;
 }
 
-/** Row 1 is always the deposit; later rows can't repeat it. */
-const LATER_STAGE_TYPES = STAGE_TYPES.filter((s) => s.value !== 'DEPOSIT');
-const MAX_MILESTONES = 4;
-
 export const CreateContract: React.FC<CreateContractProps> = ({ onAlreadyExists }) => {
   const navigate = useNavigate();
   const [params] = useSearchParams();
@@ -74,9 +50,7 @@ export const CreateContract: React.FC<CreateContractProps> = ({ onAlreadyExists 
   const [maxRevisionsPerStage, setMaxRevisionsPerStage] = useState(String(MAX_REVISIONS_RANGE.default));
   const [reviewWindowDays, setReviewWindowDays] = useState(String(REVIEW_WINDOW_RANGE.default));
   const [note, setNote] = useState('');
-  const [milestones, setMilestones] = useState<MilestoneRow[]>([
-    { ...EMPTY_MILESTONE, name: 'Design deposit' },
-  ]);
+  const [milestones, setMilestones] = useState<MilestoneRow[]>(() => STAGE_ORDER.map((s) => ({ name: stageName(s), typed: '' })));
 
   /** Edit mode: PATCH /contracts/:id instead of POST /projects/:id/contract. */
   const contractId = params.get('contractId') ?? '';
@@ -120,12 +94,10 @@ export const CreateContract: React.FC<CreateContractProps> = ({ onAlreadyExists 
           setToast({ tone: 'error', message: t('contractPage.editNotEditable') });
         }
         const money = (v: string) => v.replace(/\.0+$/, ''); // "50000000.00" -> "50000000"
-        const rows = c.milestones.map((m, i): MilestoneRow => ({
-          name: m.name,
-          stageType: i === 0 ? 'DEPOSIT' : m.stageType,
-          amount: money(m.amount),
-          dueTrigger: i === 0 ? 'ON_CONTRACT_ACTIVE' : 'ON_STAGE_APPROVED',
-        }));
+        // Always the four fixed rows; saved amounts count as set by hand. An older draft missing a stage opens with
+        // that row automatic, so it takes whatever is left of the fee.
+        const rows = rowsFromMilestones(c.milestones.map((m) => ({ ...m, amount: money(m.amount) })), stageName)
+          .map((r) => ({ name: r.name, typed: r.amount }));
         setProjectId(c.projectId);
         setHasUnsignedFile(c.unsignedFile !== null);
         setTotalDesignFee(money(c.totalDesignFee));
@@ -138,7 +110,10 @@ export const CreateContract: React.FC<CreateContractProps> = ({ onAlreadyExists 
           maxRevisionsPerStage: c.maxRevisionsPerStage,
           reviewWindowDays: c.reviewWindowDays,
           ...(c.note ? { note: c.note.trim() } : {}),
-          milestones: rows.map((r, i) => ({ seqNo: i + 1, ...r, name: r.name.trim(), amount: r.amount.trim() })),
+          // The saved schedule as it really is, so a reordered or incomplete one counts as changed and gets fixed on save.
+          milestones: [...c.milestones].sort((a, b) => a.seqNo - b.seqNo).map((m) => ({
+            seqNo: m.seqNo, name: m.name.trim(), stageType: m.stageType, amount: money(m.amount).trim(), dueTrigger: m.dueTrigger,
+          })),
         });
       })
       .catch((err) => {
@@ -153,32 +128,20 @@ export const CreateContract: React.FC<CreateContractProps> = ({ onAlreadyExists 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contractId]);
 
-  const updateMilestone = (index: number, patch: Partial<MilestoneRow>) => {
-    setMilestones((rows) => rows.map((row, i) => {
-      if (i !== index) return row;
-      // Row 1 is fixed DEPOSIT / ON_CONTRACT_ACTIVE; every other row is ON_STAGE_APPROVED.
-      const next = { ...row, ...patch };
-      if (index === 0) next.stageType = 'DEPOSIT';
-      next.dueTrigger = defaultTrigger(next.stageType);
-      return next;
-    }));
-  };
+  const updateMilestone = (index: number, patch: Partial<MilestoneRow>) =>
+    setMilestones((rows) => rows.map((row, i) => (i === index ? { ...row, ...patch } : row)));
 
-  const addMilestone = () => setMilestones((rows) => {
-    if (rows.length >= MAX_MILESTONES) return rows;
-    const stageType: StageType = rows.length === 0 ? 'DEPOSIT' : 'LAYOUT_2D';
-    return [...rows, { ...EMPTY_MILESTONE, stageType, dueTrigger: defaultTrigger(stageType) }];
-  });
-
-  const removeMilestone = (index: number) =>
-    setMilestones((rows) => rows.filter((_, i) => i !== index));
+  /** Row whose amount field has focus: left blank while the Staff clears it, instead of refilling mid-typing. */
+  const [focused, setFocused] = useState<number | null>(null);
+  const amounts = useMemo(() => splitAmounts(totalDesignFee, milestones.map((r) => r.typed)), [totalDesignFee, milestones]);
+  const anyTyped = milestones.some((r) => r.typed.trim());
 
   const milestonesTotal = useMemo(
-    () => milestones.reduce((sum, row) => {
-      const amount = toNumber(row.amount);
+    () => amounts.reduce((sum, a) => {
+      const amount = toNumber(a);
       return Number.isNaN(amount) ? sum : sum + amount;
     }, 0),
-    [milestones],
+    [amounts],
   );
 
   const feeNumber = toNumber(totalDesignFee);
@@ -201,13 +164,7 @@ export const CreateContract: React.FC<CreateContractProps> = ({ onAlreadyExists 
     maxRevisionsPerStage: revisionsValue!,
     reviewWindowDays: reviewDaysValue!,
     ...(note.trim() ? { note: note.trim() } : {}),
-    milestones: milestones.map((row, index): PaymentMilestoneInput => ({
-      seqNo: index + 1,
-      name: row.name.trim(),
-      stageType: index === 0 ? 'DEPOSIT' : row.stageType,
-      amount: row.amount.trim(),
-      dueTrigger: index === 0 ? 'ON_CONTRACT_ACTIVE' : 'ON_STAGE_APPROVED',
-    })),
+    milestones: fixedSchedule(milestones.map((r, i) => ({ name: r.name, amount: amounts[i] }))),
   });
 
   const handleError = (err: unknown) => {
@@ -424,22 +381,27 @@ export const CreateContract: React.FC<CreateContractProps> = ({ onAlreadyExists 
 
           {/* Milestones */}
           <section className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-bold text-slate-900">Payment milestones</h2>
-              <button
-                type="button"
-                onClick={addMilestone}
-                disabled={milestones.length >= MAX_MILESTONES}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <Plus size={14} /> Add milestone
-              </button>
+            <div className="mb-4 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+              <div>
+                <h2 className="text-sm font-bold text-slate-900">Payment milestones</h2>
+                <p className="mt-0.5 text-xs text-slate-500">{t('newContract.splitHelp')}</p>
+              </div>
+              {anyTyped && (
+                <button type="button" onClick={() => setMilestones((rows) => rows.map((r) => ({ ...r, typed: '' })))}
+                  className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100">
+                  {t('newContract.resetSplit')}
+                </button>
+              )}
             </div>
 
             <div className="space-y-3">
               {milestones.map((row, index) => (
-                <div key={index} className="grid grid-cols-1 gap-3 rounded-xl border border-slate-100 bg-slate-50/40 p-3 md:grid-cols-[2.4rem_1fr_1fr_1fr_1fr_2rem] md:items-end">
-                  <div className="text-xs font-bold text-slate-400 md:pb-2.5">#{index + 1}</div>
+                <div key={STAGE_ORDER[index]} className="rounded-xl border border-slate-100 bg-slate-50/40 p-3">
+                  <p className="mb-2 text-xs text-slate-500">
+                    <span className="font-bold text-slate-800">#{index + 1} · {stageName(STAGE_ORDER[index])}</span>
+                    {' · '}{t(`newContract.dueTrigger.${dueTriggerFor(STAGE_ORDER[index])}`)}
+                  </p>
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                   <div>
                     <label className={labelClass}>Milestone name</label>
                     <input
@@ -452,48 +414,19 @@ export const CreateContract: React.FC<CreateContractProps> = ({ onAlreadyExists 
                     {fieldError(`milestones.${index}.name`)}
                   </div>
                   <div>
-                    <label className={labelClass}>Stage</label>
-                    <select
-                      value={row.stageType}
-                      disabled={index === 0}
-                      onChange={(e) => updateMilestone(index, { stageType: e.target.value as StageType })}
-                      className={inputClass}
-                    >
-                      {(index === 0 ? STAGE_TYPES : LATER_STAGE_TYPES).map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
-                    </select>
-                    {fieldError(`milestones.${index}.stageType`)}
-                  </div>
-                  <div>
                     <label className={labelClass}>Amount (VND)</label>
                     <input
-                      type="number" min="1" inputMode="numeric"
-                      value={row.amount}
-                      onChange={(e) => updateMilestone(index, { amount: e.target.value })}
-                      placeholder="15000000"
+                      type="text" inputMode="numeric"
+                      value={focused === index && !row.typed ? '' : amounts[index]}
+                      onFocus={() => setFocused(index)}
+                      onBlur={() => setFocused(null)}
+                      onChange={(e) => updateMilestone(index, { typed: e.target.value.replace(/D/g, '') })}
                       className={inputClass}
                     />
-                    {fieldError(`milestones.${index}.amount`)}
+                    {fieldErrors[`milestones.${index}.amount`] ? fieldError(`milestones.${index}.amount`)
+                      : feeValid && <p className="mt-1 text-[11px] text-slate-500">{t(row.typed.trim() ? 'newContract.shareTyped' : 'newContract.shareAuto', { pct: String(Math.round((toNumber(amounts[index]) || 0) / feeNumber * 1000) / 10) })}</p>}
                   </div>
-                  <div>
-                    <label className={labelClass}>Due trigger</label>
-                    <select
-                      value={row.dueTrigger}
-                      disabled
-                      className={inputClass}
-                    >
-                      {DUE_TRIGGERS.map((d) => <option key={d.value} value={d.value}>{d.label}</option>)}
-                    </select>
-                    {fieldError(`milestones.${index}.dueTrigger`)}
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => removeMilestone(index)}
-                    disabled={milestones.length === 1}
-                    aria-label="Remove milestone"
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    <Trash2 size={15} />
-                  </button>
                 </div>
               ))}
             </div>

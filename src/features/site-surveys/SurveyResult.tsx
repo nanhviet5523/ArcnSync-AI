@@ -28,7 +28,7 @@ function PhotoThumb({ floorId, photo, onDelete }: { floorId: string; photo: Surv
           <img src={url} alt={photo.fileName} className="h-full w-full object-cover" />
         </a>
       ) : failed ? (
-        <span className="grid h-full place-items-center px-1 text-center text-[11px] text-slate-500">{t('siteSurvey.photoFailed')}</span>
+        <span className="grid h-full place-items-center px-1 text-center text-xs text-slate-500">{t('siteSurvey.photoFailed')}</span>
       ) : <span aria-hidden className="block h-full w-full animate-pulse" />}
       {onDelete && (
         <button type="button" aria-label={t('siteSurvey.deletePhoto', { name: photo.fileName })} onClick={onDelete}
@@ -99,9 +99,9 @@ function FloorPhotos({ floor, editable, onChange, onStale, onMessage }: {
   };
 
   return (
-    <div className="mt-3">
+    <div className="mt-4">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-        <h5 className="text-[13px] font-medium text-slate-700">
+        <h5 className="text-sm font-semibold text-slate-800">
           {t('siteSurvey.photos')} <span className="font-normal text-slate-500">· {t('siteSurvey.photoCount', { n: floor.photos.length })}</span>
         </h5>
         {editable && (
@@ -117,8 +117,8 @@ function FloorPhotos({ floor, editable, onChange, onStale, onMessage }: {
         <ul className="grid grid-cols-3 gap-2 sm:grid-cols-5">
           {floor.photos.map((p) => <PhotoThumb key={p.id} floorId={floor.id} photo={p} onDelete={editable ? () => setPending(p) : undefined} />)}
         </ul>
-      ) : <p className={`text-xs ${editable ? 'text-amber-700' : 'text-slate-500'}`}>{editable ? t('siteSurvey.photosNeeded') : t('siteSurvey.noPhotos')}</p>}
-      {editable && <p className="mt-1.5 text-[11px] text-slate-500">{t('siteSurvey.photoHint', { max: MAX_PHOTOS_PER_FLOOR })}</p>}
+      ) : <p className={`text-sm ${editable ? 'text-amber-700' : 'text-slate-500'}`}>{editable ? t('siteSurvey.photosNeeded') : t('siteSurvey.noPhotos')}</p>}
+      {editable && <p className="mt-1.5 text-xs text-slate-500">{t('siteSurvey.photoHint', { max: MAX_PHOTOS_PER_FLOOR })}</p>}
       {pending && (
         <Modal title={t('siteSurvey.deletePhotoTitle')} onClose={() => !deleting && setPending(null)}
           footer={<>
@@ -153,13 +153,13 @@ export function SurveyResult({ survey, photosEditable, onFloorPhotos, onStale, o
       ]} />
       <div className="mt-4 space-y-3">
         {survey.floors.map((f) => (
-          <section key={f.id} className="rounded-xl border border-slate-200 p-4">
-            <h4 className="text-sm font-semibold text-slate-900">{f.name}</h4>
-            <p className="text-xs text-slate-500">{t('siteSurvey.floorMeta', { level: f.level, area: formatNumber(f.measuredArea), height: formatNumber(f.floorHeightMm) })}</p>
-            {f.note && <p className="mt-1 whitespace-pre-line text-sm text-slate-600">{f.note}</p>}
+          <section key={f.id} className="rounded-xl border border-slate-200 p-4 sm:p-5">
+            <h4 className="text-base font-semibold text-slate-900">{f.name}</h4>
+            <p className="mt-0.5 text-sm text-slate-600">{t('siteSurvey.floorMeta', { level: f.level, area: formatNumber(f.measuredArea), height: formatNumber(f.floorHeightMm) })}</p>
+            {f.note && <p className="mt-2 whitespace-pre-line text-[15px] leading-relaxed text-slate-700">{f.note}</p>}
             {f.rooms.length ? (
-              <table className="mt-3 w-full text-sm">
-                <thead className="text-left text-xs text-slate-500">
+              <table className="mt-3 w-full text-[15px]">
+                <thead className="text-left text-[13px] text-slate-500">
                   <tr className="border-b border-slate-100">
                     <th className="py-1.5 font-medium">{t('siteSurvey.measure.roomName')}</th>
                     <th className="py-1.5 font-medium">{t('siteSurvey.measure.roomType')}</th>
@@ -169,14 +169,14 @@ export function SurveyResult({ survey, photosEditable, onFloorPhotos, onStale, o
                 <tbody className="divide-y divide-slate-100">
                   {f.rooms.map((r) => (
                     <tr key={r.name}>
-                      <td className="py-2 text-slate-800">{r.name}{r.purpose && <span className="block text-xs text-slate-500">{r.purpose}</span>}</td>
+                      <td className="py-2 text-slate-800">{r.name}{r.purpose && <span className="block text-sm text-slate-500">{r.purpose}</span>}</td>
                       <td className="py-2 text-slate-600">{roomTypeLabel(r.roomType)}</td>
                       <td className="py-2 text-right tabular-nums text-slate-600">{r.area ? t('siteSurvey.roomArea', { area: formatNumber(r.area) }) : t('common.none')}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-            ) : <p className="mt-2 text-xs text-slate-500">{t('siteSurvey.noRooms')}</p>}
+            ) : <p className="mt-2 text-sm text-slate-500">{t('siteSurvey.noRooms')}</p>}
             <FloorPhotos floor={f} editable={photosEditable} onChange={(photos) => onFloorPhotos(f.id, photos)} onStale={onStale} onMessage={onMessage} />
           </section>
         ))}
