@@ -17,15 +17,15 @@ import {
 } from '@/features/projects/services/contractsApi';
 
 const STAGE_TYPES: { value: StageType; label: string }[] = [
-  { value: 'DEPOSIT', label: 'Đặt cọc (DEPOSIT)' },
-  { value: 'LAYOUT_2D', label: 'Mặt bằng 2D (LAYOUT_2D)' },
-  { value: 'RENDER_3D', label: 'Phối cảnh 3D (RENDER_3D)' },
-  { value: 'FINAL_PACKAGE', label: 'Hồ sơ hoàn thiện (FINAL_PACKAGE)' },
+  { value: 'DEPOSIT', label: 'Deposit (DEPOSIT)' },
+  { value: 'LAYOUT_2D', label: '2D layout (LAYOUT_2D)' },
+  { value: 'RENDER_3D', label: '3D render (RENDER_3D)' },
+  { value: 'FINAL_PACKAGE', label: 'Final package (FINAL_PACKAGE)' },
 ];
 
 const DUE_TRIGGERS: { value: DueTrigger; label: string }[] = [
-  { value: 'ON_CONTRACT_ACTIVE', label: 'Khi hợp đồng kích hoạt (ON_CONTRACT_ACTIVE)' },
-  { value: 'ON_STAGE_APPROVED', label: 'Khi duyệt giai đoạn (ON_STAGE_APPROVED)' },
+  { value: 'ON_CONTRACT_ACTIVE', label: 'When the contract becomes active (ON_CONTRACT_ACTIVE)' },
+  { value: 'ON_STAGE_APPROVED', label: 'When the stage is approved (ON_STAGE_APPROVED)' },
 ];
 
 /** The trigger the backend expects for a given stage (DEPOSIT is paid on activation). */
@@ -53,7 +53,7 @@ function toNumber(value: string): number {
   return /^\d+(\.\d+)?$/.test(trimmed) ? Number(trimmed) : NaN;
 }
 
-const vnd = new Intl.NumberFormat('vi-VN');
+const vnd = new Intl.NumberFormat('en-US');
 
 interface CreateContractProps {
   /** 409 CONTRACT_ALREADY_EXISTS: lets an embedding page reload and show the existing contract. */
@@ -74,7 +74,7 @@ export const CreateContract: React.FC<CreateContractProps> = ({ onAlreadyExists 
   const [reviewWindowDays, setReviewWindowDays] = useState('7');
   const [note, setNote] = useState('');
   const [milestones, setMilestones] = useState<MilestoneRow[]>([
-    { ...EMPTY_MILESTONE, name: 'Đặt cọc thiết kế' },
+    { ...EMPTY_MILESTONE, name: 'Design deposit' },
   ]);
 
   /** Edit mode: PATCH /contracts/:id instead of POST /projects/:id/contract. */
@@ -256,7 +256,7 @@ export const CreateContract: React.FC<CreateContractProps> = ({ onAlreadyExists 
         return;
       }
       const contract = await createProjectContract(projectId.trim(), buildPayload());
-      setSuccess(`Đã tạo hợp đồng ${contract.contractNo}. Dự án chuyển sang trạng thái CONTRACT_PENDING.`);
+      setSuccess(`Contract ${contract.contractNo} created. The project is now CONTRACT_PENDING.`);
       // Return to the project detail view after a brief confirmation.
       window.setTimeout(() => navigate(`/staff/projects/${encodeURIComponent(projectId.trim())}`), 1200);
     } catch (err) {
@@ -275,9 +275,9 @@ export const CreateContract: React.FC<CreateContractProps> = ({ onAlreadyExists 
 
       <main className="w-full max-w-[1100px] mx-auto px-6 lg:px-12 py-10 flex-1">
         <div className="mb-8">
-          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">{editing ? t('editContract.title') : 'Tạo hợp đồng'}</h1>
+          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">{editing ? t('editContract.title') : 'Create contract'}</h1>
           <p className="text-sm text-slate-500 mt-1">
-            Nhập điều khoản và lịch thanh toán, tổng các đợt phải bằng đúng phí thiết kế.
+            Enter the contract terms and payment schedule. Milestone amounts must equal the design fee.
           </p>
         </div>
 
@@ -309,26 +309,26 @@ export const CreateContract: React.FC<CreateContractProps> = ({ onAlreadyExists 
         <div className="space-y-6">
           {/* Terms */}
           <section className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
-            <h2 className="text-sm font-bold text-slate-900 mb-4">Thông tin hợp đồng</h2>
+            <h2 className="text-sm font-bold text-slate-900 mb-4">Contract details</h2>
 
             <div className="mb-4">
-              <label className={labelClass}>Mã dự án (UUID)</label>
+              <label className={labelClass}>Project ID (UUID)</label>
               <input
                 type="text"
                 value={projectId}
                 onChange={(e) => setProjectId(e.target.value)}
                 disabled={editing}
-                placeholder="vd: 123e4567-e89b-12d3-a456-426614174000"
+                placeholder="e.g. 123e4567-e89b-12d3-a456-426614174000"
                 className={`${inputClass} ${projectId && !projectIdValid ? 'border-red-300 focus:ring-red-500' : ''}`}
               />
               {projectId && !projectIdValid && (
-                <p className="mt-1 text-[11px] font-semibold text-red-600">Mã dự án phải là chuỗi UUID chuẩn.</p>
+                <p className="mt-1 text-[11px] font-semibold text-red-600">Project ID must be a valid UUID.</p>
               )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className={labelClass}>Tổng phí thiết kế (VND)</label>
+                <label className={labelClass}>Total design fee (VND)</label>
                 <input
                   type="number" min="1" inputMode="numeric"
                   value={totalDesignFee}
@@ -339,7 +339,7 @@ export const CreateContract: React.FC<CreateContractProps> = ({ onAlreadyExists 
                 {fieldError('totalDesignFee')}
               </div>
               <div>
-                <label className={labelClass}>Số lần sửa tối đa / giai đoạn (0–20)</label>
+                <label className={labelClass}>Maximum revisions per stage (0–20)</label>
                 <input
                   type="number" min="0" max="20"
                   value={maxRevisionsPerStage}
@@ -349,7 +349,7 @@ export const CreateContract: React.FC<CreateContractProps> = ({ onAlreadyExists 
                 {fieldError('maxRevisionsPerStage')}
               </div>
               <div>
-                <label className={labelClass}>Số ngày xem xét (1–60)</label>
+                <label className={labelClass}>Review period (days, 1–60)</label>
                 <input
                   type="number" min="1" max="60"
                   value={reviewWindowDays}
@@ -361,13 +361,13 @@ export const CreateContract: React.FC<CreateContractProps> = ({ onAlreadyExists 
             </div>
 
             <div className="mt-4">
-              <label className={labelClass}>Ghi chú (tuỳ chọn)</label>
+              <label className={labelClass}>Note (optional)</label>
               <textarea
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 rows={2}
                 maxLength={5000}
-                placeholder="Điều khoản bổ sung, phạm vi công việc…"
+                placeholder="Additional terms, scope of work…"
                 className={`${inputClass} resize-y`}
               />
               {fieldError('note')}
@@ -377,14 +377,14 @@ export const CreateContract: React.FC<CreateContractProps> = ({ onAlreadyExists 
           {/* Milestones */}
           <section className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-bold text-slate-900">Đợt thanh toán</h2>
+              <h2 className="text-sm font-bold text-slate-900">Payment milestones</h2>
               <button
                 type="button"
                 onClick={addMilestone}
                 disabled={milestones.length >= MAX_MILESTONES}
                 className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                <Plus size={14} /> Thêm đợt thanh toán
+                <Plus size={14} /> Add milestone
               </button>
             </div>
 
@@ -393,18 +393,18 @@ export const CreateContract: React.FC<CreateContractProps> = ({ onAlreadyExists 
                 <div key={index} className="grid grid-cols-1 gap-3 rounded-xl border border-slate-100 bg-slate-50/40 p-3 md:grid-cols-[2.4rem_1fr_1fr_1fr_1fr_2rem] md:items-end">
                   <div className="text-xs font-bold text-slate-400 md:pb-2.5">#{index + 1}</div>
                   <div>
-                    <label className={labelClass}>Tên đợt</label>
+                    <label className={labelClass}>Milestone name</label>
                     <input
                       type="text"
                       value={row.name}
                       onChange={(e) => updateMilestone(index, { name: e.target.value })}
-                      placeholder="Đặt cọc thiết kế"
+                      placeholder="Design deposit"
                       className={inputClass}
                     />
                     {fieldError(`milestones.${index}.name`)}
                   </div>
                   <div>
-                    <label className={labelClass}>Giai đoạn</label>
+                    <label className={labelClass}>Stage</label>
                     <select
                       value={row.stageType}
                       disabled={index === 0}
@@ -416,7 +416,7 @@ export const CreateContract: React.FC<CreateContractProps> = ({ onAlreadyExists 
                     {fieldError(`milestones.${index}.stageType`)}
                   </div>
                   <div>
-                    <label className={labelClass}>Số tiền (VND)</label>
+                    <label className={labelClass}>Amount (VND)</label>
                     <input
                       type="number" min="1" inputMode="numeric"
                       value={row.amount}
@@ -427,7 +427,7 @@ export const CreateContract: React.FC<CreateContractProps> = ({ onAlreadyExists 
                     {fieldError(`milestones.${index}.amount`)}
                   </div>
                   <div>
-                    <label className={labelClass}>Điều kiện đến hạn</label>
+                    <label className={labelClass}>Due trigger</label>
                     <select
                       value={row.dueTrigger}
                       disabled
@@ -441,7 +441,7 @@ export const CreateContract: React.FC<CreateContractProps> = ({ onAlreadyExists 
                     type="button"
                     onClick={() => removeMilestone(index)}
                     disabled={milestones.length === 1}
-                    aria-label="Xoá đợt"
+                    aria-label="Remove milestone"
                     className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     <Trash2 size={15} />
@@ -453,11 +453,11 @@ export const CreateContract: React.FC<CreateContractProps> = ({ onAlreadyExists 
             {/* Live total vs fee */}
             <div className="mt-4 rounded-xl border border-slate-100 bg-white p-4">
               <div className="flex items-center justify-between text-xs">
-                <span className="text-slate-500">Tổng các đợt thanh toán</span>
+                <span className="text-slate-500">Milestone total</span>
                 <span className="font-bold text-slate-900">VND {vnd.format(milestonesTotal)}</span>
               </div>
               <div className="mt-1.5 flex items-center justify-between text-xs">
-                <span className="text-slate-500">Tổng phí thiết kế</span>
+                <span className="text-slate-500">Total design fee</span>
                 <span className="font-bold text-slate-900">{feeValid ? `VND ${vnd.format(feeNumber)}` : '—'}</span>
               </div>
               {feeValid && !totalsMatch && (
@@ -468,7 +468,7 @@ export const CreateContract: React.FC<CreateContractProps> = ({ onAlreadyExists 
               )}
               {totalsMatch && (
                 <p className="mt-2.5 flex items-center gap-1.5 text-[11px] font-semibold text-emerald-600">
-                  <CheckCircle2 size={13} /> Tổng các đợt khớp với phí thiết kế.
+                  <CheckCircle2 size={13} /> Milestone total matches the design fee.
                 </p>
               )}
             </div>
@@ -480,7 +480,7 @@ export const CreateContract: React.FC<CreateContractProps> = ({ onAlreadyExists 
               onClick={() => navigate(-1)}
               className="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50"
             >
-              Huỷ
+              Cancel
             </button>
             <button
               type="button"
@@ -489,7 +489,7 @@ export const CreateContract: React.FC<CreateContractProps> = ({ onAlreadyExists 
               className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-xs font-bold text-white shadow-md transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Send size={14} />
-              {editing ? (submitting ? t('editContract.saving') : t('editContract.save')) : (submitting ? 'Đang tạo…' : 'Tạo hợp đồng')}
+              {editing ? (submitting ? t('editContract.saving') : t('editContract.save')) : (submitting ? 'Creating…' : 'Create contract')}
             </button>
           </div>
         </div>

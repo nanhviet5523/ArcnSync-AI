@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import {
   AlertCircle,
+  ArrowLeft,
   CheckCircle2,
   Download,
   FileText,
@@ -36,10 +37,10 @@ import {
 } from './services/contractsApi';
 
 const STATUS_LABEL: Record<ContractStatus, string> = {
-  DRAFT: 'Bản nháp',
-  ACTIVE: 'Đang hiệu lực',
-  COMPLETED: 'Đã hoàn tất',
-  CANCELLED: 'Đã huỷ',
+  DRAFT: 'Draft',
+  ACTIVE: 'Active',
+  COMPLETED: 'Completed',
+  CANCELLED: 'Cancelled',
 };
 
 const STATUS_BADGE: Record<ContractStatus, string> = {
@@ -50,17 +51,17 @@ const STATUS_BADGE: Record<ContractStatus, string> = {
 };
 
 const ESIGN_LABEL: Record<EsignStatus, string> = {
-  NOT_SENT: 'Chưa gửi ký',
-  AWAITING_CUSTOMER: 'Đang chờ khách hàng ký',
-  SIGNED: 'Đã ký',
+  NOT_SENT: 'Not sent for signature',
+  AWAITING_CUSTOMER: 'Awaiting customer signature',
+  SIGNED: 'Signed',
 };
 
 const MILESTONE_STATUS_LABEL: Record<MilestoneStatus, string> = {
-  PENDING: 'Chưa đến hạn',
-  INVOICED: 'Đã xuất hoá đơn',
-  PAID: 'Đã thanh toán',
-  OVERDUE: 'Quá hạn',
-  CANCELLED: 'Đã huỷ',
+  PENDING: 'Not yet due',
+  INVOICED: 'Invoiced',
+  PAID: 'Paid',
+  OVERDUE: 'Overdue',
+  CANCELLED: 'Cancelled',
 };
 
 const MILESTONE_STATUS_BADGE: Record<MilestoneStatus, string> = {
@@ -89,10 +90,13 @@ function formatAmount(value: unknown): string {
 }
 
 /** Shared page chrome for every branch below (loading / empty / error / loaded). */
-const Shell: React.FC<{ role?: UserRole; children: React.ReactNode }> = ({ role, children }) => (
+const Shell: React.FC<{ role?: UserRole; backTo?: string; children: React.ReactNode }> = ({ role, backTo, children }) => (
   <div className="min-h-screen bg-slate-50/60 font-sans flex flex-col justify-between">
     <Header role={role} />
-    <main className="w-full max-w-[1100px] mx-auto px-6 lg:px-12 py-10 flex-1">{children}</main>
+    <main className="w-full max-w-[1100px] mx-auto px-6 lg:px-12 py-10 flex-1">
+      {backTo && <Link to={backTo} className="mb-5 inline-flex items-center gap-2 text-sm font-semibold text-blue-700 hover:text-blue-900"><ArrowLeft size={16} /> Back to project</Link>}
+      {children}
+    </main>
     <Footer />
   </div>
 );
@@ -105,6 +109,9 @@ export const ContractDetail: React.FC = () => {
   const isStaff = role === 'staff';
   /** "Khách hàng" theo tài liệu BE = role homeowner trong hệ thống này. */
   const isCustomer = role === 'homeowner';
+  const backToProject = projectId
+    ? `${role === 'staff' || role === 'admin' ? '/staff/projects' : role === 'designer' ? '/designer/projects' : '/homeowner/projects'}/${encodeURIComponent(projectId)}`
+    : role === 'staff' || role === 'admin' ? '/staff/projects' : role === 'designer' ? '/designer/projects' : '/homeowner/projects';
 
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -428,9 +435,9 @@ export const ContractDetail: React.FC = () => {
 
   if (loading) {
     return (
-      <Shell role={role}>
+      <Shell role={role} backTo={backToProject}>
         <div className="flex items-center justify-center gap-2 py-20 text-sm font-semibold text-slate-500">
-          <Loader2 size={18} className="animate-spin" /> Đang tải thông tin hợp đồng…
+          <Loader2 size={18} className="animate-spin" /> Loading contract details…
         </div>
       </Shell>
     );
@@ -438,7 +445,7 @@ export const ContractDetail: React.FC = () => {
 
   if (loadError) {
     return (
-      <Shell role={role}>
+      <Shell role={role} backTo={backToProject}>
         <div className="flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
           <AlertCircle size={18} className="mt-0.5 flex-shrink-0 text-red-600" />
           <div>
@@ -448,7 +455,7 @@ export const ContractDetail: React.FC = () => {
               onClick={() => void loadContract()}
               className="mt-2 text-xs font-bold text-red-700 underline"
             >
-              Thử lại
+              Try again
             </button>
           </div>
         </div>
@@ -464,25 +471,18 @@ export const ContractDetail: React.FC = () => {
     if (isStaff) {
       // Staff create the contract from the project page (modal), so there is one creation form only.
       return (
-        <Shell role={role}>
+        <Shell role={role} backTo={backToProject}>
           <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-slate-200 bg-white py-20 text-center">
             <FileText size={32} className="text-slate-300" />
             <p className="text-sm font-bold text-slate-700">{t('contractPage.noContractTitle')}</p>
             <p className="max-w-sm text-xs text-slate-500">{t('contractPage.noContractStaff')}</p>
-            <button
-              type="button"
-              onClick={() => navigate(`/staff/projects/${encodeURIComponent(projectId)}`)}
-              className="mt-2 inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-blue-700"
-            >
-              {t('contractPage.goToProject')}
-            </button>
           </div>
         </Shell>
       );
     }
 
     return (
-      <Shell role={role}>
+      <Shell role={role} backTo={backToProject}>
         <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-slate-200 bg-white py-20 text-center">
           <FileText size={32} className="text-slate-300" />
           <p className="text-sm font-bold text-slate-700">{t('contractPage.notAvailableTitle')}</p>
@@ -506,16 +506,15 @@ export const ContractDetail: React.FC = () => {
     ? t('signatureOtp.sending')
     : cooldownLeft > 0 ? t('signatureOtp.resendIn', { seconds: cooldownLeft }) : null;
 
-  const depositMilestone = contract.milestones.find((m) => m.stageType === 'DEPOSIT');
   const canSendSigning = status === 'DRAFT' && esignStatus === 'NOT_SENT' && contract.unsignedFile !== null;
 
   return (
-    <Shell role={role}>
+    <Shell role={role} backTo={backToProject}>
       <div className="mb-8 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Hợp đồng {contract.contractNo}</h1>
+          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Contract {contract.contractNo}</h1>
           <p className="mt-1 text-sm text-slate-500">
-            Tổng phí thiết kế: <span className="font-semibold text-slate-800">{formatVnd(contract.totalDesignFee)}</span>
+            Total design fee: <span className="font-semibold text-slate-800">{formatVnd(contract.totalDesignFee)}</span>
           </p>
         </div>
         <div className="flex gap-2">
@@ -581,7 +580,7 @@ export const ContractDetail: React.FC = () => {
       {toast && (
         <div
           role={toast.type === 'error' ? 'alert' : 'status'}
-          className={`fixed right-4 top-4 z-[80] max-w-sm rounded-xl border px-4 py-3 text-sm font-medium shadow-lg ${
+          className={`fixed right-4 top-20 z-[80] max-w-sm rounded-xl border px-4 py-3 text-sm font-medium shadow-lg ${
             toast.type === 'success' ? 'border-emerald-100 bg-emerald-50 text-emerald-800'
               : toast.type === 'warning' ? 'border-amber-200 bg-amber-50 text-amber-800' : 'border-red-100 bg-red-50 text-red-700'
           }`}
@@ -605,21 +604,21 @@ export const ContractDetail: React.FC = () => {
 
       {contract.note && (
         <div className="mb-6 rounded-xl border border-slate-100 bg-white p-4 text-sm text-slate-600">
-          <span className="font-bold text-slate-800">Ghi chú: </span>{contract.note}
+          <span className="font-bold text-slate-800">Note: </span>{contract.note}
         </div>
       )}
 
       {/* ---- DRAFT + NOT_SENT: Staff soạn hợp đồng, chưa gửi khách ký ---- */}
       {status === 'DRAFT' && esignStatus === 'NOT_SENT' && isStaff && (
         <section className="mb-6 rounded-2xl border border-slate-100 bg-white p-6">
-          <h2 className="mb-4 text-sm font-bold text-slate-900">Thao tác</h2>
+          <h2 className="mb-4 text-sm font-bold text-slate-900">Actions</h2>
           <div className="flex flex-wrap gap-3">
             <button
               type="button"
               onClick={() => navigate(`/staff-edit-contract?contractId=${encodeURIComponent(contract.id)}`)}
               className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50"
             >
-              Chỉnh sửa hợp đồng
+              Edit contract
             </button>
             <button
               type="button"
@@ -680,7 +679,7 @@ export const ContractDetail: React.FC = () => {
       {/* ---- DRAFT + AWAITING_CUSTOMER ---- */}
       {status === 'DRAFT' && esignStatus === 'AWAITING_CUSTOMER' && isStaff && (
         <section className="mb-6 rounded-2xl border border-slate-100 bg-white p-6">
-          <h2 className="mb-4 text-sm font-bold text-slate-900">Thao tác</h2>
+          <h2 className="mb-4 text-sm font-bold text-slate-900">Actions</h2>
           <button
             type="button"
             disabled={actionBusy}
@@ -694,7 +693,7 @@ export const ContractDetail: React.FC = () => {
 
       {status === 'DRAFT' && esignStatus === 'AWAITING_CUSTOMER' && isCustomer && (
         <section className="mb-6 rounded-2xl border border-slate-100 bg-white p-6">
-          <h2 className="mb-4 text-sm font-bold text-slate-900">Ký hợp đồng</h2>
+          <h2 className="mb-4 text-sm font-bold text-slate-900">Sign contract</h2>
 
           {contract.unsignedFile && (
             <button
@@ -703,7 +702,7 @@ export const ContractDetail: React.FC = () => {
               onClick={() => void handleView(contract.id)}
               className="mb-4 inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
             >
-              <FileText size={14} /> Xem file PDF hợp đồng ({contract.unsignedFile.fileName})
+              <FileText size={14} /> View contract PDF ({contract.unsignedFile.fileName})
             </button>
           )}
 
@@ -748,7 +747,7 @@ export const ContractDetail: React.FC = () => {
                 onClick={() => void handleSign(contract.id)}
                 className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                <ShieldCheck size={14} /> Xác nhận ký
+                <ShieldCheck size={14} /> Confirm signature
               </button>
               <button
                 type="button"
@@ -775,22 +774,22 @@ export const ContractDetail: React.FC = () => {
             onClick={() => void handleDownload(contract.id)}
             className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
           >
-            <Download size={14} /> Tải file PDF hợp đồng đã ký
+            <Download size={14} /> Download signed contract PDF
           </button>
         </section>
       )}
 
       {showMilestones && (
         <section className="rounded-2xl border border-slate-100 bg-white p-6">
-          <h2 className="mb-4 text-sm font-bold text-slate-900">Các đợt thanh toán</h2>
+          <h2 className="mb-4 text-sm font-bold text-slate-900">Payment milestones</h2>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
-                  <th className="px-3 py-2">Đợt</th>
-                  <th className="px-3 py-2">Giai đoạn</th>
-                  <th className="px-3 py-2">Số tiền</th>
-                  <th className="px-3 py-2">Trạng thái</th>
+                  <th className="px-3 py-2">Milestone</th>
+                  <th className="px-3 py-2">Stage</th>
+                  <th className="px-3 py-2">Amount</th>
+                  <th className="px-3 py-2">Status</th>
                   <th className="px-3 py-2" />
                 </tr>
               </thead>
@@ -812,16 +811,7 @@ export const ContractDetail: React.FC = () => {
                           onClick={() => navigate(`/homeowner/payments?projectId=${encodeURIComponent(projectId)}&milestoneId=${encodeURIComponent(m.id)}`)}
                           className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-blue-700"
                         >
-                          Thanh toán
-
-                      {isCustomer && m.stageType === 'DEPOSIT' && m.status === 'INVOICED' && (
-                        <button
-                          type="button"
-                          disabled
-                          title="Tính năng thanh toán trực tuyến sẽ được bổ sung sau"
-                          className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-bold text-white opacity-50 cursor-not-allowed"
-                        >
-                          Thanh toán đặt cọc
+                          Pay now
                         </button>
                       )}
                     </td>
@@ -831,11 +821,6 @@ export const ContractDetail: React.FC = () => {
             </table>
           </div>
 
-          {depositMilestone?.status === 'INVOICED' && isCustomer && (
-            <p className="mt-3 text-[11px] text-slate-400">
-              Nút thanh toán đặt cọc hiện chưa khả dụng — tính năng cổng thanh toán sẽ được bổ sung ở giai đoạn sau.
-            </p>
-          )}
         </section>
       )}
     </Shell>
