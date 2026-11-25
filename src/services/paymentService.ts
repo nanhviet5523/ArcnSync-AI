@@ -1,4 +1,8 @@
 import { apiRequest } from '@/services/authService';
+import { buildPaymentHistoryQuery } from '@/features/payments/paymentHistoryQuery';
+import type { PaymentHistoryQuery, PaymentTransactionHistoryPage } from '@/features/payments/paymentHistoryQuery';
+
+export type { PaymentHistoryQuery, PaymentTransactionHistoryItem, PaymentTransactionHistoryPage } from '@/features/payments/paymentHistoryQuery';
 
 export type PaymentTransactionStatus = 'PENDING' | 'SUCCESS' | 'FAILED';
 export type PaymentGateway = 'PAYOS' | 'VNPAY' | 'BANK_TRANSFER';
@@ -36,5 +40,14 @@ export const paymentService = {
   /** Reads status; BE reconciles PENDING with PayOS when possible. */
   getTransaction(transactionId: string): Promise<PaymentTransaction> {
     return apiRequest<PaymentTransaction>(`/payment-transactions/${encodeURIComponent(transactionId)}`);
+  },
+
+  /**
+   * Transaction history, newest first. Backend scopes by role (customer / staff in charge / admin);
+   * DESIGNER gets 403. Never send customerId/staffId or any key besides page/limit/status/projectId.
+   * Does NOT reconcile with PayOS: use getTransaction(id) for that.
+   */
+  listTransactions(query: PaymentHistoryQuery = {}): Promise<PaymentTransactionHistoryPage> {
+    return apiRequest<PaymentTransactionHistoryPage>(`/payment-transactions${buildPaymentHistoryQuery(query)}`);
   },
 };
