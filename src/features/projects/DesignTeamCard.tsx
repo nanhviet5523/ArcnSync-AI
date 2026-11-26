@@ -140,11 +140,11 @@ export function DesignTeamCard({ project, role, designers, onSaved, onToast }: P
               const on = memberIds.includes(d.id);
               return (
                 <li key={d.id}>
-                  <label className={`flex cursor-pointer items-center gap-3 px-3 py-2.5 hover:bg-slate-50 ${on ? 'bg-brand-soft/60' : ''}`}>
+                  <label className={`flex cursor-pointer items-center gap-3 px-3 py-2.5 hover:bg-sand-50 ${on ? 'bg-brand-soft/60' : ''}`}>
                     <input type="checkbox" checked={on} onChange={() => toggleMember(d.id)} className="h-4 w-4 shrink-0 rounded border-slate-300 accent-brand" />
                     <Avatar id={d.id} name={d.fullName} label={avatars[d.id]} size="md" />
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-semibold text-slate-900">{d.fullName}</span>
+                      <span className="block truncate text-sm font-semibold text-ink">{d.fullName}</span>
                       <span className="block truncate text-xs text-slate-500">{sub(workload(d), d.id)}</span>
                     </span>
                   </label>

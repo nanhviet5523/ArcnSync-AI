@@ -34,13 +34,13 @@ export function Modal({ title, onClose, children, footer, size = 'sm' }: { title
     return () => { window.removeEventListener('keydown', onKey); releaseToasts(); previous?.focus?.(); };
   }, []);
   return (
-    <div className={`modal-backdrop fixed inset-0 ${Z.modal} flex items-end justify-center bg-slate-900/45 p-0 backdrop-blur-[2px] sm:items-center sm:p-4`} onClick={onClose}>
+    <div className={`modal-backdrop fixed inset-0 ${Z.modal} flex items-end justify-center bg-dark/45 p-0 backdrop-blur-[2px] sm:items-center sm:p-4`} onClick={onClose}>
       <div ref={box} role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}
-        className={`modal-panel flex max-h-[92vh] w-full flex-col overflow-hidden rounded-t-3xl border border-line bg-white shadow-float sm:rounded-2xl ${size === 'lg' ? 'sm:max-w-4xl' : size === 'md' ? 'sm:max-w-xl' : 'sm:max-w-md'}`}>
+        className={`modal-panel flex max-h-[92vh] w-full flex-col overflow-hidden rounded-t-3xl border border-line bg-surface shadow-float sm:rounded-2xl ${size === 'lg' ? 'sm:max-w-4xl' : size === 'md' ? 'sm:max-w-xl' : 'sm:max-w-md'}`}>
         {/* Grab handle: reads as a sheet on phones */}
         <span aria-hidden className="mx-auto mt-2.5 h-1 w-10 shrink-0 rounded-full bg-slate-200 sm:hidden" />
         <div className="flex items-start justify-between gap-3 border-b border-slate-100 py-3.5 pl-5 pr-3">
-          <h2 className="pt-1 text-base font-semibold leading-snug text-slate-900">{title}</h2>
+          <h2 className="pt-1 text-base font-semibold leading-snug text-ink">{title}</h2>
           <button
             type="button"
             data-modal-close

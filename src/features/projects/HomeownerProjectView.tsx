@@ -106,10 +106,10 @@ export function HomeownerProjectView({ project, onProjectChanged }: { project: P
       {/* back in product selection after asking for changes: say Lead is updating the products */}
       {project.status === 'PRODUCT_SELECTION' && <QuotationSummaryCard projectId={project.id} homeowner onlyAfterChangeRequest />}
 
-      <section className="mb-5 flex flex-col gap-4 rounded-card border border-blue-100 bg-white p-5 shadow-card sm:flex-row sm:items-center sm:justify-between sm:p-6">
+      <section className="mb-5 flex flex-col gap-4 rounded-card border border-blue-100 bg-surface p-5 shadow-card sm:flex-row sm:items-center sm:justify-between sm:p-6">
         <div className="flex items-start gap-3">
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-blue-50 text-blue-700"><CreditCard className="h-5 w-5" /></span>
-          <div><h2 className="text-[15px] font-semibold text-slate-900">Contract payment</h2><p className="mt-1 text-sm text-slate-600">Review the real contract payment schedule and pay an issued installment.</p></div>
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-sand-100 text-ink"><CreditCard className="h-5 w-5" /></span>
+          <div><h2 className="text-[15px] font-semibold text-ink">Contract payment</h2><p className="mt-1 text-sm text-slate-600">Review the real contract payment schedule and pay an issued installment.</p></div>
         </div>
         <Button variant="primary" onClick={() => navigate(`/homeowner/payments?projectId=${encodeURIComponent(project.id)}`)} className="self-start sm:self-auto">View payment schedule <ArrowRight aria-hidden className="h-4 w-4" /></Button>
       </section>
@@ -125,7 +125,7 @@ export function HomeownerProjectView({ project, onProjectChanged }: { project: P
         {v && (
           <section aria-labelledby="latest-design" className="flex min-h-0 flex-col overflow-hidden rounded-card border border-line bg-surface shadow-card lg:col-span-3">
             <div className="flex items-center justify-between gap-3 border-b border-line px-5 py-3">
-              <h2 id="latest-design" className="text-[15px] font-semibold text-slate-900">{t('homeownerDetail.latestDesign', { v: designLabel(v.label) })}</h2>
+              <h2 id="latest-design" className="text-[15px] font-semibold text-ink">{t('homeownerDetail.latestDesign', { v: designLabel(v.label) })}</h2>
               <StatusChip kind="version" value={v.status} size="sm" />
             </div>
             <div className="relative h-64 bg-stage sm:h-80">
@@ -141,15 +141,15 @@ export function HomeownerProjectView({ project, onProjectChanged }: { project: P
           <section aria-labelledby="next-step" className={`flex flex-col justify-center gap-4 rounded-card border border-blue-100 bg-brand-soft p-5 sm:p-6 ${v ? 'lg:col-span-2' : 'sm:flex-row sm:items-center sm:justify-between'}`}>
             <div className="min-w-0">
               <h2 id="next-step" className="text-[13px] font-medium text-brand">{t('nextStep.title')}</h2>
-              <p className="mt-1 text-[15px] font-semibold leading-snug text-slate-900 sm:text-2xl sm:leading-tight">{next}</p>
+              <p className="mt-1 text-[15px] font-semibold leading-snug text-ink sm:text-2xl sm:leading-tight">{next}</p>
             </div>
             <Button variant="primary" onClick={signing ? () => navigate(contractPage) : choosingConcept ? showConcepts : open} className="self-start">
               {signing ? t('homeownerDetail.signContract') : choosingConcept ? t('concepts.viewConcepts') : t('homeownerDetail.openDesign')}<ArrowRight aria-hidden className="h-4 w-4" />
             </Button>
           </section>
         ) : (
-          <section aria-labelledby="next-step" className={`flex flex-col gap-4 rounded-card border border-line bg-slate-50 p-5 sm:p-6 ${v ? 'justify-center lg:col-span-2' : 'sm:flex-row sm:items-center'}`}>
-            <span aria-hidden className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-slate-500 shadow-card">
+          <section aria-labelledby="next-step" className={`flex flex-col gap-4 rounded-card border border-line bg-sand-50 p-5 sm:p-6 ${v ? 'justify-center lg:col-span-2' : 'sm:flex-row sm:items-center'}`}>
+            <span aria-hidden className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-surface text-slate-500 shadow-card">
               {/* a waiting clock only while something is still to come */}
               {project.status === 'CANCELLED' ? <Ban className="h-5 w-5" /> : project.status === 'COMPLETED' ? <CircleCheck className="h-5 w-5" /> : <Clock className="h-5 w-5" />}
             </span>
@@ -161,7 +161,7 @@ export function HomeownerProjectView({ project, onProjectChanged }: { project: P
                 </p>
               ) : (
                 <>
-                  <p className="mt-1 text-[15px] font-semibold leading-snug text-slate-900">{next}</p>
+                  <p className="mt-1 text-[15px] font-semibold leading-snug text-ink">{next}</p>
                   {waitingOnContract && contractFailed && <p role="alert" className="mt-1 text-sm font-semibold text-amber-800">{t('homeownerDetail.checkContractFailed')}</p>}
                   {project.status !== 'CANCELLED' && (
                     // in the site survey the homeowner has things to do, so no "nothing to do yet"

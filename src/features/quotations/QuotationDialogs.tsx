@@ -97,11 +97,11 @@ export function OptionsDialog({ item, elementId, picked, onPick, onClose }: {
                 <li key={o.id} className={`flex items-center gap-3 px-3 py-2.5 ${isChosen ? 'bg-brand-soft' : ''}`}>
                   <Thumb path={o.thumbnailUrl} className="h-12 w-12" />
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold text-slate-900">{o.name}</p>
+                    <p className="truncate text-sm font-semibold text-ink">{o.name}</p>
                     <p className="truncate text-xs text-slate-500">{[o.supplierName, o.sku].filter(Boolean).join(' · ')}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-semibold tabular-nums text-slate-900">{formatMoney(o.price)}</p>
+                    <p className="text-sm font-semibold tabular-nums text-ink">{formatMoney(o.price)}</p>
                     {!isLine && <p className={`text-xs tabular-nums ${delta < 0 ? 'text-emerald-700' : delta > 0 ? 'text-rose-700' : 'text-slate-500'}`}>{signedMoney(delta)}</p>}
                   </div>
                   <div className="w-24 text-right">
@@ -147,11 +147,11 @@ export function RequestChangesDialog({ triedLines, onSubmit, onClose }: {
         {triedLines.length > 0 && (
           <div className="space-y-2">
             <label className="flex items-start gap-2 text-sm text-slate-700">
-              <input type="checkbox" className="mt-0.5 h-4 w-4 accent-blue-600" checked={include} onChange={(e) => setInclude(e.target.checked)} />
+              <input type="checkbox" className="mt-0.5 h-4 w-4 accent-brand" checked={include} onChange={(e) => setInclude(e.target.checked)} />
               {t('quotation.includeOptions', { n: triedLines.length })}
             </label>
             {include && (
-              <ul className="space-y-1 rounded-lg bg-slate-50 px-3 py-2 text-[13px] text-slate-700">
+              <ul className="space-y-1 rounded-lg bg-sand-50 px-3 py-2 text-[13px] text-slate-700">
                 {triedLines.map((l) => <li key={l}>{l}</li>)}
               </ul>
             )}

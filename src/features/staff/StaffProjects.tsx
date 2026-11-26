@@ -34,7 +34,7 @@ const STATUS_BADGE: Record<ProjectStatus, string> = {
   DRAFT: 'bg-slate-100 text-slate-600',
   CONTRACT_PENDING: 'bg-amber-50 text-amber-700',
   REQUIREMENT_ANALYSIS: 'bg-sky-50 text-sky-600',
-  IN_DESIGN: 'bg-blue-50 text-blue-600',
+  IN_DESIGN: 'bg-sand-100 text-ink',
   PRODUCT_SELECTION: 'bg-indigo-50 text-indigo-600',
   QUOTING: 'bg-purple-50 text-purple-600',
   COMPLETED: 'bg-emerald-50 text-emerald-600',
@@ -42,7 +42,7 @@ const STATUS_BADGE: Record<ProjectStatus, string> = {
 };
 
 const ROLE_BADGE: Record<MyProjectRole, string> = {
-  LEAD: 'bg-blue-600 text-white',
+  LEAD: 'bg-brand text-white',
   MEMBER: 'bg-slate-100 text-slate-600',
 };
 
@@ -191,8 +191,8 @@ export const StaffProjects: React.FC = () => {
     {
       title: 'TOTAL PROJECTS',
       value: overallTotal === null ? '…' : String(overallTotal),
-      icon: <Layers className="w-5 h-5 text-blue-600" />,
-      bgColor: 'bg-blue-50',
+      icon: <Layers className="w-5 h-5 text-brand-text" />,
+      bgColor: 'bg-sand-100',
     },
     {
       title: 'CONTRACT PENDING',
@@ -215,13 +215,13 @@ export const StaffProjects: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50/60 font-sans flex flex-col justify-between">
+    <div className="min-h-screen bg-sand-50/60 font-sans flex flex-col justify-between">
       <Header role="staff" />
 
       <main className="w-full max-w-[1440px] mx-auto px-6 lg:px-12 py-10 flex-1">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
+            <h1 className="text-3xl font-extrabold text-ink tracking-tight">
               Projects
             </h1>
             <p className="text-sm text-slate-500 mt-1">
@@ -236,14 +236,14 @@ export const StaffProjects: React.FC = () => {
                 resetForm();
                 setShowCreateModal(true);
               }}
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-sm transition cursor-pointer"
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-brand hover:bg-brand-hover text-white font-bold text-xs rounded-xl shadow-sm transition cursor-pointer"
             >
               <Plus size={14} />
               <span>New project</span>
             </button>
             <button
               type="button"
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs rounded-xl shadow-sm transition cursor-pointer"
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-surface border border-line hover:bg-sand-50 text-slate-700 font-bold text-xs rounded-xl shadow-sm transition cursor-pointer"
             >
               <Download size={14} />
               <span>Export</span>
@@ -255,7 +255,7 @@ export const StaffProjects: React.FC = () => {
           {stats.map((stat) => (
             <div
               key={stat.title}
-              className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4"
+              className="bg-surface p-5 rounded-2xl border border-line shadow-sm flex items-center gap-4"
             >
               <div
                 className={`w-12 h-12 rounded-xl ${stat.bgColor} flex items-center justify-center flex-shrink-0`}
@@ -263,21 +263,21 @@ export const StaffProjects: React.FC = () => {
                 {stat.icon}
               </div>
               <div>
-                <span className="block text-[11px] font-bold text-slate-400 tracking-wider">
+                <span className="block text-[11px] font-bold text-subtext tracking-wider">
                   {stat.title}
                 </span>
-                <span className="text-2xl font-extrabold text-slate-900 mt-0.5 block">
+                <span className="text-2xl font-extrabold text-ink mt-0.5 block">
                   {stat.title !== 'TOTAL PROJECTS' && loading ? '…' : stat.value}
                 </span>
               </div>
             </div>
           ))}
         </div>
-        <p className="mb-8 text-[11px] text-slate-400">
+        <p className="mb-8 text-[11px] text-subtext">
           Total là tổng toàn hệ thống (không đổi khi lọc); các số còn lại tính trên trang đang xem.
         </p>
 
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+        <div className="bg-surface rounded-2xl border border-line shadow-sm p-6">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
             <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0">
               {STATUS_TABS.map((tab) => {
@@ -292,8 +292,8 @@ export const StaffProjects: React.FC = () => {
                     }}
                     className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
                       isSelected
-                        ? 'bg-slate-100 text-slate-900'
-                        : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'
+                        ? 'bg-slate-100 text-ink'
+                        : 'text-slate-500 hover:text-ink hover:bg-sand-50'
                     }`}
                   >
                     {tab ? STATUS_LABEL[tab] : 'All'}
@@ -303,14 +303,14 @@ export const StaffProjects: React.FC = () => {
             </div>
 
             <div className="relative w-full md:w-64 flex-shrink-0">
-              <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-subtext" />
               <input
                 type="text"
                 placeholder="Search by code or title..."
                 value={qInput}
                 maxLength={100}
                 onChange={(e) => setQInput(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 bg-slate-50/80 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 placeholder:text-slate-400"
+                className="w-full pl-9 pr-4 py-2 bg-sand-50/80 border border-control bg-sand-100 rounded-xl text-xs font-medium text-ink focus:outline-none focus:ring-2 focus-visible:ring-brand placeholder:text-subtext"
               />
             </div>
           </div>
@@ -318,7 +318,7 @@ export const StaffProjects: React.FC = () => {
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b border-slate-100 text-[11px] font-bold text-slate-400 uppercase tracking-wider bg-slate-50/80">
+                <tr className="border-b border-line text-[11px] font-bold text-subtext uppercase tracking-wider bg-sand-50/80">
                   <th className="py-3 px-4 rounded-l-xl">CODE</th>
                   <th className="py-3 px-4">PROJECT</th>
                   <th className="py-3 px-4">HOMEOWNER</th>
@@ -342,17 +342,17 @@ export const StaffProjects: React.FC = () => {
                   ))
                 ) : projects.length === 0 ? (
                   <tr>
-                    <td colSpan={TABLE_COLUMNS} className="py-12 px-4 text-center text-sm text-slate-400">
+                    <td colSpan={TABLE_COLUMNS} className="py-12 px-4 text-center text-sm text-subtext">
                       Không tìm thấy dự án nào
                     </td>
                   </tr>
                 ) : (
                   projects.map((item) => (
-                    <tr key={item.id} className="hover:bg-slate-50/50 transition">
-                      <td className="py-4 px-4 font-bold text-slate-900 whitespace-nowrap">{item.code}</td>
+                    <tr key={item.id} className="hover:bg-sand-50/50 transition">
+                      <td className="py-4 px-4 font-bold text-ink whitespace-nowrap">{item.code}</td>
                       <td className="py-4 px-4">
-                        <span className="block font-bold text-slate-900">{item.title}</span>
-                        <span className="block mt-0.5 text-[11px] text-slate-400">
+                        <span className="block font-bold text-ink">{item.title}</span>
+                        <span className="block mt-0.5 text-[11px] text-subtext">
                           {item.apartment
                             ? <>{item.apartment.buildingName}{item.apartment.tower ? ` · ${item.apartment.tower}` : ''} · {item.apartment.unitNo}</>
                             : 'Pending site survey confirmation'}
@@ -363,7 +363,7 @@ export const StaffProjects: React.FC = () => {
                         {item.designer ? (
                           <span className="text-slate-700">{item.designer.fullName}</span>
                         ) : (
-                          <span className="text-slate-400">Chưa phân công</span>
+                          <span className="text-subtext">Chưa phân công</span>
                         )}
                       </td>
                       <td className="py-4 px-4">
@@ -377,7 +377,7 @@ export const StaffProjects: React.FC = () => {
                             {item.myProjectRole}
                           </span>
                         ) : (
-                          <span className="text-slate-400">—</span>
+                          <span className="text-subtext">—</span>
                         )}
                       </td>
                       <td className="py-4 px-4 text-slate-500 font-medium">
@@ -387,7 +387,7 @@ export const StaffProjects: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => navigate(`/staff-project-detail?projectId=${encodeURIComponent(item.id)}`)}
-                          className="px-3 py-1 bg-blue-50 hover:bg-blue-100 text-blue-600 font-bold text-xs rounded-lg transition cursor-pointer"
+                          className="px-3 py-1 bg-sand-100 hover:bg-blue-100 text-brand-text font-bold text-xs rounded-lg transition cursor-pointer"
                         >
                           Open
                         </button>
@@ -399,8 +399,8 @@ export const StaffProjects: React.FC = () => {
             </table>
           </div>
 
-          <div className="flex items-center justify-between mt-6 pt-4 border-t border-slate-100">
-            <span className="text-[11px] font-semibold text-slate-400">
+          <div className="flex items-center justify-between mt-6 pt-4 border-t border-line">
+            <span className="text-[11px] font-semibold text-subtext">
               Page {page} / {totalPages} · {total} projects
             </span>
             <div className="flex items-center gap-2">
@@ -408,7 +408,7 @@ export const StaffProjects: React.FC = () => {
                 type="button"
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={loading || page <= 1}
-                className="inline-flex items-center gap-1 px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                className="inline-flex items-center gap-1 px-3 py-1.5 border border-line rounded-lg text-xs font-bold text-slate-700 transition hover:bg-sand-50 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <ChevronLeft size={14} /> Prev
               </button>
@@ -416,7 +416,7 @@ export const StaffProjects: React.FC = () => {
                 type="button"
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={loading || page >= totalPages}
-                className="inline-flex items-center gap-1 px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                className="inline-flex items-center gap-1 px-3 py-1.5 border border-line rounded-lg text-xs font-bold text-slate-700 transition hover:bg-sand-50 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 Next <ChevronRight size={14} />
               </button>
@@ -426,15 +426,15 @@ export const StaffProjects: React.FC = () => {
       </main>
 
       {showCreateModal && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-900/40 p-4">
-          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-dark/40 p-4">
+          <div className="w-full max-w-lg rounded-2xl bg-surface p-6 shadow-xl">
             <div className="mb-5 flex items-center justify-between">
-              <h2 className="text-lg font-extrabold text-slate-900">Tạo dự án mới</h2>
+              <h2 className="text-lg font-extrabold text-ink">Tạo dự án mới</h2>
               <button
                 type="button"
                 onClick={() => setShowCreateModal(false)}
                 aria-label="Đóng"
-                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                className="rounded-lg p-1.5 text-subtext hover:bg-slate-100 hover:text-slate-700"
               >
                 <X size={16} />
               </button>
@@ -456,7 +456,7 @@ export const StaffProjects: React.FC = () => {
                   onChange={(e) => setForm((f) => ({ ...f, customerEmail: e.target.value }))}
                   placeholder="name@example.com"
                   disabled={creating}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                  className="w-full rounded-xl border border-control bg-sand-100 px-3 py-2 text-xs font-medium text-ink focus:outline-none focus:ring-2 focus-visible:ring-brand"
                 />
               </div>
 
@@ -469,7 +469,7 @@ export const StaffProjects: React.FC = () => {
                   placeholder="Thiết kế căn hộ The Sun Avenue"
                   disabled={creating}
                   maxLength={255}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                  className="w-full rounded-xl border border-control bg-sand-100 px-3 py-2 text-xs font-medium text-ink focus:outline-none focus:ring-2 focus-visible:ring-brand"
                 />
               </div>
 
@@ -482,7 +482,7 @@ export const StaffProjects: React.FC = () => {
                     onChange={(e) => setForm((f) => ({ ...f, budgetMin: e.target.value }))}
                     placeholder="150000000"
                     disabled={creating}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                    className="w-full rounded-xl border border-control bg-sand-100 px-3 py-2 text-xs font-medium text-ink focus:outline-none focus:ring-2 focus-visible:ring-brand"
                   />
                 </div>
                 <div>
@@ -493,7 +493,7 @@ export const StaffProjects: React.FC = () => {
                     onChange={(e) => setForm((f) => ({ ...f, budgetMax: e.target.value }))}
                     placeholder="250000000"
                     disabled={creating}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                    className="w-full rounded-xl border border-control bg-sand-100 px-3 py-2 text-xs font-medium text-ink focus:outline-none focus:ring-2 focus-visible:ring-brand"
                   />
                 </div>
               </div>
@@ -506,7 +506,7 @@ export const StaffProjects: React.FC = () => {
                     value={form.householdSize}
                     onChange={(e) => setForm((f) => ({ ...f, householdSize: e.target.value }))}
                     disabled={creating}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                    className="w-full rounded-xl border border-control bg-sand-100 px-3 py-2 text-xs font-medium text-ink focus:outline-none focus:ring-2 focus-visible:ring-brand"
                   />
                 </div>
                 <div>
@@ -517,7 +517,7 @@ export const StaffProjects: React.FC = () => {
                     onChange={(e) => setForm((f) => ({ ...f, budgetTolerancePercent: e.target.value }))}
                     placeholder="10"
                     disabled={creating}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                    className="w-full rounded-xl border border-control bg-sand-100 px-3 py-2 text-xs font-medium text-ink focus:outline-none focus:ring-2 focus-visible:ring-brand"
                   />
                 </div>
               </div>
@@ -530,7 +530,7 @@ export const StaffProjects: React.FC = () => {
                   rows={2}
                   maxLength={5000}
                   disabled={creating}
-                  className="w-full resize-y rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                  className="w-full resize-y rounded-xl border border-control bg-sand-100 px-3 py-2 text-xs font-medium text-ink focus:outline-none focus:ring-2 focus-visible:ring-brand"
                 />
               </div>
 
@@ -539,14 +539,14 @@ export const StaffProjects: React.FC = () => {
                   type="button"
                   onClick={() => setShowCreateModal(false)}
                   disabled={creating}
-                  className="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50"
+                  className="rounded-xl border border-line bg-surface px-5 py-2.5 text-xs font-bold text-slate-700 transition hover:bg-sand-50"
                 >
                   Huỷ
                 </button>
                 <button
                   type="submit"
                   disabled={creating}
-                  className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-xs font-bold text-white shadow-md transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="inline-flex items-center gap-2 rounded-xl bg-brand px-5 py-2.5 text-xs font-bold text-white shadow-md transition hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {creating && (
                     <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white" />

@@ -11,7 +11,7 @@ export const NoApiPage: React.FC = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="flex w-full min-h-screen items-center justify-center bg-white p-8 font-sans">
+    <div className="flex w-full min-h-screen items-center justify-center bg-surface p-8 font-sans">
       <div className="w-full max-w-[420px] text-center">
         <div className="mb-6 flex justify-center">
           <Logo size={38} to="/" />
@@ -21,7 +21,7 @@ export const NoApiPage: React.FC = () => {
           <Construction size={26} />
         </div>
 
-        <h1 className="mb-2 text-2xl font-extrabold tracking-tight text-slate-900">
+        <h1 className="mb-2 text-2xl font-extrabold tracking-tight text-ink">
           This feature isn't available yet
         </h1>
         <p className="mb-8 text-sm leading-relaxed text-slate-500">
@@ -31,14 +31,14 @@ export const NoApiPage: React.FC = () => {
         <button
           type="button"
           onClick={() => navigate('/login')}
-          className="w-full rounded-xl bg-[#0B132B] py-3.5 text-sm font-bold text-white shadow-md transition duration-200 hover:bg-slate-900"
+          className="w-full rounded-xl bg-brand py-3.5 text-sm font-bold text-white shadow-md transition duration-200 hover:bg-brand-hover"
         >
           Back to login
         </button>
         <button
           type="button"
           onClick={() => navigate(-1)}
-          className="mt-3 w-full rounded-xl border border-slate-200 bg-white py-3.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
+          className="mt-3 w-full rounded-xl border border-control bg-surface py-3.5 text-sm font-bold text-ink transition hover:bg-sand-50"
         >
           Go back
         </button>

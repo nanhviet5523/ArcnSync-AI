@@ -29,7 +29,7 @@ function ConceptImg({ image, className = '', alt }: { image: ConceptImage | unde
   }, [image]);
   const mine = state && image && state.id === image.id ? state : null;
   if (!image || mine?.failed) {
-    return <span className={`grid place-items-center bg-slate-100 text-slate-400 ${className}`}><ImageOff aria-hidden className="h-6 w-6" /><span className="sr-only">{t('concepts.imageFailed')}</span></span>;
+    return <span className={`grid place-items-center bg-slate-100 text-brand-on-dark ${className}`}><ImageOff aria-hidden className="h-6 w-6" /><span className="sr-only">{t('concepts.imageFailed')}</span></span>;
   }
   if (!mine?.url) return <span aria-hidden className={`block animate-pulse bg-slate-100 ${className}`} />;
   return <img src={mine.url} alt={alt} className={`object-cover ${className}`} />;
@@ -120,15 +120,15 @@ export function ConceptCard({ projectId, projectStatus, role, projectRole, data,
                   return (
                     <li key={c.id}>
                       <button type="button" onClick={() => setDialog({ kind: 'view', id: c.id })}
-                        className={`group block w-full overflow-hidden rounded-xl border bg-white text-left shadow-card transition hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${shown === 'APPROVED' ? 'border-emerald-400 ring-2 ring-emerald-100' : shown === 'NOT_CHOSEN' ? 'border-slate-200 opacity-75' : 'border-slate-200'}`}>
+                        className={`group block w-full overflow-hidden rounded-xl border bg-surface text-left shadow-card transition hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${shown === 'APPROVED' ? 'border-emerald-400 ring-2 ring-emerald-100' : shown === 'NOT_CHOSEN' ? 'border-line opacity-75' : 'border-line'}`}>
                         <span className="relative block">
                           <ConceptImg image={c.images[0]} alt={c.title} className="block h-40 w-full" />
-                          <span className="absolute left-2 top-2 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-bold text-slate-700 shadow-sm">{t('concepts.label', { letter: String.fromCharCode(65 + (i % 26)) })}</span>
-                          <span className="absolute bottom-2 right-2 inline-flex items-center gap-1 rounded-full bg-slate-900/70 px-2 py-0.5 text-[11px] font-semibold text-white"><Images aria-hidden className="h-3 w-3" />{c.images.length}</span>
+                          <span className="absolute left-2 top-2 rounded-full bg-surface/95 px-2.5 py-1 text-[11px] font-bold text-slate-700 shadow-sm">{t('concepts.label', { letter: String.fromCharCode(65 + (i % 26)) })}</span>
+                          <span className="absolute bottom-2 right-2 inline-flex items-center gap-1 rounded-full bg-dark/70 px-2 py-0.5 text-[11px] font-semibold text-white"><Images aria-hidden className="h-3 w-3" />{c.images.length}</span>
                         </span>
                         <span className="flex items-start justify-between gap-2 px-3 py-2.5">
                           <span className="min-w-0">
-                            <span className="block truncate text-sm font-semibold text-slate-900">{c.title}</span>
+                            <span className="block truncate text-sm font-semibold text-ink">{c.title}</span>
                             {c.description && <span className="mt-0.5 line-clamp-2 block text-xs text-slate-600">{c.description}</span>}
                           </span>
                           <StatusChip kind="concept" value={shown} size="sm" />
@@ -239,7 +239,7 @@ function ConceptViewer({ concept, index, approved, rights, limitReached, onClose
           {concept.createdBy && <span>{t('concepts.byLine', { name: concept.createdBy.fullName, date: formatDate(concept.createdAt) })}</span>}
         </div>
 
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
+        <div className="overflow-hidden rounded-xl border border-line bg-slate-100">
           {image && bigUrl?.id === image.id ? (
             <a href={bigUrl.url} target="_blank" rel="noreferrer" aria-label={t('concepts.openFull', { name: image.fileName })}>
               <img src={bigUrl.url} alt={image.fileName} className="max-h-[55vh] w-full object-contain" />
@@ -257,7 +257,7 @@ function ConceptViewer({ concept, index, approved, rights, limitReached, onClose
                 </button>
                 {canEditThis && concept.images.length > 1 && (
                   <button type="button" aria-label={t('concepts.deleteImageNamed', { name: img.fileName })} disabled={progress !== null} onClick={() => onDeleteImage(img)}
-                    className="absolute -right-1.5 -top-1.5 grid h-6 w-6 place-items-center rounded-full bg-white text-rose-700 shadow ring-1 ring-slate-200 hover:bg-rose-50">
+                    className="absolute -right-1.5 -top-1.5 grid h-6 w-6 place-items-center rounded-full bg-surface text-rose-700 shadow ring-1 ring-slate-200 hover:bg-rose-50">
                     <Trash2 aria-hidden className="h-3.5 w-3.5" />
                   </button>
                 )}

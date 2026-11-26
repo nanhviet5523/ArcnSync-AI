@@ -17,14 +17,14 @@ const formatDate = (value: string | null | undefined) => {
 const Row: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
   <div className="grid grid-cols-[130px_1fr] gap-3 py-2.5 text-sm">
     <dt className="text-slate-500">{label}</dt>
-    <dd className="min-w-0 break-words font-medium text-slate-800">{children}</dd>
+    <dd className="min-w-0 break-words font-medium text-ink">{children}</dd>
   </div>
 );
 
 const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
   <section className="mb-6">
     <h3 className="mb-1 text-xs font-bold uppercase tracking-wide text-slate-500">{title}</h3>
-    <dl className="divide-y divide-slate-100 rounded-xl border border-slate-200 px-4">{children}</dl>
+    <dl className="divide-y divide-slate-100 rounded-xl border border-line px-4">{children}</dl>
   </section>
 );
 
@@ -45,7 +45,7 @@ const CopyIdButton: React.FC<{ id: string }> = ({ id }) => {
     <button
       type="button"
       onClick={copy}
-      className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+      className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-line px-2 py-1 text-xs font-semibold text-slate-600 hover:bg-sand-50"
     >
       {copied ? <Check size={13} className="text-emerald-600" /> : <Copy size={13} />}
       {copied ? 'Copied' : 'Copy ID'}
@@ -86,7 +86,7 @@ const ProfileSection: React.FC<{ user: AdminUserDetail; availability?: Availabil
           ) : (
             <span
               className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
-                profile.isAvailable ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'
+                profile.isAvailable ? 'bg-emerald-50 text-emerald-700' : 'bg-sand-100 text-slate-600'
               }`}
             >
               {profile.isAvailable ? 'Available' : 'Unavailable'}
@@ -107,7 +107,7 @@ const ProfileSection: React.FC<{ user: AdminUserDetail; availability?: Availabil
         <Row label="Contact phone">{formatValue(profile.contactPhone)}</Row>
         <Row label="Website">
           {profile.website && !isEmptyValue(profile.website) ? (
-            <a href={profile.website} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+            <a href={profile.website} target="_blank" rel="noopener noreferrer" className="text-brand-text hover:underline">
               {profile.website}
             </a>
           ) : (
@@ -125,10 +125,10 @@ const ProfileSection: React.FC<{ user: AdminUserDetail; availability?: Availabil
 const DrawerSkeleton: React.FC = () => (
   <div aria-busy="true" aria-label="Loading user details" className="space-y-6">
     {[5, 3].map((rows, i) => (
-      <div key={i} className="space-y-3 rounded-xl border border-slate-200 p-4">
-        <div className="h-3 w-28 animate-pulse rounded bg-slate-100" />
+      <div key={i} className="space-y-3 rounded-xl border border-line p-4">
+        <div className="h-3 w-28 animate-pulse rounded bg-sand-100" />
         {Array.from({ length: rows }, (_, j) => (
-          <div key={j} className="h-4 w-full animate-pulse rounded bg-slate-100" />
+          <div key={j} className="h-4 w-full animate-pulse rounded bg-sand-100" />
         ))}
       </div>
     ))}
@@ -220,18 +220,18 @@ export const UserDetailDrawer: React.FC<UserDetailDrawerProps> = ({
   if (!userId) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-slate-900/40" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+    <div className="fixed inset-0 z-50 flex justify-end bg-dark/40" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <aside
         role="dialog"
         aria-modal="true"
         aria-label="User details"
-        className="flex h-full w-full max-w-md flex-col bg-white shadow-xl"
+        className="flex h-full w-full max-w-md flex-col bg-surface shadow-xl"
       >
-        <header className="flex items-start justify-between gap-4 border-b border-slate-200 p-5">
+        <header className="flex items-start justify-between gap-4 border-b border-line p-5">
           <div className="min-w-0">
             {user ? (
               <>
-                <h2 className="truncate text-lg font-bold text-slate-900">{formatValue(user.fullName)}</h2>
+                <h2 className="truncate text-lg font-bold text-ink">{formatValue(user.fullName)}</h2>
                 <div className="mt-2 flex flex-wrap gap-2">
                   <Badge value={user.role} styles={ROLE_BADGE} />
                   <Badge value={user.status} styles={STATUS_BADGE} />
@@ -239,8 +239,8 @@ export const UserDetailDrawer: React.FC<UserDetailDrawerProps> = ({
               </>
             ) : (
               <>
-                <h2 className="text-lg font-bold text-slate-900">User details</h2>
-                {loading && <div className="mt-2 h-5 w-32 animate-pulse rounded bg-slate-100" />}
+                <h2 className="text-lg font-bold text-ink">User details</h2>
+                {loading && <div className="mt-2 h-5 w-32 animate-pulse rounded bg-sand-100" />}
               </>
             )}
           </div>
@@ -249,7 +249,7 @@ export const UserDetailDrawer: React.FC<UserDetailDrawerProps> = ({
               <button
                 type="button"
                 onClick={() => onResendInvite({ id: user.id, email: user.email })}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-sand-50"
               >
                 <Mail size={13} /> Resend invite
               </button>
@@ -258,7 +258,7 @@ export const UserDetailDrawer: React.FC<UserDetailDrawerProps> = ({
               <button
                 type="button"
                 onClick={() => onEdit(user.id)}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-sand-50"
               >
                 <Pencil size={13} /> Edit
               </button>
@@ -267,7 +267,7 @@ export const UserDetailDrawer: React.FC<UserDetailDrawerProps> = ({
               type="button"
               onClick={onClose}
               aria-label="Close"
-              className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+              className="rounded-lg p-1.5 text-subtext hover:bg-sand-100 hover:text-slate-700"
             >
               <X size={18} />
             </button>
@@ -327,7 +327,7 @@ export const UserDetailDrawer: React.FC<UserDetailDrawerProps> = ({
                           className={`rounded-xl border px-3.5 py-2 text-sm font-semibold transition ${
                             meta.tone === 'danger'
                               ? 'border-red-200 text-red-600 hover:bg-red-50'
-                              : 'border-blue-200 text-blue-700 hover:bg-blue-50'
+                              : 'border-sand-200 text-brand-text hover:bg-sand-100'
                           }`}
                         >
                           {meta.label}

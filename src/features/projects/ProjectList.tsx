@@ -115,7 +115,7 @@ export function ProjectList() {
       key: 'project', header: t('projects.col.project'), sort: (p) => p.title.toLowerCase(),
       cell: (p) => (
         <div className="min-w-0">
-          <p className="truncate font-medium text-slate-900 transition-colors group-hover:text-brand">{p.title}</p>
+          <p className="truncate font-medium text-ink transition-colors group-hover:text-brand">{p.title}</p>
           <p className="mt-0.5 font-mono text-[11px] tracking-tight text-slate-500">{p.code}</p>
         </div>
       ),
@@ -124,7 +124,7 @@ export function ProjectList() {
       key: 'home', header: t('projects.col.home'), sort: (p) => (p.apartment?.buildingName ?? "").toLowerCase(),
       cell: (p) => (
         <div className="min-w-0">
-          <p className="truncate text-slate-800">{p.apartment ? `${p.apartment.buildingName}${p.apartment.unitNo ? `, ${p.apartment.unitNo}` : ''}` : t('projectDetail.pendingSurvey')}</p>
+          <p className="truncate text-ink">{p.apartment ? `${p.apartment.buildingName}${p.apartment.unitNo ? `, ${p.apartment.unitNo}` : ''}` : t('projectDetail.pendingSurvey')}</p>
           <p className="text-xs text-slate-500">
             {floors[p.id] === undefined
               ? <span className="inline-block h-3 w-14 animate-pulse rounded bg-slate-100 align-middle" />
@@ -140,7 +140,7 @@ export function ProjectList() {
     ...(role !== 'designer' ? [{
       key: 'designer', header: t('projects.col.designer'), sort: (p: Project) => p.designer?.fullName.toLowerCase() ?? '~',
       cell: (p: Project) => (p.designer ? <PersonName id={p.designer.id} name={p.designer.fullName} /> : (
-        <span className="flex items-center gap-2 text-slate-400">
+        <span className="flex items-center gap-2 text-subtext">
           <span aria-hidden className="h-6 w-6 shrink-0 rounded-full border border-dashed border-slate-300" />
           {t('projects.notAssigned')}
         </span>

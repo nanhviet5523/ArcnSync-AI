@@ -40,7 +40,7 @@ const SEARCH_DEBOUNCE_MS = 400;
 const HEADINGS = ['ID', 'Full name', 'Email', 'Role', 'Status', 'Available', 'Actions'];
 
 const selectClass =
-  'rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-blue-400';
+  'rounded-xl border border-control bg-sand-100 px-3 py-2.5 text-sm text-slate-700 outline-none focus-visible:border-brand';
 
 export const AdminUsersPage: React.FC = () => {
   const [users, setUsers] = useState<ApiUser[]>([]);
@@ -183,12 +183,12 @@ export const AdminUsersPage: React.FC = () => {
       <AdminCard>
         <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center">
           <label className="relative block flex-1">
-            <Search size={17} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Search size={17} className="absolute left-3 top-1/2 -translate-y-1/2 text-subtext" />
             <input
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               placeholder="Search by name or email"
-              className="w-full rounded-xl border border-slate-200 py-2.5 pl-10 pr-3 text-sm outline-none focus:border-blue-400"
+              className="w-full rounded-xl border border-control bg-sand-100 py-2.5 pl-10 pr-3 text-sm outline-none focus-visible:border-brand"
             />
           </label>
           <select
@@ -238,7 +238,7 @@ export const AdminUsersPage: React.FC = () => {
                 <tr key={`skeleton-${i}`} aria-hidden="true">
                   {HEADINGS.map((h) => (
                     <AdminCell key={h}>
-                      <div className="h-4 w-full max-w-[160px] animate-pulse rounded bg-slate-100" />
+                      <div className="h-4 w-full max-w-[160px] animate-pulse rounded bg-sand-100" />
                     </AdminCell>
                   ))}
                 </tr>
@@ -247,7 +247,7 @@ export const AdminUsersPage: React.FC = () => {
                 <tr
                   key={user.id}
                   onClick={() => setViewUserId(user.id)}
-                  className="cursor-pointer hover:bg-slate-50/70"
+                  className="cursor-pointer hover:bg-sand-50/70"
                 >
                   <AdminCell>
                     <span title={user.id} className="font-mono text-xs text-slate-500">{user.id.slice(0, 8)}</span>
@@ -277,15 +277,15 @@ export const AdminUsersPage: React.FC = () => {
                             Retry
                           </button>
                         ) : (
-                          <span aria-label="Loading availability" className="inline-block h-5 w-9 animate-pulse rounded-full bg-slate-100" />
+                          <span aria-label="Loading availability" className="inline-block h-5 w-9 animate-pulse rounded-full bg-sand-100" />
                         )}
                       </span>
                     ) : (
-                      <span className="text-slate-400">—</span>
+                      <span className="text-subtext">—</span>
                     )}
                   </AdminCell>
                   <AdminCell>
-                    <div className="flex items-center gap-1 text-slate-400">
+                    <div className="flex items-center gap-1 text-subtext">
                       <button
                         type="button"
                         aria-label={`View ${user.fullName}`}
@@ -293,7 +293,7 @@ export const AdminUsersPage: React.FC = () => {
                           e.stopPropagation();
                           setViewUserId(user.id);
                         }}
-                        className="rounded-lg p-1.5 hover:bg-slate-100 hover:text-slate-700"
+                        className="rounded-lg p-1.5 hover:bg-sand-100 hover:text-slate-700"
                       >
                         <Eye size={16} />
                       </button>
@@ -304,7 +304,7 @@ export const AdminUsersPage: React.FC = () => {
                           e.stopPropagation();
                           setEditUserId(user.id);
                         }}
-                        className="rounded-lg p-1.5 hover:bg-slate-100 hover:text-slate-700"
+                        className="rounded-lg p-1.5 hover:bg-sand-100 hover:text-slate-700"
                       >
                         <Pencil size={16} />
                       </button>
@@ -317,7 +317,7 @@ export const AdminUsersPage: React.FC = () => {
                             e.stopPropagation();
                             setResendTarget({ id: user.id, email: user.email });
                           }}
-                          className="rounded-lg p-1.5 hover:bg-slate-100 hover:text-slate-700"
+                          className="rounded-lg p-1.5 hover:bg-sand-100 hover:text-slate-700"
                         >
                           <Mail size={16} />
                         </button>
@@ -362,7 +362,7 @@ export const AdminUsersPage: React.FC = () => {
               type="button"
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={loading || page <= 1}
-              className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex items-center gap-1 rounded-lg border border-line bg-surface px-3 py-1.5 font-semibold text-slate-700 hover:bg-sand-50 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <ChevronLeft size={15} /> Prev
             </button>
@@ -371,7 +371,7 @@ export const AdminUsersPage: React.FC = () => {
               type="button"
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={loading || page >= totalPages}
-              className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex items-center gap-1 rounded-lg border border-line bg-surface px-3 py-1.5 font-semibold text-slate-700 hover:bg-sand-50 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Next <ChevronRight size={15} />
             </button>

@@ -9,17 +9,17 @@ interface SignUpPageProps {
 
 export const SignUpPage: React.FC<SignUpPageProps> = ({ onNavigateToLogin }) => {
   return (
-    <div className="flex w-full h-screen overflow-hidden font-sans bg-white">
+    <div className="flex w-full h-screen overflow-hidden font-sans bg-canvas">
       {/* Left Column: Hero Banner Section (50%) */}
       <div
         className="hidden md:flex flex-1 relative bg-cover bg-center p-12 lg:p-16 flex-col justify-end text-white"
         style={{
-          backgroundImage: `linear-gradient(to top, rgba(11, 19, 43, 0.9), rgba(0, 0, 0, 0.15)), url(${bannerImg})`,
+          backgroundImage: `linear-gradient(to top, rgba(43, 36, 24, 0.75), rgba(43, 36, 24, 0.15)), url(${bannerImg})`,
         }}
       >
         {/* Badge */}
-        <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-md px-3.5 py-1.5 rounded-full text-xs font-medium w-fit mb-6">
-          <Sparkles className="w-3.5 h-3.5 text-sky-400" />
+        <div className="inline-flex items-center gap-2 bg-dark/20 backdrop-blur-md px-3.5 py-1.5 rounded-full text-xs font-medium w-fit mb-6">
+          <Sparkles className="w-3.5 h-3.5 text-brand-on-dark" />
           <span>Join in under 2 minutes</span>
         </div>
 
@@ -27,13 +27,13 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({ onNavigateToLogin }) => 
         <h2 className="text-3xl lg:text-4xl font-extrabold leading-tight mb-4 max-w-lg">
           From your idea to your dream space.
         </h2>
-        <p className="text-sm lg:text-base text-slate-300 max-w-md leading-relaxed">
+        <p className="text-sm lg:text-base text-surface max-w-md leading-relaxed">
           Create your project, get free AI directions and talk to our design team.
         </p>
       </div>
 
       {/* Right Column: Form Section (50%) */}
-      <div className="flex-1 flex items-center justify-center p-8 lg:p-16 overflow-hidden bg-white">
+      <div className="flex-1 flex items-center justify-center p-8 lg:p-16 overflow-hidden bg-canvas">
         <SignUpForm onLoginClick={onNavigateToLogin} />
       </div>
     </div>

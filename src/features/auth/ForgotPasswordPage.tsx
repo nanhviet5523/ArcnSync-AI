@@ -49,19 +49,19 @@ export const ForgotPasswordPage: React.FC = () => {
   };
 
   return (
-    <div className="flex w-full min-h-screen items-center justify-center bg-white p-8 font-sans">
+    <div className="flex w-full min-h-screen items-center justify-center bg-surface p-8 font-sans">
       <div className="w-full max-w-[420px]">
         <div className="mb-6">
           <Logo size={38} to="/" />
         </div>
-        <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight mb-2">Forgot password?</h1>
+        <h1 className="text-3xl font-extrabold text-ink tracking-tight mb-2">Forgot password?</h1>
         <p className="text-sm text-slate-500 mb-6 leading-relaxed">
           Enter your account email and we will send you an OTP code to reset your password.
         </p>
 
         <form onSubmit={handleSubmit} noValidate className="space-y-3.5">
           <div>
-            <label className="block text-xs font-bold text-slate-900 mb-1.5 uppercase tracking-wide">Email</label>
+            <label className="block text-xs font-bold text-ink mb-1.5 uppercase tracking-wide">Email</label>
             <input
               type="email"
               placeholder="you@example.com"
@@ -70,8 +70,8 @@ export const ForgotPasswordPage: React.FC = () => {
                 setEmail(e.target.value);
                 setEmailError('');
               }}
-              className={`w-full px-4 py-3 text-sm rounded-xl border focus:outline-none focus:ring-2 focus:border-transparent transition placeholder:text-slate-400 ${
-                emailError ? 'border-red-400 focus:ring-red-500' : 'border-slate-200 focus:ring-blue-600'
+              className={`w-full px-4 py-3 text-sm rounded-xl border border-control bg-sand-100 text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:border-brand focus-visible:ring-brand-soft transition placeholder:text-subtext ${
+                emailError ? 'border-danger focus:ring-danger/20' : ''
               }`}
             />
             {emailError && (
@@ -93,7 +93,7 @@ export const ForgotPasswordPage: React.FC = () => {
           <button
             type="submit"
             disabled={loading || !!success}
-            className="w-full py-3.5 bg-[#0B132B] hover:bg-slate-900 text-white font-bold text-sm rounded-xl shadow-md transition duration-200 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="w-full py-3.5 bg-brand hover:bg-brand-hover active:bg-brand-hover text-white font-bold text-sm rounded-xl shadow-md transition duration-200 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {loading && <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />}
             {loading ? 'Sending...' : 'Send OTP'}
@@ -101,7 +101,7 @@ export const ForgotPasswordPage: React.FC = () => {
         </form>
 
         <p className="text-center text-sm text-slate-500 mt-4">
-          <Link to="/login" className="font-bold text-blue-600 hover:underline">Back to Login</Link>
+          <Link to="/login" className="font-bold text-brand-text hover:underline">Back to Login</Link>
         </p>
       </div>
     </div>

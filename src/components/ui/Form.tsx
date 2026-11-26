@@ -4,7 +4,7 @@ import { t } from '@/i18n';
 
 /** width defaults to full; pass a width class (e.g. w-48) through className to override */
 const control = (invalid?: boolean, className = '') =>
-  `block ${/(^|\s)(sm:|md:)?w-/.test(className) ? '' : 'w-full'} rounded-lg border bg-white px-3 text-sm text-slate-900 placeholder:text-slate-500 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 disabled:bg-slate-50 disabled:text-slate-500 ${invalid ? 'border-rose-400' : 'border-slate-300'}`;
+  `block ${/(^|\s)(sm:|md:)?w-/.test(className) ? '' : 'w-full'} rounded-lg border border-control bg-sand-100 px-3 text-sm text-ink placeholder:text-subtext outline-none transition focus-visible:border-brand focus-visible:ring-2 focus-visible:ring-brand-soft disabled:bg-sand-100 disabled:text-subtext ${invalid ? 'border-danger focus:border-danger focus:ring-danger/20' : ''}`;
 
 /** Label + control + hint/error. The child receives id and aria-describedby. */
 export function Field({ label, hint, error, optional, children, className = '' }: {
@@ -40,7 +40,7 @@ export function FilterBar({ search, onSearch, placeholder, children }: { search:
   return (
     <div className="flex flex-wrap items-center gap-2">
       <div className="relative min-w-0 flex-1 basis-64">
-        <svg aria-hidden viewBox="0 0 20 20" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"><path fill="currentColor" d="M8.5 3a5.5 5.5 0 0 1 4.38 8.82l3.65 3.65-1.06 1.06-3.65-3.65A5.5 5.5 0 1 1 8.5 3Zm0 1.5a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z" /></svg>
+        <svg aria-hidden viewBox="0 0 20 20" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-subtext"><path fill="currentColor" d="M8.5 3a5.5 5.5 0 0 1 4.38 8.82l3.65 3.65-1.06 1.06-3.65-3.65A5.5 5.5 0 1 1 8.5 3Zm0 1.5a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z" /></svg>
         <Input type="search" aria-label={placeholder} placeholder={placeholder} value={search} onChange={(e) => onSearch(e.target.value)} className="pl-9" />
       </div>
       {children}

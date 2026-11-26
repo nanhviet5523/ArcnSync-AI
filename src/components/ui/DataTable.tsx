@@ -57,7 +57,7 @@ export function DataTable<T>({ columns, rows, rowKey, loading, error, onRetry, e
   if (error) return <ErrorState message={error} onRetry={onRetry} />;
   if (loading || !rows) {
     return (
-      <div className="space-y-2 rounded-xl border border-slate-200 bg-white p-4" aria-busy="true">
+      <div className="space-y-2 rounded-xl border border-line bg-surface p-4" aria-busy="true">
         {[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-10 w-full" />)}
       </div>
     );
@@ -68,19 +68,19 @@ export function DataTable<T>({ columns, rows, rowKey, loading, error, onRetry, e
   const clickable = onRowClick ? 'cursor-pointer' : '';
 
   return (
-    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+    <div className="overflow-hidden rounded-xl border border-line bg-surface">
       {/* table from 640px */}
       <table className="hidden w-full text-left text-sm sm:table">
-        <thead className="border-b border-slate-200 bg-slate-50/70 text-[13px] text-slate-500">
+        <thead className="border-b border-line bg-sand-50/70 text-[13px] text-slate-500">
           <tr>
             {columns.map((c) => {
               const active = sort?.key === c.key;
               return (
                 <th key={c.key} scope="col" aria-sort={active ? (sort!.dir === 'asc' ? 'ascending' : 'descending') : undefined} className={`px-4 py-2.5 font-medium ${c.className ?? ''}`}>
                   {c.sort ? (
-                    <button type="button" onClick={() => toggle(c.key)} aria-label={t('common.sortBy', { col: c.header })} className="inline-flex items-center gap-1 hover:text-slate-900">
+                    <button type="button" onClick={() => toggle(c.key)} aria-label={t('common.sortBy', { col: c.header })} className="inline-flex items-center gap-1 hover:text-ink">
                       {c.header}
-                      <span aria-hidden className={active ? 'text-slate-900' : 'text-slate-300'}>{active && sort!.dir === 'desc' ? '↓' : '↑'}</span>
+                      <span aria-hidden className={active ? 'text-ink' : 'text-slate-300'}>{active && sort!.dir === 'desc' ? '↓' : '↑'}</span>
                     </button>
                   ) : c.header}
                 </th>
@@ -90,7 +90,7 @@ export function DataTable<T>({ columns, rows, rowKey, loading, error, onRetry, e
         </thead>
         <tbody className="divide-y divide-slate-100">
           {visible.map((row) => (
-            <tr key={rowKey(row)} onClick={onRowClick ? () => onRowClick(row) : undefined} className={`group transition-colors hover:bg-slate-50 ${clickable}`}>
+            <tr key={rowKey(row)} onClick={onRowClick ? () => onRowClick(row) : undefined} className={`group transition-colors hover:bg-sand-50 ${clickable}`}>
               {columns.map((c) => <td key={c.key} className={`px-4 py-3 align-middle ${c.className ?? ''}`}>{c.cell(row)}</td>)}
             </tr>
           ))}

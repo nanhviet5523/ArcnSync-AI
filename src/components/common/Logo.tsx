@@ -22,7 +22,7 @@ export const Logo: React.FC<LogoProps> = ({
     <div className={`inline-flex items-center gap-2.5 ${className}`}>
       {/* Rounded dark background icon */}
       <div
-        className={`${onDark ? 'bg-brand' : 'bg-slate-900'} flex items-center justify-center shrink-0`}
+        className={`${onDark ? 'bg-brand' : 'bg-dark'} flex items-center justify-center shrink-0`}
         style={{
           width: `${size}px`,
           height: `${size}px`,

@@ -37,7 +37,7 @@ export const StatusChangeDialog: React.FC<StatusChangeDialogProps> = ({ target, 
 
   const meta = STATUS_ACTION_META[target.action];
   const confirmClass =
-    meta.tone === 'danger' ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700';
+    meta.tone === 'danger' ? 'bg-red-600 hover:bg-red-700' : 'bg-brand hover:bg-brand-hover';
 
   const handleConfirm = async () => {
     setError('');
@@ -53,7 +53,7 @@ export const StatusChangeDialog: React.FC<StatusChangeDialogProps> = ({ target, 
 
   return (
     <div
-      className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-900/50 p-4"
+      className="fixed inset-0 z-[70] flex items-center justify-center bg-dark/50 p-4"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget && !submitting) onClose();
       }}
@@ -63,17 +63,17 @@ export const StatusChangeDialog: React.FC<StatusChangeDialogProps> = ({ target, 
         aria-modal="true"
         aria-labelledby="status-change-title"
         aria-describedby="status-change-desc"
-        className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl"
+        className="w-full max-w-md rounded-2xl bg-surface p-6 shadow-xl"
       >
-        <h2 id="status-change-title" className="text-lg font-bold text-slate-900">{meta.label} account</h2>
+        <h2 id="status-change-title" className="text-lg font-bold text-ink">{meta.label} account</h2>
         <div id="status-change-desc">
           <p className="mt-2 text-sm leading-6 text-slate-600">
             Are you sure you want to {meta.verb} the account{' '}
-            <span className="break-all font-semibold text-slate-900">{target.email}</span>?
+            <span className="break-all font-semibold text-ink">{target.email}</span>?
           </p>
           <p
             className={`mt-3 rounded-lg px-3 py-2 text-sm ${
-              meta.tone === 'danger' ? 'bg-red-50 text-red-700' : 'bg-blue-50 text-blue-700'
+              meta.tone === 'danger' ? 'bg-red-50 text-red-700' : 'bg-sand-100 text-ink'
             }`}
           >
             {meta.warning}
@@ -91,7 +91,7 @@ export const StatusChangeDialog: React.FC<StatusChangeDialogProps> = ({ target, 
             type="button"
             onClick={onClose}
             disabled={submitting}
-            className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+            className="rounded-xl border border-line bg-surface px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-sand-50 disabled:opacity-50"
           >
             Cancel
           </button>

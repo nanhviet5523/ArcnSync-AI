@@ -39,10 +39,10 @@ const DesignStyleImage: React.FC<{ src: string; alt: string; className: string }
   useEffect(() => setFailed(!src), [src]);
 
   if (!src || failed) {
-    return <div title={src ? 'Image URL could not be loaded. Use a direct image file URL.' : 'No image URL provided.'} className={`grid place-items-center rounded-lg bg-slate-100 text-slate-400 ${className}`}><ImageIcon size={22}/></div>;
+    return <div title={src ? 'Image URL could not be loaded. Use a direct image file URL.' : 'No image URL provided.'} className={`grid place-items-center rounded-lg bg-sand-100 text-subtext ${className}`}><ImageIcon size={22}/></div>;
   }
 
-  return <img src={src} alt={alt} onError={() => setFailed(true)} className={`rounded-lg bg-slate-100 object-cover ${className}`}/>;
+  return <img src={src} alt={alt} onError={() => setFailed(true)} className={`rounded-lg bg-sand-100 object-cover ${className}`}/>;
 };
 export const AdminMasterData: React.FC = () => {
   const [activeSubTab, setActiveSubTab] = useState<MasterDataSubTab>('styles');
@@ -351,7 +351,7 @@ export const AdminMasterData: React.FC = () => {
   const enabledBuildingCount = buildingTypes.filter((bt) => bt.enabled).length;
 
   return (
-    <div className="min-h-screen bg-slate-50/60 font-sans flex flex-col justify-between relative">
+    <div className="min-h-screen bg-sand-50/60 font-sans flex flex-col justify-between relative">
       <Header role="admin" activeTab="master-data" />
 
       <main className="w-full max-w-[1440px] mx-auto px-6 lg:px-12 py-8 flex-1">
@@ -359,7 +359,7 @@ export const AdminMasterData: React.FC = () => {
         {/* Page Title & Save Changes Action */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
+            <h1 className="text-3xl font-extrabold text-ink tracking-tight">
               Master data
             </h1>
             <p className="text-sm text-slate-500 mt-1">
@@ -370,12 +370,12 @@ export const AdminMasterData: React.FC = () => {
           {false && <button
             type="button"
             onClick={handleSaveChanges}
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-sm font-semibold rounded-xl shadow-xs transition cursor-pointer self-start sm:self-auto"
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-brand hover:bg-brand-hover active:bg-dark-hover text-white text-sm font-semibold rounded-xl shadow-xs transition cursor-pointer self-start sm:self-auto"
           >Save changes</button>}
         </div>
 
         {/* Sub-Navigation Pills Bar */}
-        <div className="flex items-center flex-wrap gap-1 p-1 bg-slate-100/70 rounded-xl w-fit mb-8">
+        <div className="flex items-center flex-wrap gap-1 p-1 bg-sand-100/70 rounded-xl w-fit mb-8">
           {subNavTabs.map((tab) => {
             const isActive = activeSubTab === tab.id;
             return (
@@ -385,8 +385,8 @@ export const AdminMasterData: React.FC = () => {
                 onClick={() => setActiveSubTab(tab.id)}
                 className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
                   isActive
-                    ? 'bg-white text-slate-900 shadow-2xs'
-                    : 'text-slate-500 hover:text-slate-900'
+                    ? 'bg-surface text-ink shadow-2xs'
+                    : 'text-slate-500 hover:text-ink'
                 }`}
               >
                 {tab.label}
@@ -398,9 +398,9 @@ export const AdminMasterData: React.FC = () => {
         {activeSubTab === 'styles' || activeSubTab === 'furniture' ? <>
         {/* SUB-TAB 1: BUILDING TYPES (Image 1) */}
         {activeSubTab === ('building' as MasterDataSubTab) && (
-          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-6 max-w-4xl">
+          <div className="bg-surface rounded-2xl border border-line/80 shadow-xs p-6 max-w-4xl">
             <div className="flex items-center justify-between mb-5">
-              <h2 className="text-base font-bold text-slate-900">
+              <h2 className="text-base font-bold text-ink">
                 Building types
               </h2>
               <span className="px-2.5 py-0.5 bg-emerald-50 text-emerald-700 font-semibold text-xs rounded-full">
@@ -415,10 +415,10 @@ export const AdminMasterData: React.FC = () => {
                   className="py-4 flex items-center justify-between gap-4 first:pt-0 last:pb-0"
                 >
                   <div>
-                    <h3 className="text-sm font-semibold text-slate-900">
+                    <h3 className="text-sm font-semibold text-ink">
                       {item.name}
                     </h3>
-                    <p className="text-xs text-slate-400 mt-0.5">
+                    <p className="text-xs text-subtext mt-0.5">
                       {item.statusText}
                     </p>
                   </div>
@@ -430,11 +430,11 @@ export const AdminMasterData: React.FC = () => {
                     aria-checked={item.enabled}
                     onClick={() => toggleBuildingType(item.id)}
                     className={`relative h-6 w-11 rounded-full transition-colors cursor-pointer shrink-0 ${
-                      item.enabled ? 'bg-blue-600' : 'bg-slate-200'
+                      item.enabled ? 'bg-brand' : 'bg-slate-200'
                     }`}
                   >
                     <span
-                      className={`absolute top-1 h-4 w-4 rounded-full bg-white transition-transform ${
+                      className={`absolute top-1 h-4 w-4 rounded-full bg-surface transition-transform ${
                         item.enabled ? 'left-6' : 'left-1'
                       }`}
                     />
@@ -447,19 +447,19 @@ export const AdminMasterData: React.FC = () => {
 
         {/* SUB-TAB 2: DESIGN STYLES */}
         {activeSubTab === 'styles' && (
-          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-6 max-w-4xl">
+          <div className="bg-surface rounded-2xl border border-line/80 shadow-xs p-6 max-w-4xl">
             <div className="flex items-center justify-between mb-5">
-              <h2 className="text-base font-bold text-slate-900">
+              <h2 className="text-base font-bold text-ink">
                 Design styles
               </h2>
               <div className="flex items-center gap-3">
-                <span className="px-2.5 py-0.5 bg-slate-100 text-slate-600 font-semibold text-xs rounded-full">
+                <span className="px-2.5 py-0.5 bg-sand-100 text-slate-600 font-semibold text-xs rounded-full">
                   {designStyles.length} styles
                 </span>
                 <button
                   type="button"
                   onClick={openAddStyle}
-                  className="inline-flex items-center gap-1 px-3 py-1.5 border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-xl transition cursor-pointer shadow-2xs"
+                  className="inline-flex items-center gap-1 px-3 py-1.5 border border-line hover:bg-sand-50 text-slate-700 text-xs font-semibold rounded-xl transition cursor-pointer shadow-2xs"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>Add style</span>
@@ -467,20 +467,20 @@ export const AdminMasterData: React.FC = () => {
               </div>
             </div>
 
-            {stylesError && <div role="alert" className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700"><p>{stylesError}</p><button type="button" onClick={() => setStyleReloadKey((key) => key + 1)} className="rounded-lg border border-rose-300 bg-white px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-100">Try again</button></div>}
+            {stylesError && <div role="alert" className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700"><p>{stylesError}</p><button type="button" onClick={() => setStyleReloadKey((key) => key + 1)} className="rounded-lg border border-rose-300 bg-surface px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-100">Try again</button></div>}
             {stylesLoading && designStyles.length === 0 ? <div className="flex items-center justify-center gap-2 py-12 text-sm text-slate-500"><LoaderCircle className="h-4 w-4 animate-spin"/>Loading design styles…</div> : designStyles.length === 0 ? <div className="rounded-xl border border-dashed border-slate-300 py-12 text-center"><ImageIcon className="mx-auto h-8 w-8 text-slate-300"/><p className="mt-3 text-sm font-semibold text-slate-700">{stylesError ? 'Design styles are unavailable.' : 'No design styles found.'}</p><p className="mt-1 text-xs text-slate-500">{stylesError ? 'The styles API did not return data. Retry to check the server again.' : 'Styles shown here come from the design styles API.'}</p></div> : <div className="grid gap-3 sm:grid-cols-2">
               {designStyles.map((style) => (
-                <article key={style.id} className={`flex gap-4 rounded-xl border p-3 ${style.isActive ? 'border-slate-200' : 'border-slate-200 bg-slate-50 opacity-75'}`}>
+                <article key={style.id} className={`flex gap-4 rounded-xl border p-3 ${style.isActive ? 'border-line' : 'border-line bg-sand-50 opacity-75'}`}>
                   <DesignStyleImage src={style.imageUrl} alt={style.name} className="h-20 w-24 shrink-0"/>
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-start justify-between gap-2"><div><h3 className="font-bold text-slate-900">{style.name}</h3><p className="text-xs font-semibold tracking-wide text-slate-400">{style.code}</p></div><span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${style.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-200 text-slate-600'}`}>{style.isActive ? 'Active' : 'Hidden'}</span></div>
+                    <div className="flex items-start justify-between gap-2"><div><h3 className="font-bold text-ink">{style.name}</h3><p className="text-xs font-semibold tracking-wide text-subtext">{style.code}</p></div><span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${style.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-200 text-slate-600'}`}>{style.isActive ? 'Active' : 'Hidden'}</span></div>
                     <p className="mt-2 line-clamp-2 text-xs text-slate-500">{style.description}</p>
-                    <div className="mt-3 flex gap-3 text-xs font-semibold"><button type="button" onClick={() => void openEditStyle(style)} disabled={stylesSaving || styleDetailsLoadingId !== null} className="text-blue-700 hover:text-blue-900 disabled:opacity-50">{styleDetailsLoadingId === style.id ? 'Loading…' : 'Edit'}</button><button type="button" onClick={() => void toggleStyleActive(style)} disabled={stylesSaving || styleDetailsLoadingId !== null} className="text-slate-600 hover:text-slate-900 disabled:opacity-50">{style.isActive ? 'Hide' : 'Activate'}</button></div>
+                    <div className="mt-3 flex gap-3 text-xs font-semibold"><button type="button" onClick={() => void openEditStyle(style)} disabled={stylesSaving || styleDetailsLoadingId !== null} className="text-brand-text hover:text-dark disabled:opacity-50">{styleDetailsLoadingId === style.id ? 'Loading…' : 'Edit'}</button><button type="button" onClick={() => void toggleStyleActive(style)} disabled={stylesSaving || styleDetailsLoadingId !== null} className="text-slate-600 hover:text-ink disabled:opacity-50">{style.isActive ? 'Hide' : 'Activate'}</button></div>
                   </div>
                 </article>
               ))}
             </div>}
-            <p className="text-xs text-slate-400 mt-5">Hidden styles remain in the database and can be activated again. The style code cannot be changed after creation.</p>
+            <p className="text-xs text-subtext mt-5">Hidden styles remain in the database and can be activated again. The style code cannot be changed after creation.</p>
           </div>
         )}
 
@@ -488,9 +488,9 @@ export const AdminMasterData: React.FC = () => {
         {activeSubTab === 'furniture' && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             {/* Left Card: Product Categories */}
-            <div className="lg:col-span-6 bg-white rounded-2xl border border-slate-200/80 shadow-xs p-6">
+            <div className="lg:col-span-6 bg-surface rounded-2xl border border-line/80 shadow-xs p-6">
               <div className="flex items-center justify-between mb-5">
-                <h2 className="text-base font-bold text-slate-900">
+                <h2 className="text-base font-bold text-ink">
                   Product categories
                 </h2>
                 <span className="text-xs text-slate-500">{apiCategories.length} categories</span>
@@ -501,7 +501,7 @@ export const AdminMasterData: React.FC = () => {
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
-                    <tr className="border-b border-slate-100 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                    <tr className="border-b border-line text-[11px] font-semibold text-subtext uppercase tracking-wider">
                       <th className="py-2.5 px-3">Category</th>
                       <th className="py-2.5 px-3">Nhóm dự toán</th>
                       <th className="py-2.5 px-3 text-right">Status</th>
@@ -509,8 +509,8 @@ export const AdminMasterData: React.FC = () => {
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-sm">
                     {apiCategories.map((cat) => (
-                      <tr key={cat.id} className="hover:bg-slate-50/60 transition-colors">
-                        <td className="py-3 px-3 text-xs"><button type="button" onClick={() => void showAdminCategory(cat.id)} className="font-semibold text-blue-700">{cat.name}</button><span className="ml-2 text-slate-400">{cat.code}</span></td>
+                      <tr key={cat.id} className="hover:bg-sand-50/60 transition-colors">
+                        <td className="py-3 px-3 text-xs"><button type="button" onClick={() => void showAdminCategory(cat.id)} className="font-semibold text-ink">{cat.name}</button><span className="ml-2 text-subtext">{cat.code}</span></td>
                         <td className="py-3 px-3 text-xs text-slate-600">{cat.costCategory ?? '—'}</td>
                         <td className="py-3 px-3 text-xs text-right">{cat.isActive ? 'Active' : 'Hidden'}</td>
                       </tr>
@@ -520,16 +520,16 @@ export const AdminMasterData: React.FC = () => {
                 </table>
               </div>
 
-              {adminCategoryDetail && <div className="mt-4 rounded-xl bg-slate-50 p-3 text-xs text-slate-600"><div className="flex items-center justify-between"><b className="text-sm text-slate-900">Category details</b><button type="button" onClick={() => setAdminCategoryDetail(null)} className="text-slate-500">Close</button></div><p className="mt-2">{adminCategoryDetail.name} ({adminCategoryDetail.code})</p><p>Model minh hoạ: {adminCategoryDetail.defaultModelUrl ?? '—'}</p><p>Status: {adminCategoryDetail.isActive ? 'Active' : 'Hidden'}</p></div>}
+              {adminCategoryDetail && <div className="mt-4 rounded-xl bg-sand-50 p-3 text-xs text-slate-600"><div className="flex items-center justify-between"><b className="text-sm text-ink">Category details</b><button type="button" onClick={() => setAdminCategoryDetail(null)} className="text-slate-500">Close</button></div><p className="mt-2">{adminCategoryDetail.name} ({adminCategoryDetail.code})</p><p>Model minh hoạ: {adminCategoryDetail.defaultModelUrl ?? '—'}</p><p>Status: {adminCategoryDetail.isActive ? 'Active' : 'Hidden'}</p></div>}
 
-              <p className="text-xs text-slate-400 mt-4">
+              <p className="text-xs text-subtext mt-4">
                 Categories shown here are loaded from the admin product-categories API.
               </p>
             </div>
 
             {/* Right Card: Materials & Finishes */}
-            <div className="lg:col-span-6 bg-white rounded-2xl border border-slate-200/80 shadow-xs p-6">
-              <h2 className="text-base font-bold text-slate-900 mb-5">
+            <div className="lg:col-span-6 bg-surface rounded-2xl border border-line/80 shadow-xs p-6">
+              <h2 className="text-base font-bold text-ink mb-5">
                 Materials &amp; finishes
               </h2>
 
@@ -540,13 +540,13 @@ export const AdminMasterData: React.FC = () => {
                     className="py-3.5 flex items-center justify-between gap-4 first:pt-0 last:pb-0"
                   >
                     <div>
-                      <h3 className="text-sm font-semibold text-slate-900">
+                      <h3 className="text-sm font-semibold text-ink">
                         {item.name}
                       </h3>
-                      <p className="text-xs text-slate-400 mt-0.5">
+                      <p className="text-xs text-subtext mt-0.5">
                         {item.category}
                       </p>
-                      <p className="text-[11px] text-slate-400">
+                      <p className="text-[11px] text-subtext">
                         {item.statusText}
                       </p>
                     </div>
@@ -558,11 +558,11 @@ export const AdminMasterData: React.FC = () => {
                       aria-checked={item.enabled}
                       onClick={() => toggleMaterialFinish(item.id)}
                       className={`relative h-6 w-11 rounded-full transition-colors cursor-pointer shrink-0 ${
-                        item.enabled ? 'bg-blue-600' : 'bg-slate-200'
+                        item.enabled ? 'bg-brand' : 'bg-slate-200'
                       }`}
                     >
                       <span
-                        className={`absolute top-1 h-4 w-4 rounded-full bg-white transition-transform ${
+                        className={`absolute top-1 h-4 w-4 rounded-full bg-surface transition-transform ${
                           item.enabled ? 'left-6' : 'left-1'
                         }`}
                       />
@@ -576,12 +576,12 @@ export const AdminMasterData: React.FC = () => {
 
         {/* SUB-TAB 4: CONSTRAINT RULES (Image 5) */}
         {activeSubTab === ('rules' as MasterDataSubTab) && (
-          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-6 max-w-4xl flex flex-col gap-6">
+          <div className="bg-surface rounded-2xl border border-line/80 shadow-xs p-6 max-w-4xl flex flex-col gap-6">
             <div className="flex items-center justify-between">
-              <h2 className="text-base font-bold text-slate-900">
+              <h2 className="text-base font-bold text-ink">
                 Constraint rules
               </h2>
-              <span className="px-2.5 py-0.5 bg-slate-100 text-slate-600 font-semibold text-xs rounded-full">
+              <span className="px-2.5 py-0.5 bg-sand-100 text-slate-600 font-semibold text-xs rounded-full">
                 Applied to every design
               </span>
             </div>
@@ -593,7 +593,7 @@ export const AdminMasterData: React.FC = () => {
                   className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 first:pt-0 last:pb-0"
                 >
                   <div>
-                    <h3 className="text-sm font-bold text-slate-900">
+                    <h3 className="text-sm font-bold text-ink">
                       {rule.title}
                     </h3>
                     <p className="text-xs text-slate-500 mt-0.5">
@@ -615,7 +615,7 @@ export const AdminMasterData: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => openEditRule(rule)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-xl transition cursor-pointer shadow-2xs"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-line hover:bg-sand-50 text-slate-700 text-xs font-semibold rounded-xl transition cursor-pointer shadow-2xs"
                     >
                       <Edit2 className="w-3.5 h-3.5 text-slate-600" />
                       <span>Edit</span>
@@ -640,22 +640,22 @@ export const AdminMasterData: React.FC = () => {
           <div className="space-y-6">
             {/* Unsaved Changes Banner (Image 3) */}
             {hasUnsavedPackagesChanges && (
-              <div className="p-4 rounded-2xl bg-blue-50/80 border border-blue-200 flex items-center justify-between shadow-2xs animate-in fade-in duration-200">
-                <span className="text-xs font-bold text-blue-700">
+              <div className="p-4 rounded-2xl bg-sand-100/80 border border-sand-200 flex items-center justify-between shadow-2xs animate-in fade-in duration-200">
+                <span className="text-xs font-bold text-ink">
                   You have unsaved changes
                 </span>
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={handleDiscardPackages}
-                    className="px-4 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold text-xs rounded-xl transition cursor-pointer shadow-2xs"
+                    className="px-4 py-1.5 bg-surface border border-line hover:bg-sand-50 text-slate-700 font-semibold text-xs rounded-xl transition cursor-pointer shadow-2xs"
                   >
                     Discard
                   </button>
                   <button
                     type="button"
                     onClick={handleSavePackages}
-                    className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-xl shadow-xs transition cursor-pointer"
+                    className="px-4 py-1.5 bg-brand hover:bg-brand-hover text-white font-semibold text-xs rounded-xl shadow-xs transition cursor-pointer"
                   >
                     Save changes
                   </button>
@@ -664,12 +664,12 @@ export const AdminMasterData: React.FC = () => {
             )}
 
             {/* Top Card: Service Packages */}
-            <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-6">
+            <div className="bg-surface rounded-2xl border border-line/80 shadow-xs p-6">
               <div className="flex items-center justify-between mb-5">
-                <h2 className="text-base font-bold text-slate-900">
+                <h2 className="text-base font-bold text-ink">
                   Service packages
                 </h2>
-                <span className="px-2.5 py-0.5 bg-slate-100 text-slate-600 font-semibold text-xs rounded-full">
+                <span className="px-2.5 py-0.5 bg-sand-100 text-slate-600 font-semibold text-xs rounded-full">
                   Staff picks one when creating a contract
                 </span>
               </div>
@@ -677,7 +677,7 @@ export const AdminMasterData: React.FC = () => {
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
-                    <tr className="border-b border-slate-100 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                    <tr className="border-b border-line text-[11px] font-semibold text-subtext uppercase tracking-wider">
                       <th className="py-3 px-3">Package</th>
                       <th className="py-3 px-3">Price (VND M)</th>
                       <th className="py-3 px-3">Design rounds</th>
@@ -687,9 +687,9 @@ export const AdminMasterData: React.FC = () => {
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-sm">
                     {packages.map((pkg) => (
-                      <tr key={pkg.id} className="hover:bg-slate-50/60 transition-colors">
+                      <tr key={pkg.id} className="hover:bg-sand-50/60 transition-colors">
                         {/* Package Name */}
-                        <td className="py-3.5 px-3 font-bold text-slate-900 text-sm">
+                        <td className="py-3.5 px-3 font-bold text-ink text-sm">
                           {pkg.name}
                         </td>
 
@@ -704,7 +704,7 @@ export const AdminMasterData: React.FC = () => {
                                 prev.map((p) => (p.id === pkg.id ? { ...p, price: val } : p))
                               );
                             }}
-                            className="w-24 px-3 py-1.5 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            className="w-24 px-3 py-1.5 border border-control bg-sand-100 rounded-xl text-sm font-semibold text-ink focus:outline-none focus:ring-1 focus-visible:ring-brand"
                           />
                         </td>
 
@@ -719,7 +719,7 @@ export const AdminMasterData: React.FC = () => {
                                 prev.map((p) => (p.id === pkg.id ? { ...p, rounds: val } : p))
                               );
                             }}
-                            className="w-20 px-3 py-1.5 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            className="w-20 px-3 py-1.5 border border-control bg-sand-100 rounded-xl text-sm font-semibold text-ink focus:outline-none focus:ring-1 focus-visible:ring-brand"
                           />
                         </td>
 
@@ -734,7 +734,7 @@ export const AdminMasterData: React.FC = () => {
                                 prev.map((p) => (p.id === pkg.id ? { ...p, weeks: val } : p))
                               );
                             }}
-                            className="w-20 px-3 py-1.5 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            className="w-20 px-3 py-1.5 border border-control bg-sand-100 rounded-xl text-sm font-semibold text-ink focus:outline-none focus:ring-1 focus-visible:ring-brand"
                           />
                         </td>
 
@@ -744,7 +744,7 @@ export const AdminMasterData: React.FC = () => {
                             {pkg.included.map((item) => (
                               <span
                                 key={item}
-                                className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700"
+                                className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-sand-100 text-ink"
                               >
                                 {item}
                               </span>
@@ -761,8 +761,8 @@ export const AdminMasterData: React.FC = () => {
             {/* Bottom 2 Cards Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
               {/* Left Card: Extra round fee */}
-              <div className="lg:col-span-6 bg-white rounded-2xl border border-slate-200/80 shadow-xs p-6">
-                <h3 className="text-base font-bold text-slate-900 mb-4">
+              <div className="lg:col-span-6 bg-surface rounded-2xl border border-line/80 shadow-xs p-6">
+                <h3 className="text-base font-bold text-ink mb-4">
                   Extra round fee
                 </h3>
 
@@ -774,23 +774,23 @@ export const AdminMasterData: React.FC = () => {
                     type="number"
                     value={extraRoundFee}
                     onChange={(e) => setExtraRoundFee(Number(e.target.value))}
-                    className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="w-full px-3.5 py-2.5 border border-control bg-sand-100 rounded-xl text-sm font-semibold text-ink focus:outline-none focus:ring-1 focus-visible:ring-brand"
                   />
-                  <p className="text-xs text-slate-400 mt-2">
+                  <p className="text-xs text-subtext mt-2">
                     Used when Staff approves an extra round and creates an addendum.
                   </p>
                 </div>
               </div>
 
               {/* Right Card: Default payment milestones */}
-              <div className="lg:col-span-6 bg-white rounded-2xl border border-slate-200/80 shadow-xs p-6">
-                <h3 className="text-base font-bold text-slate-900 mb-4">
+              <div className="lg:col-span-6 bg-surface rounded-2xl border border-line/80 shadow-xs p-6">
+                <h3 className="text-base font-bold text-ink mb-4">
                   Default payment milestones
                 </h3>
 
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                    <span className="text-xs font-semibold text-slate-800">
+                  <div className="flex items-center justify-between pb-3 border-b border-line">
+                    <span className="text-xs font-semibold text-ink">
                       Contract signed
                     </span>
                     <div className="flex items-center gap-2">
@@ -803,14 +803,14 @@ export const AdminMasterData: React.FC = () => {
                             signed: Number(e.target.value),
                           }))
                         }
-                        className="w-16 px-2.5 py-1.5 border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 text-right focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        className="w-16 px-2.5 py-1.5 border border-control bg-sand-100 rounded-xl text-sm font-semibold text-ink text-right focus:outline-none focus:ring-1 focus-visible:ring-brand"
                       />
                       <span className="text-xs font-bold text-slate-500">%</span>
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                    <span className="text-xs font-semibold text-slate-800">
+                  <div className="flex items-center justify-between pb-3 border-b border-line">
+                    <span className="text-xs font-semibold text-ink">
                       Concept approved
                     </span>
                     <div className="flex items-center gap-2">
@@ -823,14 +823,14 @@ export const AdminMasterData: React.FC = () => {
                             concept: Number(e.target.value),
                           }))
                         }
-                        className="w-16 px-2.5 py-1.5 border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 text-right focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        className="w-16 px-2.5 py-1.5 border border-control bg-sand-100 rounded-xl text-sm font-semibold text-ink text-right focus:outline-none focus:ring-1 focus-visible:ring-brand"
                       />
                       <span className="text-xs font-bold text-slate-500">%</span>
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                    <span className="text-xs font-semibold text-slate-800">
+                  <div className="flex items-center justify-between pb-3 border-b border-line">
+                    <span className="text-xs font-semibold text-ink">
                       Final handover
                     </span>
                     <div className="flex items-center gap-2">
@@ -843,7 +843,7 @@ export const AdminMasterData: React.FC = () => {
                             handover: Number(e.target.value),
                           }))
                         }
-                        className="w-16 px-2.5 py-1.5 border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 text-right focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        className="w-16 px-2.5 py-1.5 border border-control bg-sand-100 rounded-xl text-sm font-semibold text-ink text-right focus:outline-none focus:ring-1 focus-visible:ring-brand"
                       />
                       <span className="text-xs font-bold text-slate-500">%</span>
                     </div>
@@ -866,26 +866,26 @@ export const AdminMasterData: React.FC = () => {
             </div>
           </div>
         )}
-        </> : <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center text-sm font-semibold text-slate-600">Trống - chưa có API</div>}
+        </> : <div className="rounded-2xl border border-dashed border-slate-300 bg-surface px-6 py-16 text-center text-sm font-semibold text-slate-600">Trống - chưa có API</div>}
       </main>
 
       {/* MODAL: EDIT DESIGN STYLE (Image 3 from previous prompt) */}
       {isStyleModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div
-            className="fixed inset-0 bg-slate-900/40 backdrop-blur-[1px] transition-opacity"
+            className="fixed inset-0 bg-dark/40 backdrop-blur-[1px] transition-opacity"
             onClick={closeStyleModal}
           />
 
-          <div className="relative bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 z-10 animate-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <h3 className="text-base font-bold text-slate-900">
+          <div className="relative bg-surface rounded-2xl max-w-md w-full p-6 shadow-2xl border border-line z-10 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between pb-3 border-b border-line">
+              <h3 className="text-base font-bold text-ink">
                 {editingStyle ? `Edit ${editingStyle.name}` : 'Add design style'}
               </h3>
               <button
                 type="button"
                 onClick={closeStyleModal}
-                className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+                className="w-8 h-8 rounded-full flex items-center justify-center text-subtext hover:text-slate-600 hover:bg-sand-100 transition cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -902,9 +902,9 @@ export const AdminMasterData: React.FC = () => {
                   onChange={(e) => setStyleCode(e.target.value.toUpperCase().replace(/\s+/g, '_'))}
                   readOnly={Boolean(editingStyle)}
                   placeholder="e.g. JAPANDI"
-                  className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm text-slate-900 uppercase read-only:bg-slate-100 read-only:text-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="w-full px-3.5 py-2 border border-control bg-sand-100 rounded-xl text-sm text-ink uppercase read-only:bg-sand-100 read-only:text-slate-500 focus:outline-none focus:ring-1 focus-visible:ring-brand"
                 />
-                {editingStyle && <p className="mt-1 text-xs text-slate-400">Style codes cannot be changed after creation.</p>}
+                {editingStyle && <p className="mt-1 text-xs text-subtext">Style codes cannot be changed after creation.</p>}
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1.5">
@@ -916,7 +916,7 @@ export const AdminMasterData: React.FC = () => {
                   value={styleName}
                   onChange={(e) => setStyleName(e.target.value)}
                   placeholder="e.g. Japandi"
-                  className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="w-full px-3.5 py-2 border border-control bg-sand-100 rounded-xl text-sm text-ink focus:outline-none focus:ring-1 focus-visible:ring-brand"
                 />
               </div>
 
@@ -929,7 +929,7 @@ export const AdminMasterData: React.FC = () => {
                   value={styleDescription}
                   onChange={(e) => setStyleDescription(e.target.value)}
                   placeholder="Brief style summary"
-                  className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
+                  className="w-full px-3.5 py-2 border border-control bg-sand-100 rounded-xl text-sm text-ink focus:outline-none focus:ring-1 focus-visible:ring-brand resize-none"
                 />
               </div>
 
@@ -942,27 +942,27 @@ export const AdminMasterData: React.FC = () => {
                   value={styleImageUrl}
                   onChange={(e) => setStyleImageUrl(e.target.value)}
                   placeholder="https://example.com/style.jpg"
-                  className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="w-full px-3.5 py-2 border border-control bg-sand-100 rounded-xl text-sm text-ink focus:outline-none focus:ring-1 focus-visible:ring-brand"
                 />
                 <p className="mt-1.5 text-xs text-slate-500">Use a direct image file URL (.jpg, .png, or .webp), not a Google Images results page.</p>
                 {styleImageUrl.trim() && <DesignStyleImage key={styleImageUrl} src={styleImageUrl.trim()} alt={`${styleName || 'Design style'} preview`} className="mt-2 h-28 w-full"/>}
               
               </div>
 
-              <label className="flex items-center gap-2 text-sm font-medium text-slate-700"><input type="checkbox" checked={styleIsActive} onChange={(e) => setStyleIsActive(e.target.checked)} className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"/>Active and available for selection</label>
+              <label className="flex items-center gap-2 text-sm font-medium text-slate-700"><input type="checkbox" checked={styleIsActive} onChange={(e) => setStyleIsActive(e.target.checked)} className="h-4 w-4 rounded border-slate-300 text-brand-text focus:ring-brand"/>Active and available for selection</label>
 
               <div className="mt-2 flex items-center justify-end gap-3 pt-2">
                 <button
                   type="button"
                   onClick={closeStyleModal}
-                  className="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold text-xs rounded-xl transition cursor-pointer"
+                  className="px-4 py-2 border border-line hover:bg-sand-50 text-slate-700 font-semibold text-xs rounded-xl transition cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={stylesSaving}
-                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold text-xs rounded-xl shadow-xs transition cursor-pointer"
+                  className="px-5 py-2 bg-brand hover:bg-brand-hover active:bg-dark-hover text-white font-semibold text-xs rounded-xl shadow-xs transition cursor-pointer"
                 >
                   {stylesSaving ? 'Saving…' : 'Save style'}
                 </button>
@@ -976,19 +976,19 @@ export const AdminMasterData: React.FC = () => {
       {isRuleModalOpen && editingRule && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div
-            className="fixed inset-0 bg-slate-900/40 backdrop-blur-[1px] transition-opacity"
+            className="fixed inset-0 bg-dark/40 backdrop-blur-[1px] transition-opacity"
             onClick={closeRuleModal}
           />
 
-          <div className="relative bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 z-10 animate-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <h3 className="text-base font-bold text-slate-900">
+          <div className="relative bg-surface rounded-2xl max-w-md w-full p-6 shadow-2xl border border-line z-10 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between pb-3 border-b border-line">
+              <h3 className="text-base font-bold text-ink">
                 Edit {editingRule.title} rule
               </h3>
               <button
                 type="button"
                 onClick={closeRuleModal}
-                className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+                className="w-8 h-8 rounded-full flex items-center justify-center text-subtext hover:text-slate-600 hover:bg-sand-100 transition cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1004,7 +1004,7 @@ export const AdminMasterData: React.FC = () => {
                   rows={3}
                   value={ruleDescription}
                   onChange={(e) => setRuleDescription(e.target.value)}
-                  className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
+                  className="w-full px-3.5 py-2 border border-control bg-sand-100 rounded-xl text-sm text-ink focus:outline-none focus:ring-1 focus-visible:ring-brand resize-none"
                 />
               </div>
 
@@ -1019,14 +1019,14 @@ export const AdminMasterData: React.FC = () => {
                     onChange={(e) =>
                       setRuleSeverity(e.target.value as 'Warn only' | 'Block saving')
                     }
-                    className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-900 bg-white appearance-none cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="w-full px-3.5 py-2.5 border border-control bg-sand-100 rounded-xl text-sm text-ink bg-surface appearance-none cursor-pointer focus:outline-none focus:ring-1 focus-visible:ring-brand"
                   >
                     <option value="Warn only">Warn only</option>
                     <option value="Block saving">Block saving</option>
                   </select>
-                  <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <ChevronDown className="w-4 h-4 text-subtext absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 </div>
-                <p className="text-xs text-slate-400 mt-1.5">
+                <p className="text-xs text-subtext mt-1.5">
                   Block saving / Warn only
                 </p>
               </div>
@@ -1035,13 +1035,13 @@ export const AdminMasterData: React.FC = () => {
                 <button
                   type="button"
                   onClick={closeRuleModal}
-                  className="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold text-xs rounded-xl transition cursor-pointer"
+                  className="px-4 py-2 border border-line hover:bg-sand-50 text-slate-700 font-semibold text-xs rounded-xl transition cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold text-xs rounded-xl shadow-xs transition cursor-pointer"
+                  className="px-5 py-2 bg-brand hover:bg-brand-hover active:bg-dark-hover text-white font-semibold text-xs rounded-xl shadow-xs transition cursor-pointer"
                 >
                   Save rule
                 </button>

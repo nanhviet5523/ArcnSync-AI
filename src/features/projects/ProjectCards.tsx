@@ -16,16 +16,16 @@ type CardRole = 'designer' | 'homeowner';
 
 /** Flat light tint behind the house icon (no drawing yet), following the status chip colour. */
 const THUMB: Record<Tone, string> = {
-  gray: 'bg-slate-50 text-slate-400',
+  gray: 'bg-sand-50 text-subtext',
   sky: 'bg-sky-50 text-sky-500',
-  blue: 'bg-blue-50 text-blue-500',
+  blue: 'bg-sand-100 text-ink',
   violet: 'bg-violet-50 text-violet-500',
   orange: 'bg-orange-50 text-orange-500',
   yellow: 'bg-yellow-50 text-yellow-600',
   amber: 'bg-amber-50 text-amber-600',
   green: 'bg-emerald-50 text-emerald-500',
   red: 'bg-rose-50 text-rose-400',
-  struck: 'bg-slate-50 text-slate-300',
+  struck: 'bg-sand-50 text-slate-300',
 };
 
 /** Filled part of the progress rule: the status chip hue at tone 400, so the bar reads as the stage, not as an action. */
@@ -35,7 +35,7 @@ const BAR: Record<Tone, string> = {
 };
 
 /** A link drawn as a small Button (same classes as Button size="sm"). */
-const linkButton = (variant: 'primary' | 'secondary') => `inline-flex h-8 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 text-[13px] font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${variant === 'primary' ? 'bg-brand text-white hover:bg-brand-hover' : 'border border-line-strong bg-surface text-slate-800 hover:bg-slate-50'}`;
+const linkButton = (variant: 'primary' | 'secondary') => `inline-flex h-8 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 text-[13px] font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${variant === 'primary' ? 'bg-brand text-white hover:bg-brand-hover' : 'border border-line-strong bg-surface text-ink hover:bg-sand-50'}`;
 
 const Spinner = () => <span aria-hidden className="h-3 w-3 animate-spin rounded-full border-2 border-current border-r-transparent" />;
 
@@ -127,7 +127,7 @@ function ProjectCard({ p, role, latest, gate, floors, large, lead, onWorkspace, 
 
         <div className="min-w-0">
           <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-            <h3 className="min-w-0 truncate text-[15px] font-bold text-slate-900">
+            <h3 className="min-w-0 truncate text-[15px] font-bold text-ink">
               {cardHref
                 ? <Link to={cardHref} data-card-link className="outline-none after:absolute after:inset-0 after:rounded-card after:content-['']">{p.title}</Link>
                 : p.title}
@@ -333,7 +333,7 @@ function CardGroup({ group, items, render, forceOpen }: { group: GroupKey; items
       <h2 id={`${id}-title`} className={`mb-2.5 text-[13px] font-semibold ${group === 'failed' ? 'text-amber-800' : 'text-slate-700'}`}>
         {collapsible ? (
           <button type="button" aria-expanded={open} aria-controls={`${id}-list`} onClick={() => setExpanded(!expanded)}
-            className="flex min-h-6 items-center gap-2 rounded hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">
+            className="flex min-h-6 items-center gap-2 rounded hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">
             <ChevronRight aria-hidden className={`h-4 w-4 transition-transform ${open ? 'rotate-90' : ''}`} />
             {title}
           </button>

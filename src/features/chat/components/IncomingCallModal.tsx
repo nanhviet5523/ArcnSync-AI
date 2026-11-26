@@ -37,7 +37,7 @@ export function IncomingCallModal({
       aria-modal="false"
       aria-labelledby="incoming-call-title"
       aria-describedby="incoming-call-desc"
-      className={`fixed right-4 bottom-4 ${Z.modal} w-[calc(100vw-2rem)] max-w-sm rounded-2xl border border-slate-700/80 bg-slate-950/95 p-5 text-white shadow-2xl backdrop-blur-md sm:right-6 sm:bottom-6`}
+      className={`fixed right-4 bottom-4 ${Z.modal} w-[calc(100vw-2rem)] max-w-sm rounded-2xl border border-dark-hover/80 bg-dark/95 p-5 text-[#FBF8EF] shadow-2xl backdrop-blur-md sm:right-6 sm:bottom-6`}
     >
       <div className="flex items-center gap-3.5">
         <div className="relative shrink-0">
@@ -50,7 +50,7 @@ export function IncomingCallModal({
               <Avatar id={peer.id} name={peer.fullName} size="md" />
             </span>
           ) : (
-            <span className="relative flex h-12 w-12 items-center justify-center rounded-full bg-emerald-600 text-white ring-2 ring-emerald-400">
+            <span className="relative flex h-12 w-12 items-center justify-center rounded-full bg-emerald-600 text-[#FBF8EF] ring-2 ring-emerald-400">
               <Video aria-hidden className="h-5 w-5" />
             </span>
           )}
@@ -61,10 +61,10 @@ export function IncomingCallModal({
             <Video aria-hidden className="h-3.5 w-3.5" />
             {t('chat.call.incomingTitle')}
           </p>
-          <h2 id="incoming-call-title" className="mt-0.5 truncate text-base font-semibold text-white">
+          <h2 id="incoming-call-title" className="mt-0.5 truncate text-base font-semibold text-[#FBF8EF]">
             {callerName}
           </h2>
-          <p id="incoming-call-desc" className="truncate text-xs text-slate-300">
+          <p id="incoming-call-desc" className="truncate text-xs text-brand-on-dark">
             {subtitle}
           </p>
         </div>
@@ -91,7 +91,7 @@ export function IncomingCallModal({
           type="button"
           disabled={busyAction !== null}
           onClick={onAccept}
-          className="inline-flex h-10 w-full cursor-pointer items-center justify-center gap-2 rounded-btn bg-emerald-600 px-4 text-sm font-medium text-white transition hover:bg-emerald-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
+          className="inline-flex h-10 w-full cursor-pointer items-center justify-center gap-2 rounded-btn bg-emerald-600 px-4 text-sm font-medium text-[#FBF8EF] transition hover:bg-emerald-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {busyAction === 'accept' ? (
             <span aria-hidden className="h-4 w-4 animate-spin rounded-full border-2 border-current border-r-transparent" />

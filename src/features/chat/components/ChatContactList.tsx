@@ -40,7 +40,7 @@ export function ChatContactList({ selectedUserId, onBack, className = '' }: {
               <ChevronLeft aria-hidden className="h-5 w-5" />
             </button>
           )}
-          <h2 id="chat-contacts-title" className="text-[15px] font-semibold text-slate-900">{t('chat.contacts.title')}</h2>
+          <h2 id="chat-contacts-title" className="text-[15px] font-semibold text-ink">{t('chat.contacts.title')}</h2>
         </span>
         {!loading && !error && <span className="text-xs text-slate-500">{t('chat.contacts.count', { n: total })}</span>}
       </header>
@@ -105,7 +105,7 @@ function ContactRow({ contact, selected, pending, disabled, onSelect }: {
       <Avatar id={user.id} name={user.fullName} size="md" />
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-2">
-          <span className="truncate text-sm font-semibold text-slate-900">{user.fullName}</span>
+          <span className="truncate text-sm font-semibold text-ink">{user.fullName}</span>
           {conversationId && (
             <MessageCircle aria-label={t('chat.contacts.hasConversation')} className="h-3.5 w-3.5 shrink-0 text-brand" />
           )}

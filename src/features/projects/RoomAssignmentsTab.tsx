@@ -139,7 +139,7 @@ export const RoomAssignmentsTab: React.FC<RoomAssignmentsTabProps> = ({ projectI
   const handleSave = () => { if (discardsDrafts) setConfirmOpen(true); else void save(); };
 
   return (
-    <div className="relative bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+    <div className="relative bg-surface rounded-2xl border border-line shadow-sm p-6">
 
       {confirmOpen && (
         <Modal
@@ -158,8 +158,8 @@ export const RoomAssignmentsTab: React.FC<RoomAssignmentsTabProps> = ({ projectI
 
       <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <DoorOpen size={16} className="text-slate-400" />
-          <h2 className="text-base font-bold text-slate-900">{t('projectDetail.roomAssignments')}</h2>
+          <DoorOpen size={16} className="text-subtext" />
+          <h2 className="text-base font-bold text-ink">{t('projectDetail.roomAssignments')}</h2>
         </div>
         {!canEdit && (
           <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-bold text-slate-500">
@@ -168,7 +168,7 @@ export const RoomAssignmentsTab: React.FC<RoomAssignmentsTabProps> = ({ projectI
         )}
       </div>
 
-      {busy && <p className="py-6 text-center text-xs text-slate-400">{t('projectDetail.roomAssign.loading')}</p>}
+      {busy && <p className="py-6 text-center text-xs text-subtext">{t('projectDetail.roomAssign.loading')}</p>}
 
       {!busy && shownError && (
         <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-semibold text-red-700">
@@ -177,7 +177,7 @@ export const RoomAssignmentsTab: React.FC<RoomAssignmentsTabProps> = ({ projectI
       )}
 
       {!busy && !shownError && rows.length === 0 && (
-        <p className="py-6 text-center text-xs text-slate-400">{t('projectDetail.roomAssign.empty')}</p>
+        <p className="py-6 text-center text-xs text-subtext">{t('projectDetail.roomAssign.empty')}</p>
       )}
 
       {!busy && !shownError && rows.length > 0 && (
@@ -185,7 +185,7 @@ export const RoomAssignmentsTab: React.FC<RoomAssignmentsTabProps> = ({ projectI
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b border-slate-100 text-[11px] font-bold text-slate-400 uppercase tracking-wider bg-slate-50/80">
+                <tr className="border-b border-line text-[11px] font-bold text-subtext uppercase tracking-wider bg-sand-50/80">
                   <th className="py-3 px-4 rounded-l-xl">ROOM</th>
                   <th className="py-3 px-4">FLOOR</th>
                   <th className="py-3 px-4">ASSIGNED TO</th>
@@ -194,8 +194,8 @@ export const RoomAssignmentsTab: React.FC<RoomAssignmentsTabProps> = ({ projectI
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs">
                 {rows.map((room) => (
-                  <tr key={room.roomId} className="hover:bg-slate-50/50 transition">
-                    <td className="py-3 px-4 font-bold text-slate-900">{room.roomName}</td>
+                  <tr key={room.roomId} className="hover:bg-sand-50/50 transition">
+                    <td className="py-3 px-4 font-bold text-ink">{room.roomName}</td>
                     <td className="py-3 px-4 text-slate-500 font-medium">{floorName(room.floorId)}</td>
                     <td className="py-3 px-4 text-slate-700 font-medium">{room.designerName || t('projectDetail.roomAssign.notAssigned')}</td>
                     <td className="py-3 px-4">
@@ -205,7 +205,7 @@ export const RoomAssignmentsTab: React.FC<RoomAssignmentsTabProps> = ({ projectI
                           onChange={(e) => setDraft((d) => ({ ...d, [room.roomId]: e.target.value }))}
                           disabled={saving}
                           aria-label={t('projectDetail.roomAssign.reassign', { room: room.roomName })}
-                          className="w-full min-w-[220px] rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                          className="w-full min-w-[220px] rounded-lg border border-control bg-sand-100 px-2.5 py-1.5 text-xs font-medium text-ink focus:outline-none focus:ring-2 focus-visible:ring-brand"
                         >
                           <option value="">{t('projectDetail.roomAssign.notAssigned')}</option>
                           {options.map((o) => (
@@ -217,7 +217,7 @@ export const RoomAssignmentsTab: React.FC<RoomAssignmentsTabProps> = ({ projectI
                           )}
                         </select>
                       ) : (
-                        <span className="text-slate-400">—</span>
+                        <span className="text-subtext">—</span>
                       )}
                     </td>
                   </tr>
@@ -232,14 +232,14 @@ export const RoomAssignmentsTab: React.FC<RoomAssignmentsTabProps> = ({ projectI
                 type="button"
                 onClick={handleSave}
                 disabled={saving || changes.length === 0}
-                className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-xs font-bold text-white shadow-md transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex items-center gap-2 rounded-xl bg-brand px-5 py-2.5 text-xs font-bold text-white shadow-md transition hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {saving && <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white" />}
                 {saving ? t('projectDetail.roomAssign.saving') : t('projectDetail.roomAssign.save')}
               </button>
             </div>
           ) : (
-            <p className="mt-4 text-[11px] font-medium text-slate-400">
+            <p className="mt-4 text-[11px] font-medium text-subtext">
               {t('projectDetail.roomAssign.leadOnly')}
             </p>
           )}

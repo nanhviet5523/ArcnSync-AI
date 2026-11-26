@@ -92,8 +92,8 @@ export function AdminCategories() {
 
   const parentName = (id: string | null) => items?.find((c) => c.id === id)?.name;
   const columns: Column<CatalogCategory>[] = [
-    { key: 'code', header: t('categories.col.code'), sort: (c) => c.code, cell: (c) => <span className="font-mono text-[13px] text-slate-800">{c.code}</span> },
-    { key: 'name', header: t('categories.col.name'), sort: (c) => c.name.toLowerCase(), cell: (c) => <span className="font-medium text-slate-900">{c.name}</span> },
+    { key: 'code', header: t('categories.col.code'), sort: (c) => c.code, cell: (c) => <span className="font-mono text-[13px] text-ink">{c.code}</span> },
+    { key: 'name', header: t('categories.col.name'), sort: (c) => c.name.toLowerCase(), cell: (c) => <span className="font-medium text-ink">{c.name}</span> },
     { key: 'parent', header: t('categories.col.parent'), cell: (c) => <span className="text-slate-600">{parentName(c.parentId) ?? t('common.none')}</span> },
     { key: 'cost', header: t('categories.col.cost'), sort: (c) => c.costCategory ?? '~', cell: (c) => <span className="text-slate-600">{c.costCategory ? t(`categories.costGroup.${c.costCategory}`) : t('common.none')}</span> },
     { key: 'model', header: t('categories.col.model'), hideOnMobile: true, cell: (c) => <span className="text-xs text-slate-500">{c.hasDefaultModel ? (c.defaultModelUrl ?? 'Model available') : t('common.none')}</span> },

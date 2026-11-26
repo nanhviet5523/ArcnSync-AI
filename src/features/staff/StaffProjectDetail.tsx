@@ -65,8 +65,8 @@ export const StaffProjectDetail: React.FC = () => {
 
   const members = [
     { role: 'Homeowner', person: project?.homeowner ?? 'Homeowner', type: 'External', typeBg: 'bg-slate-100 text-slate-600', access: 'View · Comment · Approve', hasAction: false, actionText: '' },
-    { role: 'Lead Designer', person: assignedDesigner?.fullName ?? project?.designer ?? 'Unassigned', type: 'Company', typeBg: 'bg-blue-50 text-blue-600', access: 'Edit design · Versions', hasAction: true, actionText: 'Change' },
-    { role: 'Staff coordinator', person: project?.staff ?? 'Tran Nam', type: 'Company', typeBg: 'bg-blue-50 text-blue-600', access: 'Contract · Billing', hasAction: false, actionText: '' },
+    { role: 'Lead Designer', person: assignedDesigner?.fullName ?? project?.designer ?? 'Unassigned', type: 'Company', typeBg: 'bg-sand-100 text-ink', access: 'Edit design · Versions', hasAction: true, actionText: 'Change' },
+    { role: 'Staff coordinator', person: project?.staff ?? 'Tran Nam', type: 'Company', typeBg: 'bg-sand-100 text-ink', access: 'Contract · Billing', hasAction: false, actionText: '' },
     { role: 'Supplier partner', person: 'Noi That Viet', type: 'Partner', typeBg: 'bg-purple-50 text-purple-600', access: 'Catalog · Quotes', hasAction: true, actionText: 'Remove' },
   ];
   const [extraMembers, setExtraMembers] = useState<Array<{role:string;person:string;type:string;typeBg:string;access:string;hasAction:boolean;actionText:string}>>([]);
@@ -104,7 +104,7 @@ export const StaffProjectDetail: React.FC = () => {
         role: selectedRole,
         person: selectedPerson,
         type: 'Company',
-        typeBg: 'bg-blue-50 text-blue-600',
+        typeBg: 'bg-sand-100 text-ink',
         access: selectedAccess,
         hasAction: true,
         actionText: 'Change',
@@ -114,7 +114,7 @@ export const StaffProjectDetail: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50/60 font-sans flex flex-col justify-between">
+    <div className="min-h-screen bg-sand-50/60 font-sans flex flex-col justify-between">
       <Header role="staff" />
 
       {/* Main Content */}
@@ -122,7 +122,7 @@ export const StaffProjectDetail: React.FC = () => {
         {/* Title & Top Action */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
+            <h1 className="text-3xl font-extrabold text-ink tracking-tight">
               Project team & roles
             </h1>
             <p className="text-sm text-slate-500 mt-1">
@@ -134,14 +134,14 @@ export const StaffProjectDetail: React.FC = () => {
             <button
               type="button"
               onClick={() => navigate('/staff-addendum')}
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs rounded-xl transition cursor-pointer"
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-surface border border-line hover:bg-sand-50 text-slate-700 font-bold text-xs rounded-xl transition cursor-pointer"
             >
               <Plus size={14} />
               <span>Create addendum</span>
             </button>
             <button
               type="button"
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-md transition cursor-pointer"
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-brand hover:bg-brand-hover text-white font-bold text-xs rounded-xl shadow-md transition cursor-pointer"
             >
               <Bell size={14} />
               <span>Notify team</span>
@@ -154,9 +154,9 @@ export const StaffProjectDetail: React.FC = () => {
           {/* LEFT COLUMN (2 cols): Role list and add role form */}
           <div className="lg:col-span-2 space-y-6">
             {/* Box 1: Roles on this project */}
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+            <div className="bg-surface rounded-2xl border border-line shadow-sm p-6">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-base font-bold text-slate-900">
+                <h2 className="text-base font-bold text-ink">
                   Roles on this project
                 </h2>
                 <span className="px-3 py-1 bg-slate-100 text-slate-600 text-xs font-semibold rounded-full">
@@ -168,7 +168,7 @@ export const StaffProjectDetail: React.FC = () => {
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
-                    <tr className="border-b border-slate-100 text-[11px] font-bold text-slate-400 uppercase tracking-wider bg-slate-50/80">
+                    <tr className="border-b border-line text-[11px] font-bold text-subtext uppercase tracking-wider bg-sand-50/80">
                       <th className="py-3 px-4 rounded-l-xl">ROLE</th>
                       <th className="py-3 px-4">PERSON</th>
                       <th className="py-3 px-4">TYPE</th>
@@ -178,8 +178,8 @@ export const StaffProjectDetail: React.FC = () => {
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-xs">
                     {[...members, ...extraMembers].map((item, idx) => (
-                      <tr key={idx} className="hover:bg-slate-50/50 transition">
-                        <td className="py-4 px-4 font-bold text-slate-900">
+                      <tr key={idx} className="hover:bg-sand-50/50 transition">
+                        <td className="py-4 px-4 font-bold text-ink">
                           {item.role}
                         </td>
                         <td className="py-4 px-4 font-medium text-slate-700">
@@ -202,7 +202,7 @@ export const StaffProjectDetail: React.FC = () => {
                               onClick={() => {
                                 if (item.role === 'Lead Designer') setShowAssignForm((v) => !v);
                               }}
-                              className="px-3 py-1 border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-[11px] rounded-lg transition"
+                              className="px-3 py-1 border border-line hover:bg-sand-50 text-slate-700 font-bold text-[11px] rounded-lg transition"
                             >
                               {item.actionText}
                             </button>
@@ -215,7 +215,7 @@ export const StaffProjectDetail: React.FC = () => {
               </div>
 
               {showAssignForm && (
-                <form onSubmit={(e) => void handleAssignDesigner(e)} className="mt-5 rounded-xl border border-slate-100 bg-slate-50/60 p-4">
+                <form onSubmit={(e) => void handleAssignDesigner(e)} className="mt-5 rounded-xl border border-line bg-sand-50/60 p-4">
                   <div className="mb-3 flex items-center gap-2 text-xs font-bold text-slate-700">
                     <UserCog size={14} />
                     <span>Phân công Lead Designer</span>
@@ -227,13 +227,13 @@ export const StaffProjectDetail: React.FC = () => {
                       onChange={(e) => setDesignerIdInput(e.target.value)}
                       placeholder="Designer ID (UUID)"
                       disabled={assigning}
-                      className="flex-1 px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                      className="flex-1 px-3 py-2.5 bg-surface border border-control bg-sand-100 rounded-xl text-xs font-medium text-ink focus:outline-none focus:ring-2 focus-visible:ring-brand"
                     />
                     <div className="flex gap-2">
                       <button
                         type="submit"
                         disabled={assigning}
-                        className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60"
+                        className="inline-flex items-center gap-2 px-4 py-2.5 bg-brand hover:bg-brand-hover text-white font-bold text-xs rounded-xl shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         {assigning && (
                           <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white" />
@@ -247,7 +247,7 @@ export const StaffProjectDetail: React.FC = () => {
                           setDesignerIdInput('');
                         }}
                         disabled={assigning}
-                        className="px-4 py-2.5 border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs rounded-xl transition"
+                        className="px-4 py-2.5 border border-line hover:bg-sand-50 text-slate-700 font-bold text-xs rounded-xl transition"
                       >
                         Huỷ
                       </button>
@@ -261,8 +261,8 @@ export const StaffProjectDetail: React.FC = () => {
             {hasValidProjectId && <RoomAssignmentsTab projectId={projectId} leadDesignerId={assignedDesigner?.id ?? null} />}
 
             {/* Box 2: Add role to project */}
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
-              <h2 className="text-base font-bold text-slate-900 mb-4">
+            <div className="bg-surface rounded-2xl border border-line shadow-sm p-6">
+              <h2 className="text-base font-bold text-ink mb-4">
                 Add role to project
               </h2>
 
@@ -275,7 +275,7 @@ export const StaffProjectDetail: React.FC = () => {
                     <select
                       value={selectedRole}
                       onChange={(e) => setSelectedRole(e.target.value)}
-                      className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                      className="w-full px-3 py-2.5 bg-surface border border-control bg-sand-100 rounded-xl text-xs font-medium text-ink focus:outline-none focus:ring-2 focus-visible:ring-brand"
                     >
                       <option value="Designer">Designer</option>
                       <option value="Lead Designer">Lead Designer</option>
@@ -291,7 +291,7 @@ export const StaffProjectDetail: React.FC = () => {
                     <select
                       value={selectedPerson}
                       onChange={(e) => setSelectedPerson(e.target.value)}
-                      className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                      className="w-full px-3 py-2.5 bg-surface border border-control bg-sand-100 rounded-xl text-xs font-medium text-ink focus:outline-none focus:ring-2 focus-visible:ring-brand"
                     >
                       <option value="">Select employee...</option>
                       <option value="Le Trang">Le Trang</option>
@@ -307,7 +307,7 @@ export const StaffProjectDetail: React.FC = () => {
                     <select
                       value={selectedAccess}
                       onChange={(e) => setSelectedAccess(e.target.value)}
-                      className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                      className="w-full px-3 py-2.5 bg-surface border border-control bg-sand-100 rounded-xl text-xs font-medium text-ink focus:outline-none focus:ring-2 focus-visible:ring-brand"
                     >
                       <option value="Edit design">Edit design</option>
                       <option value="View only">View only</option>
@@ -319,7 +319,7 @@ export const StaffProjectDetail: React.FC = () => {
                 <div className="flex items-center gap-3">
                   <button
                     type="submit"
-                    className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-sm transition"
+                    className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-brand hover:bg-brand-hover text-white font-bold text-xs rounded-xl shadow-sm transition"
                   >
                     <Plus size={14} />
                     <span>Add to project</span>
@@ -328,7 +328,7 @@ export const StaffProjectDetail: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setSelectedPerson('')}
-                    className="px-4 py-2.5 border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs rounded-xl transition"
+                    className="px-4 py-2.5 border border-line hover:bg-sand-50 text-slate-700 font-bold text-xs rounded-xl transition"
                   >
                     Cancel
                   </button>
@@ -340,40 +340,40 @@ export const StaffProjectDetail: React.FC = () => {
           {/* RIGHT COLUMN (1 col): Project snapshot and supplier partners */}
           <div className="space-y-6">
             {/* Box 1: Project snapshot */}
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 space-y-3.5">
-              <h2 className="text-base font-bold text-slate-900 mb-2">
+            <div className="bg-surface rounded-2xl border border-line shadow-sm p-6 space-y-3.5">
+              <h2 className="text-base font-bold text-ink mb-2">
                 Project snapshot
               </h2>
 
               <div className="flex justify-between items-center text-xs">
                 <span className="text-slate-500">Type</span>
-                <span className="font-bold text-slate-900">Townhouse (Nhà phố)</span>
+                <span className="font-bold text-ink">Townhouse (Nhà phố)</span>
               </div>
 
               <div className="flex justify-between items-center text-xs">
                 <span className="text-slate-500">Area</span>
-                <span className="font-bold text-slate-900">80 m² · 3 floors</span>
+                <span className="font-bold text-ink">80 m² · 3 floors</span>
               </div>
 
               <div className="flex justify-between items-center text-xs">
                 <span className="text-slate-500">Budget</span>
-                <span className="font-bold text-slate-900">VND 600–900M</span>
+                <span className="font-bold text-ink">VND 600–900M</span>
               </div>
 
               <div className="flex justify-between items-center text-xs">
                 <span className="text-slate-500">Package</span>
-                <span className="font-bold text-slate-900">Standard · 3 rounds</span>
+                <span className="font-bold text-ink">Standard · 3 rounds</span>
               </div>
 
               <div className="flex justify-between items-center text-xs pt-1">
                 <span className="text-slate-500">Timeline</span>
-                <span className="font-bold text-slate-900">10 weeks</span>
+                <span className="font-bold text-ink">10 weeks</span>
               </div>
             </div>
 
             {/* Box 2: Supplier partners */}
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
-              <h2 className="text-base font-bold text-slate-900 mb-4">
+            <div className="bg-surface rounded-2xl border border-line shadow-sm p-6">
+              <h2 className="text-base font-bold text-ink mb-4">
                 Supplier partners
               </h2>
 
@@ -381,10 +381,10 @@ export const StaffProjectDetail: React.FC = () => {
                 {suppliers.map((sup, idx) => (
                   <div
                     key={idx}
-                    className="flex items-center justify-between pb-3 border-b border-slate-100 last:border-none last:pb-0"
+                    className="flex items-center justify-between pb-3 border-b border-line last:border-none last:pb-0"
                   >
                     <div>
-                      <h4 className="text-xs font-bold text-slate-900">{sup.name}</h4>
+                      <h4 className="text-xs font-bold text-ink">{sup.name}</h4>
                       <p className="text-[11px] text-slate-500">{sup.category}</p>
                     </div>
 
@@ -400,7 +400,7 @@ export const StaffProjectDetail: React.FC = () => {
                           updated[idx].isAdded = true;
                           setSuppliers(updated);
                         }}
-                        className="px-3 py-1 bg-blue-50 hover:bg-blue-100 text-blue-600 font-bold text-xs rounded-lg transition"
+                        className="px-3 py-1 bg-sand-100 hover:bg-blue-100 text-brand-text font-bold text-xs rounded-lg transition"
                       >
                         Add
                       </button>

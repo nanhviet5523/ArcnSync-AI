@@ -1,13 +1,14 @@
 import type { ButtonHTMLAttributes } from 'react';
 
-type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
+type Variant = 'primary' | 'primary-on-dark' | 'secondary' | 'ghost' | 'danger';
 type Size = 'sm' | 'md';
 
 const VARIANT: Record<Variant, string> = {
-  primary: 'bg-brand text-white hover:bg-brand-hover disabled:bg-brand',
-  secondary: 'border border-line-strong bg-surface text-slate-800 hover:bg-slate-50',
-  ghost: 'text-slate-700 hover:bg-slate-100',
-  danger: 'bg-rose-600 text-white hover:bg-rose-700',
+  primary: 'bg-brand text-white hover:bg-brand-hover active:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-50',
+  'primary-on-dark': 'bg-brand-on-dark text-ink hover:brightness-95 disabled:opacity-50',
+  secondary: 'border border-control bg-surface text-ink hover:bg-sand-50 active:bg-sand-100',
+  ghost: 'text-slate-700 hover:bg-sand-50 active:bg-sand-100',
+  danger: 'bg-danger text-white hover:brightness-90',
 };
 const SIZE: Record<Size, string> = { sm: 'h-8 px-2.5 text-[13px]', md: 'h-9 px-3.5 text-sm' };
 
