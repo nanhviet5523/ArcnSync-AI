@@ -5,6 +5,7 @@ import { Footer } from '@/components/layout';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { t } from '@/i18n';
 import { ApiError } from '@/services/authService';
+import { toast } from '@/components/ui';
 import {
   createProjectContract,
   getContractById,
@@ -67,13 +68,6 @@ export const CreateContract: React.FC<CreateContractProps> = ({ onAlreadyExists 
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [toast, setToast] = useState<{ tone: 'error' | 'warning'; message: string } | null>(null);
-
-  useEffect(() => {
-    if (!toast) return;
-    const timer = setTimeout(() => setToast(null), 4000);
-    return () => clearTimeout(timer);
-  }, [toast]);
 
   // Edit mode: prefill from the saved contract. A contract that can't be edited any more goes back to its page.
   useEffect(() => {
@@ -84,14 +78,14 @@ export const CreateContract: React.FC<CreateContractProps> = ({ onAlreadyExists 
         if (cancelled) return;
         if (!c) {
           // Quiet 404: nothing to edit, so go back with a neutral notice.
-          setToast({ tone: 'warning', message: t('contractPage.notAvailableTitle') });
+          toast.warning(t('contractPage.notAvailableTitle'));
           window.setTimeout(() => navigate(-1), 1500);
           return;
         }
         // Show the saved terms either way; a contract past DRAFT / NOT_SENT is shown read-only.
         if (c.status !== 'DRAFT' || c.esignStatus !== 'NOT_SENT') {
           setLocked(true);
-          setToast({ tone: 'error', message: t('contractPage.editNotEditable') });
+          toast.error(t('contractPage.editNotEditable'));
         }
         const money = (v: string) => v.replace(/\.0+$/, ''); // "50000000.00" -> "50000000"
         // Always the four fixed rows; saved amounts count as set by hand. An older draft missing a stage opens with
@@ -118,8 +112,8 @@ export const CreateContract: React.FC<CreateContractProps> = ({ onAlreadyExists 
       })
       .catch((err) => {
         if (cancelled) return;
-        if (err instanceof ApiError && err.code === 'INSUFFICIENT_ROLE') setToast({ tone: 'error', message: t('contractPage.noContractAccess') });
-        else if (err instanceof ApiError && err.code === 'BAD_REQUEST') setToast({ tone: 'error', message: t('contractPage.invalidContractId') });
+        if (err instanceof ApiError && err.code === 'INSUFFICIENT_ROLE') toast.error(t('contractPage.noContractAccess'));
+        else if (err instanceof ApiError && err.code === 'BAD_REQUEST') toast.error(t('contractPage.invalidContractId'));
         else handleError(err);
       })
       .finally(() => { if (!cancelled) setLoadingContract(false); });
@@ -173,38 +167,38 @@ export const CreateContract: React.FC<CreateContractProps> = ({ onAlreadyExists 
       case 'VALIDATION_ERROR':
         setFieldErrors(err.fieldErrors);
         setError(t('errors.VALIDATION_ERROR'));
-        if (editing) setToast({ tone: 'error', message: t('contractPage.editValidation') });
+        if (editing) toast.error(t('contractPage.editValidation'));
         return;
       case 'NOT_PROJECT_STAFF':
       case 'INSUFFICIENT_ROLE':
-        setToast({ tone: 'error', message: t(editing ? 'contractPage.editNotStaff' : 'newContract.notProjectStaff') });
+        toast.error(t(editing ? 'contractPage.editNotStaff' : 'newContract.notProjectStaff'));
         return;
-      case 'CONTRACT_NOT_FOUND': setToast({ tone: 'error', message: t('contractPage.editNotFound') }); return;
+      case 'CONTRACT_NOT_FOUND': toast.error(t('contractPage.editNotFound')); return;
       case 'CONTRACT_NOT_EDITABLE':
         setLocked(true);
-        setToast({ tone: 'error', message: t('contractPage.editNotEditable') });
+        toast.error(t('contractPage.editNotEditable'));
         return;
-      case 'PROJECT_NOT_FOUND': setToast({ tone: 'error', message: t('newContract.projectNotFound') }); return;
+      case 'PROJECT_NOT_FOUND': toast.error(t('newContract.projectNotFound')); return;
       case 'CONTRACT_ALREADY_EXISTS':
-        setToast({ tone: 'warning', message: t('newContract.alreadyExists') });
+        toast.warning(t('newContract.alreadyExists'));
         if (onAlreadyExists) onAlreadyExists();
         else window.setTimeout(() => navigate(`/project-contract?projectId=${encodeURIComponent(projectId.trim())}`), 1200);
         return;
-      case 'CONTRACT_NO_GENERATION_FAILED': setToast({ tone: 'error', message: t('newContract.numberFailed') }); return;
+      case 'CONTRACT_NO_GENERATION_FAILED': toast.error(t('newContract.numberFailed')); return;
       case 'INVALID_MILESTONES': {
         const message = err.messages[0] ?? err.message;
         setError(message);
-        setToast({ tone: 'error', message });
+        toast.error(message);
         return;
       }
       case 'MILESTONE_TOTAL_MISMATCH':
-        if (editing) setToast({ tone: 'error', message: t('contractPage.editTotalMismatch') });
+        if (editing) toast.error(t('contractPage.editTotalMismatch'));
         setError(t('newContract.mismatch', {
           sum: vnd.format(Number(err.details.milestonesTotal ?? milestonesTotal)),
           total: vnd.format(Number(err.details.totalDesignFee ?? feeNumber)),
         }));
         return;
-      case 'INVALID_PROJECT_STATUS_TRANSITION': setToast({ tone: 'error', message: t('newContract.wrongStatus') }); return;
+      case 'INVALID_PROJECT_STATUS_TRANSITION': toast.error(t('newContract.wrongStatus')); return;
       default: setError(err.message || t('errors.unknownNoCode'));
     }
   };
@@ -217,7 +211,6 @@ export const CreateContract: React.FC<CreateContractProps> = ({ onAlreadyExists 
     setError(null);
     setSuccess(null);
     setFieldErrors({});
-    setToast(null);
     const clientErrors = termErrors();
     if (Object.keys(clientErrors).length) {
       setFieldErrors(clientErrors);
@@ -230,12 +223,12 @@ export const CreateContract: React.FC<CreateContractProps> = ({ onAlreadyExists 
         const next = buildPayload();
         const changes = changedTerms(original, next);
         if (!Object.keys(changes).length) {
-          setToast({ tone: 'warning', message: t('editContract.noChanges') });
+          toast.warning(t('editContract.noChanges'));
           return;
         }
         await updateContractDraft(contractId, changes);
         setSuccess(t('editContract.success'));
-        if (hasUnsignedFile) setToast({ tone: 'warning', message: t('contractPage.stalePdf') });
+        if (hasUnsignedFile) toast.warning(t('contractPage.stalePdf'));
         window.setTimeout(() => navigate(`/project-contract?projectId=${encodeURIComponent(projectId.trim())}`), hasUnsignedFile ? 2500 : 1000);
         return;
       }
@@ -264,17 +257,6 @@ export const CreateContract: React.FC<CreateContractProps> = ({ onAlreadyExists 
             Enter the contract terms and payment schedule. Milestone amounts must equal the design fee.
           </p>
         </div>
-
-        {toast && (
-          <div
-            role="alert"
-            className={`fixed right-4 top-4 z-[80] max-w-sm rounded-xl border px-4 py-3 text-sm font-medium shadow-lg ${
-              toast.tone === 'warning' ? 'border-amber-200 bg-amber-50 text-amber-800' : 'border-red-100 bg-red-50 text-red-700'
-            }`}
-          >
-            {toast.message}
-          </div>
-        )}
 
         {/* Success / error banners */}
         {success && (

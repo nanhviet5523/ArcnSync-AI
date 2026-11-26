@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { ImageOff, Images, Plus, Trash2 } from 'lucide-react';
-import { Button, Card, EmptyState, ErrorState, Modal, Skeleton, StatusChip } from '@/components/ui';
+import { Button, Card, EmptyState, ErrorState, Modal, Skeleton, StatusChip, toast } from '@/components/ui';
 import { formatDate, t } from '@/i18n';
 import type { UserRole } from '@/types/role';
 import { canOpenWorkspace } from '@/features/projects/projectApi';
@@ -59,7 +59,6 @@ export function ConceptCard({ projectId, projectStatus, role, projectRole, data,
 }) {
   const { concepts, error, hasLayout, reload } = data;
   const [dialog, setDialog] = useState<Dialog | null>(null);
-  const [notice, setNotice] = useState('');
   const [actionError, setActionError] = useState('');
   const location = useLocation();
   const box = useRef<HTMLDivElement>(null);
@@ -69,12 +68,6 @@ export function ConceptCard({ projectId, projectStatus, role, projectRole, data,
   useEffect(() => {
     if (loaded && location.hash === '#concept') box.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, [loaded, location.hash]);
-
-  useEffect(() => {
-    if (!notice) return;
-    const timer = window.setTimeout(() => setNotice(''), 3500);
-    return () => window.clearTimeout(timer);
-  }, [notice]);
 
   if (!canOpenWorkspace(projectStatus)) return null;
   // projects made before concepts existed: a layout but no concept, nothing to show
@@ -89,7 +82,7 @@ export function ConceptCard({ projectId, projectStatus, role, projectRole, data,
 
   const done = async (message: string) => {
     setActionError('');
-    setNotice(message);
+    toast.success(message);
     await reload();
   };
 
@@ -111,7 +104,6 @@ export function ConceptCard({ projectId, projectStatus, role, projectRole, data,
               {limitReached ? t('concepts.limitReached', { max: MAX_SUBMITTED_CONCEPTS }) : t('concepts.waitingCount', { n: submittedCount, max: MAX_SUBMITTED_CONCEPTS })}
             </p>
           )}
-          {notice && <p role="status" className="rounded-lg bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800">{notice}</p>}
           {actionError && <ErrorState message={actionError} />}
 
           {error ? <ErrorState message={error} onRetry={() => void reload()} />

@@ -12,7 +12,7 @@ import {
   type RoomAssignment,
 } from '@/features/projects/projectApi';
 import { isUuid } from '@/features/projects/services/contractsApi';
-import { Button, Modal } from '@/components/ui';
+import { Button, Modal, toast } from '@/components/ui';
 
 interface RoomAssignmentsTabProps {
   projectId: string;
@@ -70,7 +70,6 @@ export const RoomAssignmentsTab: React.FC<RoomAssignmentsTabProps> = ({ projectI
   /** Which project the shown rooms (or error) belong to: anything else means still loading. */
   const [loaded, setLoaded] = useState<{ projectId: string; error: string } | null>(null);
   const [saving, setSaving] = useState(false);
-  const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   const role = currentUser?.role;
   // a malformed id is an error without calling the API
@@ -96,12 +95,6 @@ export const RoomAssignmentsTab: React.FC<RoomAssignmentsTabProps> = ({ projectI
       cancelled = true;
     };
   }, [projectId, badId, role, reloadKey]);
-
-  useEffect(() => {
-    if (!toast) return;
-    const timer = setTimeout(() => setToast(null), 3500);
-    return () => clearTimeout(timer);
-  }, [toast]);
 
   // The API returns only the assigned rooms: the rest of the apartment's rooms are listed as unassigned.
   const rows = useMemo<RoomAssignment[]>(() => {
@@ -136,9 +129,9 @@ export const RoomAssignmentsTab: React.FC<RoomAssignmentsTabProps> = ({ projectI
       // the response carries the full list: it becomes the new state, no extra GET
       setRooms(res.items);
       setDraft(Object.fromEntries(res.items.map((item) => [item.roomId, item.designerId])));
-      setToast({ type: 'success', message: t('projectDetail.roomAssign.saved') });
+      toast.success(t('projectDetail.roomAssign.saved'));
     } catch (err) {
-      setToast({ type: 'error', message: saveErrorText(err) });
+      toast.error(saveErrorText(err));
     } finally {
       setSaving(false);
     }
@@ -147,18 +140,6 @@ export const RoomAssignmentsTab: React.FC<RoomAssignmentsTabProps> = ({ projectI
 
   return (
     <div className="relative bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
-      {toast && (
-        <div
-          role={toast.type === 'error' ? 'alert' : 'status'}
-          className={`fixed right-4 top-4 z-[80] max-w-sm rounded-xl border px-4 py-3 text-sm font-medium shadow-lg ${
-            toast.type === 'success'
-              ? 'border-emerald-100 bg-emerald-50 text-emerald-800'
-              : 'border-red-100 bg-red-50 text-red-700'
-          }`}
-        >
-          {toast.message}
-        </div>
-      )}
 
       {confirmOpen && (
         <Modal

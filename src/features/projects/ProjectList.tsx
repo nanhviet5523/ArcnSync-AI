@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FolderKanban, PencilRuler, Sofa, Search } from 'lucide-react';
-import { AppShell, Button, DataTable, EmptyState, FilterBar, Input, PageHeader, Select, StatCard, StatusChip } from '@/components/ui';
+import { ArrowRight, FolderKanban, PencilRuler, Plus, Receipt, Sofa, Search, UserX, X } from 'lucide-react';
+import { AppShell, Button, CountUp, DataTable, EmptyState, FilterBar, Input, PageHeader, Select, StatCard, StatusChip, avatarTone, initials } from '@/components/ui';
 import type { Column } from '@/components/ui';
 import { errorText, formatDate, t } from '@/i18n';
 import { getCurrentUser } from '@/services/authService';
@@ -9,10 +10,29 @@ import { canOpenWorkspace, getProjects, isPreparing, projectApi } from './projec
 import type { Project, ProjectStatus } from './projectApi';
 import { GreetingLine, ProjectCards } from './ProjectCards';
 import { awaitingCount, draftNote, isClosed, knownVersion, needsAction, useConceptGates, useFloorCounts, useLatestVersions, versionUnknown } from './projectView';
+import { MiniSteps } from './ProjectStepper';
 
 type ListRole = 'staff' | 'admin' | 'designer' | 'homeowner';
 const STATUSES: ProjectStatus[] = ['DRAFT', 'CONTRACT_PENDING', 'REQUIREMENT_ANALYSIS', 'IN_DESIGN', 'PRODUCT_SELECTION', 'QUOTING', 'COMPLETED', 'CANCELLED'];
 const inDesign = (p: Project) => p.status === 'IN_DESIGN' || p.status === 'PRODUCT_SELECTION';
+
+/** Staff stat tiles double as quick filters on the table (combined with search and the status select). */
+const QUICK = {
+  inDesign,
+  quoteHandover: (p: Project) => p.status === 'QUOTING' || p.status === 'COMPLETED',
+  noDesigner: (p: Project) => !p.designer && isPreparing(p.status),
+} as const;
+type Quick = keyof typeof QUICK;
+
+/** Homeowner initials in a colour picked from their id, next to the name. */
+function PersonName({ id, name }: { id: string; name: string }) {
+  return (
+    <span className="flex min-w-0 items-center gap-2">
+      <span aria-hidden className={`grid h-6 w-6 shrink-0 place-items-center rounded-full text-[10px] font-semibold ${avatarTone(id)}`}>{initials(name)}</span>
+      <span className="truncate text-slate-700">{name}</span>
+    </span>
+  );
+}
 
 /** Project list for Staff, Designer and Homeowner (same page, different columns and actions). */
 export function ProjectList() {
@@ -22,6 +42,7 @@ export function ProjectList() {
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<ProjectStatus | ''>('');
+  const [quick, setQuick] = useState<Quick | null>(null);
   /** Total from GET /projects without filters; search and the status filter run on the client, so it never shrinks with them. */
   const [overallTotal, setOverallTotal] = useState<number | null>(null);
   /** floor count per project id; the list endpoint doesn't return it (see docs: floorCount) */
@@ -51,9 +72,10 @@ export function ProjectList() {
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return (items ?? []).filter((p) => (!status || p.status === status)
+    return (items ?? []).filter((p) => (!status || p.status === status) && (!quick || QUICK[quick](p))
       && (!q || [p.title, p.code, p.customer.fullName, p.apartment?.buildingName].some((v) => v?.toLowerCase().includes(q))));
-  }, [items, search, status]);
+  }, [items, search, status, quick]);
+  const clearFilters = () => { setSearch(''); setStatus(''); setQuick(null); };
 
   // Designer and Homeowner see cards; Staff and Admin keep the table below.
   const cards = role === 'designer' || role === 'homeowner';
@@ -76,33 +98,25 @@ export function ProjectList() {
 
   const all = items ?? [];
   const count = (f: (p: Project) => boolean) => all.filter(f).length;
-  const stats = {
-    staff: [
-      { label: t('projects.stat.total'), value: overallTotal ?? all.length },
-      { label: t('projects.stat.inDesign'), value: count(inDesign), hint: t('projects.statHint.inDesign') },
-      { label: t('projects.stat.quoteHandover'), value: count((p) => p.status === 'QUOTING' || p.status === 'COMPLETED') },
-      { label: t('projects.stat.noDesigner'), value: count((p) => !p.designer && isPreparing(p.status)), hint: t('projects.statHint.noDesigner') },
-    ],
-    designer: [
-      { label: t('projects.stat.assigned'), value: all.length },
-      { label: t('projects.stat.layout'), value: count((p) => p.status === 'IN_DESIGN') },
-      { label: t('projects.stat.products'), value: count((p) => p.status === 'PRODUCT_SELECTION') },
-      { label: t('projects.stat.completed'), value: count((p) => p.status === 'COMPLETED') },
-    ],
-    homeowner: [
-      { label: t('projects.stat.mine'), value: all.length },
-      { label: t('projects.stat.inDesign'), value: count(inDesign) },
-      { label: t('projects.stat.completed'), value: count((p) => p.status === 'COMPLETED') },
-    ],
-  }[role === 'admin' ? 'staff' : role];
+  const tileIcon = 'h-5 w-5';
+  const noDesignerCount = count(QUICK.noDesigner);
+  // Staff and Admin only (Designer and Homeowner get the cards view below). Clicking a tile filters the table to
+  // its projects, clicking it again (or Total) shows them all.
+  const stats: { label: string; value: number; hint?: string; icon: ReactNode; tone: 'brand' | 'blue' | 'orange' | 'amber'; quick: Quick | null; attention?: boolean }[] = [
+    { label: t('projects.stat.total'), value: overallTotal ?? all.length, icon: <FolderKanban className={tileIcon} />, tone: 'brand', quick: null },
+    { label: t('projects.stat.inDesign'), value: count(QUICK.inDesign), hint: t('projects.statHint.inDesign'), icon: <PencilRuler className={tileIcon} />, tone: 'blue', quick: 'inDesign' },
+    { label: t('projects.stat.quoteHandover'), value: count(QUICK.quoteHandover), icon: <Receipt className={tileIcon} />, tone: 'orange', quick: 'quoteHandover' },
+    { label: t('projects.stat.noDesigner'), value: noDesignerCount, hint: t('projects.statHint.noDesigner'), icon: <UserX className={tileIcon} />, tone: 'amber', quick: 'noDesigner', attention: noDesignerCount > 0 },
+  ];
+  const quickLabel = quick && stats.find((s) => s.quick === quick)?.label;
 
   const columns: Column<Project>[] = [
     {
       key: 'project', header: t('projects.col.project'), sort: (p) => p.title.toLowerCase(),
       cell: (p) => (
         <div className="min-w-0">
-          <p className="truncate font-medium text-slate-900">{p.title}</p>
-          <p className="text-xs text-slate-500">{p.code}</p>
+          <p className="truncate font-medium text-slate-900 transition-colors group-hover:text-brand">{p.title}</p>
+          <p className="mt-0.5 font-mono text-[11px] tracking-tight text-slate-500">{p.code}</p>
         </div>
       ),
     },
@@ -121,15 +135,20 @@ export function ProjectList() {
     },
     ...(role !== 'homeowner' ? [{
       key: 'homeowner', header: t('projects.col.homeowner'), sort: (p: Project) => p.customer.fullName.toLowerCase(),
-      cell: (p: Project) => <span className="text-slate-700">{p.customer.fullName}</span>,
+      cell: (p: Project) => <PersonName id={p.customer.id} name={p.customer.fullName} />,
     }] : []),
     ...(role !== 'designer' ? [{
       key: 'designer', header: t('projects.col.designer'), sort: (p: Project) => p.designer?.fullName.toLowerCase() ?? '~',
-      cell: (p: Project) => (p.designer ? <span className="text-slate-700">{p.designer.fullName}</span> : <span className="text-slate-400">{t('projects.notAssigned')}</span>),
+      cell: (p: Project) => (p.designer ? <PersonName id={p.designer.id} name={p.designer.fullName} /> : (
+        <span className="flex items-center gap-2 text-slate-400">
+          <span aria-hidden className="h-6 w-6 shrink-0 rounded-full border border-dashed border-slate-300" />
+          {t('projects.notAssigned')}
+        </span>
+      )),
     }] : []),
     {
       key: 'status', header: t('projects.col.status'), sort: (p) => STATUSES.indexOf(p.status),
-      cell: (p) => <StatusChip kind="project" value={p.status} />,
+      cell: (p) => <div><StatusChip kind="project" value={p.status} /><MiniSteps status={p.status} /></div>,
     },
     {
       key: 'updated', header: t('projects.col.updated'), sort: (p) => p.updatedAt ?? p.createdAt, className: 'whitespace-nowrap tabular-nums',
@@ -140,8 +159,10 @@ export function ProjectList() {
       cell: (p) => {
         if (role === 'designer' && !canOpenWorkspace(p.status)) return null;
         return (
-          <Button size="sm" variant={role === 'designer' ? 'primary' : 'secondary'} onClick={(e) => { e.stopPropagation(); open(p); }}>
+          <Button size="sm" variant={role === 'designer' ? 'primary' : 'secondary'} onClick={(e) => { e.stopPropagation(); open(p); }}
+            className="group-hover:border-brand/40 group-hover:text-brand">
             {role === 'designer' ? t('projects.openWorkspace') : t('projects.view')}
+            <ArrowRight aria-hidden className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none" />
           </Button>
         );
       },
@@ -181,7 +202,7 @@ export function ProjectList() {
             draftNote={draftNote(all.flatMap((p) => knownVersion(latest(p.id))?.draftRooms ?? []))} unknown={all.filter((p) => !isClosed(p.status) && versionUnknown(latest(p.id))).length} onRetryAll={() => retryAll(all.filter((p) => !isClosed(p.status)).map((p) => p.id))} loading={loading || !ready} />} />
         {!error && !loading && all.length > 3 && cardStats.length > 0 && <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-3">{cardStats}</div>}
         <ProjectCards role={role} projects={items && filtered} latest={latest} gate={gate} floors={cardFloors} error={error} onRetry={load}
-          filteredOut={filteredOut} onClearFilters={() => { setSearch(''); setStatus(''); }}
+          filteredOut={filteredOut} onClearFilters={clearFilters}
           onWorkspace={(p) => navigate(`/projects/${p.id}/workspace`)} onDetails={(p) => navigate(`/${role === 'designer' ? 'designer' : 'homeowner'}/projects/${p.id}`)} onRetryVersion={retry} filtering={!!search.trim() || !!status}
           large={role === 'homeowner' && items?.length === 1} />
       </AppShell>
@@ -193,11 +214,30 @@ export function ProjectList() {
       <PageHeader
         title={t(`projects.title.${role}`)}
         description={t(`projects.description.${role}`)}
-        primary={(role === 'staff' || role === 'admin') && <Button variant="primary" onClick={() => navigate('/staff/projects/new')}>{t('projects.newProject')}</Button>}
+        primary={(role === 'staff' || role === 'admin') && (
+          <Button variant="primary" onClick={() => navigate('/staff/projects/new')}>
+            <Plus aria-hidden className="h-4 w-4" />
+            {t('projects.newProject')}
+          </Button>
+        )}
       />
 
-      <div className={`mb-5 grid gap-3 ${stats.length === 4 ? 'grid-cols-2 lg:grid-cols-4' : 'grid-cols-1 sm:grid-cols-3'}`}>
-        {stats.map((s) => <StatCard key={s.label} label={s.label} value={s.value} hint={'hint' in s ? s.hint : undefined} loading={!items && !error} />)}
+      <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {stats.map((s) => (
+          <StatCard
+            key={s.label}
+            label={s.label}
+            value={<CountUp value={s.value} />}
+            hint={s.hint}
+            icon={s.icon}
+            iconTone={s.tone}
+            loading={!items && !error}
+            attention={s.attention}
+            active={s.quick !== null && quick === s.quick}
+            title={s.quick ? t('projects.quickFilterHint') : undefined}
+            onClick={items ? () => setQuick(s.quick === quick ? null : s.quick) : undefined}
+          />
+        ))}
       </div>
 
       <div className="mb-3">
@@ -207,6 +247,16 @@ export function ProjectList() {
             {STATUSES.map((s) => <option key={s} value={s}>{t(`status.project.${s}`)}</option>)}
           </Select>
         </FilterBar>
+        {quickLabel && (
+          <div className="step-in mt-2.5 flex items-center gap-2 text-[13px] text-slate-600">
+            {t('projects.quickFilterShowing')}
+            <button type="button" onClick={() => setQuick(null)} aria-label={`${t('projects.clearFilters')}: ${quickLabel}`}
+              className="inline-flex cursor-pointer items-center gap-1 rounded-full bg-brand-soft py-0.5 pl-2.5 pr-1.5 text-xs font-semibold text-brand transition-colors hover:bg-brand/15 focus-visible:outline-2 focus-visible:outline-brand">
+              {quickLabel}
+              <X aria-hidden className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
       </div>
 
       <DataTable
@@ -219,7 +269,7 @@ export function ProjectList() {
         onPageRows={loadFloors}
         initialSort={{ key: 'updated', dir: 'desc' }}
         empty={filteredOut
-          ? <EmptyState title={t('projects.empty.filtered')} action={<Button size="sm" onClick={() => { setSearch(''); setStatus(''); }}>{t('projects.clearFilters')}</Button>} />
+          ? <EmptyState title={t('projects.empty.filtered')} action={<Button size="sm" onClick={clearFilters}>{t('projects.clearFilters')}</Button>} />
           : <EmptyState title={t(`projects.empty.${role}`)} action={(role === 'staff' || role === 'admin') && <Button variant="primary" size="sm" onClick={() => navigate('/staff/projects/new')}>{t('projects.newProject')}</Button>} />}
       />
     </AppShell>

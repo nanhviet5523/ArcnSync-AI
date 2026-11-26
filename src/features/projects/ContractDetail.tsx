@@ -17,7 +17,7 @@ import { Header } from '@/components/layout';
 import { Footer } from '@/components/layout';
 import { ApiError, getCurrentUser, logout } from '@/services/authService';
 import type { UserRole } from '@/types/role';
-import { Button, Modal } from '@/components/ui';
+import { Button, Modal, Notice, toast } from '@/components/ui';
 import { ContractPaymentHistory } from '@/features/payments/ContractPaymentHistory';
 import {
   CONTRACT_FILE_MAX_BYTES,
@@ -176,19 +176,12 @@ export const ContractDetail: React.FC = () => {
   const fileInput = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [fileError, setFileError] = useState('');
-  const [toast, setToast] = useState<{ type: 'success' | 'error' | 'warning'; message: string } | null>(null);
 
   // Send signing request (Staff, DRAFT + NOT_SENT + PDF uploaded).
   const [confirmSigning, setConfirmSigning] = useState(false);
   const [sendingSigning, setSendingSigning] = useState(false);
   /** Synchronous guard: state updates are async, so a fast double click could fire two POSTs. */
   const signingInFlight = useRef(false);
-
-  useEffect(() => {
-    if (!toast) return;
-    const timer = setTimeout(() => setToast(null), 3500);
-    return () => clearTimeout(timer);
-  }, [toast]);
 
   const loadContract = useCallback(async () => {
     setLoading(true);
@@ -235,7 +228,7 @@ export const ContractDetail: React.FC = () => {
     try {
       await action();
     } catch (err) {
-      setToast({ type: 'error', message: err instanceof ApiError ? err.message : t('contractPage.fileLoadFailed') });
+      toast.error(err instanceof ApiError ? err.message : t('contractPage.fileLoadFailed'));
     } finally {
       setActionBusy(false);
     }
@@ -279,21 +272,23 @@ export const ContractDetail: React.FC = () => {
     try {
       const updated = await sendSigningRequest(contractId);
       if (uploadThenBack) {
-        navigate(backToProject, { replace: true, state: { toast: { tone: 'success', message: t('contractSigning.successBack') } } });
+        // Toasts live at the app root, so this one stays up on the project page we go back to.
+        toast.success(t('contractSigning.successBack'));
+        navigate(backToProject, { replace: true });
         return;
       }
       setContract(updated);
       setConfirmSigning(false);
-      setToast({ type: 'success', message: t('contractSigning.success') });
+      toast.success(t('contractSigning.success'));
       await loadContract();
     } catch (err) {
       setConfirmSigning(false);
       const apiErr = err instanceof ApiError ? err : null;
       const code = apiErr?.code ?? '';
-      const fail = (message: string) => setToast({ type: 'error', message });
+      const fail = (message: string) => toast.error(message);
       if (code === 'INVALID_ESIGN_STATUS_TRANSITION') {
         // Usually a double submit or a stale page: the request is already out, so just sync the UI.
-        setToast({ type: 'success', message: t('contractSigning.alreadySent') });
+        toast.success(t('contractSigning.alreadySent'));
         await loadContract();
       } else if (code === 'NOT_PROJECT_STAFF') fail(t('contractSigning.notProjectStaff'));
       else if (code === 'CONTRACT_NOT_FOUND') fail(t('contractSigning.notFound'));
@@ -330,7 +325,7 @@ export const ContractDetail: React.FC = () => {
     try {
       await withdrawSigningRequest(contractId);
       setConfirmRecall(false);
-      setToast({ type: 'success', message: t('contractPage.recallSuccess') });
+      toast.success(t('contractPage.recallSuccess'));
       await loadContract();
     } catch (err) {
       setConfirmRecall(false);
@@ -346,7 +341,7 @@ export const ContractDetail: React.FC = () => {
               : code === 'CONTRACT_NOT_FOUND' ? t('contractPage.recallNotFound')
                 : code === 'INSUFFICIENT_ROLE' || code === 'NOT_PROJECT_STAFF' ? t('contractPage.recallNotStaff')
                   : apiErr?.message ?? t('errors.unknownNoCode');
-        setToast({ type: 'error', message });
+        toast.error(message);
         if (code === 'INVALID_ESIGN_STATUS_TRANSITION' || code === 'CONTRACT_NOT_DRAFT') await loadContract();
       }
     } finally {
@@ -365,7 +360,7 @@ export const ContractDetail: React.FC = () => {
     try {
       const updated = await uploadContractFile(contractId, file);
       setContract(updated);
-      setToast({ type: 'success', message: t('contractFile.success') });
+      toast.success(t('contractFile.success'));
       await loadContract();
     } catch (err) {
       const code = err instanceof ApiError ? err.code : '';
@@ -373,13 +368,13 @@ export const ContractDetail: React.FC = () => {
       else if (code === 'INVALID_PDF_FILE') {
         const message = (err as ApiError).messages[0] ?? t('contractFile.invalidPdf');
         setFileError(message);
-        setToast({ type: 'error', message });
-      } else if (code === 'NOT_PROJECT_STAFF') setToast({ type: 'error', message: t('contractFile.notProjectStaff') });
-      else if (code === 'CONTRACT_NOT_FOUND') setToast({ type: 'error', message: t('contractFile.notFound') });
+        toast.error(message);
+      } else if (code === 'NOT_PROJECT_STAFF') toast.error(t('contractFile.notProjectStaff'));
+      else if (code === 'CONTRACT_NOT_FOUND') toast.error(t('contractFile.notFound'));
       else if (code === 'CONTRACT_NOT_EDITABLE') {
-        setToast({ type: 'error', message: t('contractFile.notEditable') });
+        toast.error(t('contractFile.notEditable'));
         await loadContract();
-      } else setToast({ type: 'error', message: err instanceof ApiError ? err.message : t('errors.unknownNoCode') });
+      } else toast.error(err instanceof ApiError ? err.message : t('errors.unknownNoCode'));
     } finally {
       setUploading(false);
       if (fileInput.current) fileInput.current.value = '';
@@ -398,7 +393,7 @@ export const ContractDetail: React.FC = () => {
     setOtpRequesting(true);
     setActionError(null);
     setActionMessage(null);
-    const fail = (message: string) => setToast({ type: 'error', message });
+    const fail = (message: string) => toast.error(message);
     try {
       const { expiresInMinutes } = await requestSignatureOtp(contractId);
       const start = Date.now();
@@ -408,7 +403,7 @@ export const ContractDetail: React.FC = () => {
       saveOtpTimers(contractId, { expiresAt: start + expiresInMinutes * 60_000, cooldownUntil: start + OTP_RESEND_COOLDOWN_SECONDS * 1000 });
       setOtpEarlier(false);
       setOtpValue('');
-      setToast({ type: 'success', message: t('contractPage.otpSent') });
+      toast.success(t('contractPage.otpSent'));
     } catch (err) {
       const apiErr = err instanceof ApiError ? err : null;
       const code = apiErr?.code ?? '';
@@ -418,7 +413,7 @@ export const ContractDetail: React.FC = () => {
         startCooldown(Number.isFinite(retry) && retry > 0 ? Math.ceil(retry) : OTP_RESEND_COOLDOWN_SECONDS);
         // a code went out moments ago and is still valid: let the customer enter it
         if (otpExpiresAt === null) setOtpEarlier(true);
-        setToast({ type: 'warning', message: t(otpExpiresAt === null ? 'contractPage.otpUseEarlier' : 'contractPage.otpTooSoon') });
+        toast.warning(t(otpExpiresAt === null ? 'contractPage.otpUseEarlier' : 'contractPage.otpTooSoon'));
       } else if (code === 'CONTRACT_NOT_AWAITING_SIGNATURE' && status === 422) {
         fail(t('contractPage.otpNotAwaiting'));
         setOtpExpiresAt(null);
@@ -458,11 +453,11 @@ export const ContractDetail: React.FC = () => {
       setOtpEarlier(false);
       saveOtpTimers(contractId, null);
       setOtpValue('');
-      setToast({ type: 'success', message: t('contractPage.signSuccess') });
+      toast.success(t('contractPage.signSuccess'));
     } catch (err) {
       const apiErr = err instanceof ApiError ? err : null;
       const code = apiErr?.code ?? '';
-      const fail = (message: string) => setToast({ type: 'error', message });
+      const fail = (message: string) => toast.error(message);
       if (code === 'OTP_INVALID') {
         const left = Number(apiErr?.details.remainingAttempts);
         fail(apiErr?.details.remainingAttempts !== undefined && Number.isFinite(left)
@@ -472,7 +467,7 @@ export const ContractDetail: React.FC = () => {
       else if (code === 'OTP_EXPIRED') fail(t('contractPage.otpExpired'));
       else if (code === 'CONTRACT_FILE_TAMPERED') fail(t('contractPage.fileTampered'));
       else if (code === 'CONTRACT_ALREADY_SIGNED') {
-        setToast({ type: 'warning', message: t('contractPage.alreadySigned') });
+        toast.warning(t('contractPage.alreadySigned'));
         await loadContract();
       } else fail(apiErr?.message || t('errors.unknownNoCode'));
     } finally {
@@ -634,29 +629,11 @@ export const ContractDetail: React.FC = () => {
         </Modal>
       )}
 
-      {toast && (
-        <div
-          role={toast.type === 'error' ? 'alert' : 'status'}
-          className={`fixed right-4 top-20 z-[80] max-w-sm rounded-xl border px-4 py-3 text-sm font-medium shadow-lg ${
-            toast.type === 'success' ? 'border-emerald-100 bg-emerald-50 text-emerald-800'
-              : toast.type === 'warning' ? 'border-amber-200 bg-amber-50 text-amber-800' : 'border-red-100 bg-red-50 text-red-700'
-          }`}
-        >
-          {toast.message}
-        </div>
-      )}
-
       {actionMessage && (
-        <div className="mb-6 flex items-start gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 p-3.5 text-sm text-emerald-800">
-          <CheckCircle2 size={18} className="mt-0.5 flex-shrink-0 text-emerald-600" />
-          <span>{actionMessage}</span>
-        </div>
+        <Notice tone="success" className="mb-6">{actionMessage}</Notice>
       )}
       {actionError && (
-        <div role="alert" className="mb-6 flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 p-3.5 text-sm text-red-800">
-          <AlertCircle size={18} className="mt-0.5 flex-shrink-0 text-red-600" />
-          <span>{actionError}</span>
-        </div>
+        <Notice tone="error" className="mb-6">{actionError}</Notice>
       )}
 
       {contract.note && (

@@ -1,5 +1,7 @@
 /** English UI copy for the project, workspace, category and supplier-media screens. Keys are read with t('area.key'). */
 export const en = {
+  /** Toast region (components/ui/Toast). */
+  toast: { region: 'Notifications' },
   common: {
     cancel: 'Cancel',
     close: 'Close',
@@ -323,6 +325,8 @@ export const en = {
       filtered: 'No projects match these filters.',
     },
     clearFilters: 'Clear filters',
+    quickFilterHint: 'Show only these projects in the table',
+    quickFilterShowing: 'Showing:',
   },
   /** Project cards (Designer and Homeowner lists). */
   cards: {
@@ -509,6 +513,8 @@ export const en = {
   projectDetail: {
     back: 'Projects',
     created: 'Created {date}',
+    copyCode: 'Copy project code',
+    codeCopied: 'Project code {code} copied',
     home: 'Home',
     people: 'People',
     type: 'Type',
@@ -636,6 +642,9 @@ export const en = {
     leadNote: 'Designer note',
     rejectionReason: "Homeowner's reason",
     cancelReason: 'Reason',
+    cancelReasonTitle: 'Reason',
+    cancelledBy: 'Cancelled by {name}',
+    noReason: 'No reason was given.',
     result: 'Survey result',
     noResult: 'No measurements recorded yet.',
     totalArea: 'Total area',
@@ -973,6 +982,19 @@ export const en = {
     description: 'Enter the customer email, then describe the project. The home is added once the site survey is confirmed.',
     back: 'Projects',
     steps: ['Customer', 'Project'],
+    stepsLabel: 'New project steps',
+    stepHints: ['Find the homeowner account', 'Name, budget and preferences'],
+    findTitle: 'Find the homeowner',
+    findDescription: 'Search by the email address they signed up with.',
+    detailsTitle: 'Project details',
+    detailsDescription: 'What the design team needs to get started.',
+    change: 'Change',
+    tipsTitle: 'Good to know',
+    tips: [
+      'The project starts in Draft status.',
+      'The home is added after the site survey is confirmed.',
+      'While in Draft, you can still edit the name, budget and style from the project page.',
+    ],
     email: 'Customer email',
     emailInvalid: 'Enter a valid email address.',
     homePending: 'The home is added after the site survey is confirmed.',

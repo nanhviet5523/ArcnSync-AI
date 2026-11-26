@@ -90,7 +90,7 @@ export function DataTable<T>({ columns, rows, rowKey, loading, error, onRetry, e
         </thead>
         <tbody className="divide-y divide-slate-100">
           {visible.map((row) => (
-            <tr key={rowKey(row)} onClick={onRowClick ? () => onRowClick(row) : undefined} className={`transition-colors hover:bg-slate-50 ${clickable}`}>
+            <tr key={rowKey(row)} onClick={onRowClick ? () => onRowClick(row) : undefined} className={`group transition-colors hover:bg-slate-50 ${clickable}`}>
               {columns.map((c) => <td key={c.key} className={`px-4 py-3 align-middle ${c.className ?? ''}`}>{c.cell(row)}</td>)}
             </tr>
           ))}

@@ -16,6 +16,7 @@ import { PaymentHistoryPage } from '@/features/payments/PaymentHistoryPage';
 import { ProfileSettings } from '@/features/shared/ProfileSettings';
 import { MessagesPage } from '@/features/chat/MessagesPage';
 import { ChatRealtimeProvider } from '@/features/chat/ChatRealtimeProvider';
+import { Toaster } from '@/components/ui';
 import { CHAT_ROLES } from '@/features/chat/chatApi';
 import { CustomerDirectory } from '@/features/shared/CustomerDirectory';
 import { ApartmentManagement } from '@/features/shared/ApartmentManagement';
@@ -248,6 +249,7 @@ function App() {
         </Routes>
       </AnimatePresence>
       </div>
+      <Toaster />
     </ChatRealtimeProvider>
   );
 }

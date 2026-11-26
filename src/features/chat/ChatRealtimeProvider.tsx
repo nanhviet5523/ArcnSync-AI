@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { X } from 'lucide-react';
-import { Z } from '@/components/ui/zIndex';
+import { toast } from '@/components/ui';
 import { t } from '@/i18n';
 import { getCurrentUser } from '@/services/authService';
 import { onSignOut } from '@/services/signOut';
@@ -28,6 +27,8 @@ import { WebRtcCallSession } from './webrtcSession';
 import type { MediaWarningCode, WebRtcConnectionStatus } from './webrtcSession';
 
 const NOTICE_AUTO_HIDE_MS = 5_000;
+/** One call notice at a time: a newer one replaces it, starting a call clears it. */
+const CALL_NOTICE_ID = 'video-call-notice';
 
 /**
  * App-level provider mounted once in App.tsx:
@@ -52,7 +53,6 @@ export function ChatRealtimeProvider({ children }: { children: ReactNode }) {
   const [incomingBusy, setIncomingBusy] = useState<'accept' | 'decline' | null>(null);
   const [ending, setEnding] = useState(false);
   const [callError, setCallError] = useState('');
-  const [notice, setNotice] = useState('');
 
   const phaseRef = useRef<VideoCallPhase>(phase);
   const activeCallRef = useRef<VideoCallItem | null>(activeCall);
@@ -60,7 +60,6 @@ export function ChatRealtimeProvider({ children }: { children: ReactNode }) {
   const sessionRef = useRef<WebRtcCallSession | null>(null);
   /** Buffer `call.signal` events that arrive before the WebRtcCallSession is constructed (e.g., fast offer). */
   const earlySignalsRef = useRef<IncomingCallSignalEvent[]>([]);
-  const noticeTimerRef = useRef<number | null>(null);
   const acceptedLocallyCallIdRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -70,14 +69,7 @@ export function ChatRealtimeProvider({ children }: { children: ReactNode }) {
   });
 
   const showNotice = useCallback((text: string) => {
-    if (noticeTimerRef.current !== null) {
-      window.clearTimeout(noticeTimerRef.current);
-    }
-    setNotice(text);
-    noticeTimerRef.current = window.setTimeout(() => {
-      setNotice('');
-      noticeTimerRef.current = null;
-    }, NOTICE_AUTO_HIDE_MS);
+    toast.info(text, { id: CALL_NOTICE_ID, duration: NOTICE_AUTO_HIDE_MS });
   }, []);
 
   const resetCallState = useCallback(() => {
@@ -189,7 +181,7 @@ export function ChatRealtimeProvider({ children }: { children: ReactNode }) {
     window.addEventListener('storage', sync);
     const offSignOut = onSignOut(() => {
       resetCallState();
-      setNotice('');
+      toast.dismiss(CALL_NOTICE_ID);
     });
     return () => {
       window.removeEventListener('archsync-auth-change', sync);
@@ -197,9 +189,6 @@ export function ChatRealtimeProvider({ children }: { children: ReactNode }) {
       offSignOut();
       sessionRef.current?.dispose();
       sessionRef.current = null;
-      if (noticeTimerRef.current !== null) {
-        window.clearTimeout(noticeTimerRef.current);
-      }
     };
   }, [resetCallState]);
 
@@ -289,7 +278,7 @@ export function ChatRealtimeProvider({ children }: { children: ReactNode }) {
       setPhase('starting');
       setPeer(conversation.otherUser);
       setCallError('');
-      setNotice('');
+      toast.dismiss(CALL_NOTICE_ID);
 
       try {
         const { call, iceServers } = await chatApi.startVideoCall(conversation.id);
@@ -475,23 +464,6 @@ export function ChatRealtimeProvider({ children }: { children: ReactNode }) {
         />
       )}
 
-      {notice && phase === 'idle' && (
-        <div
-          role="status"
-          aria-live="polite"
-          className={`fixed right-4 bottom-4 ${Z.modal} flex items-center gap-3 rounded-xl border border-slate-700/80 bg-slate-900 px-4 py-3 text-sm text-white shadow-xl sm:right-6 sm:bottom-6`}
-        >
-          <span>{notice}</span>
-          <button
-            type="button"
-            onClick={() => setNotice('')}
-            aria-label={t('common.close')}
-            className="cursor-pointer rounded p-0.5 text-slate-400 hover:bg-slate-800 hover:text-white"
-          >
-            <X aria-hidden className="h-4 w-4" />
-          </button>
-        </div>
-      )}
     </VideoCallContext.Provider>
   );
 }

@@ -3,6 +3,7 @@ import type { FormEvent } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Logo } from '@/components/common/Logo';
 import { ApiError, resendOtp, verifyEmail } from '@/services/authService';
+import { toast } from '@/components/ui';
 
 const PENDING_EMAIL_KEY = 'archsync-pending-verify-email';
 const RESEND_COOLDOWN_SECONDS = 20;
@@ -37,7 +38,6 @@ export const VerifyOtpPage: React.FC = () => {
   // Đếm ngược "Resend OTP": bắt đầu 20s ngay khi vào trang, reset lại mỗi lần gửi lại thành công.
   const [resendCountdown, setResendCountdown] = useState(RESEND_COOLDOWN_SECONDS);
   const [resending, setResending] = useState(false);
-  const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   useEffect(() => {
     if (resendCountdown <= 0) return;
@@ -47,30 +47,21 @@ export const VerifyOtpPage: React.FC = () => {
     return () => clearTimeout(timer);
   }, [resendCountdown]);
 
-  useEffect(() => {
-    if (!toast) return;
-    const timer = setTimeout(() => setToast(null), 3500);
-    return () => clearTimeout(timer);
-  }, [toast]);
-
   const handleResend = async () => {
     if (resendCountdown > 0 || resending) return;
 
     if (!email) {
-      setToast({ type: 'error', message: 'Missing email. Please sign up again.' });
+      toast.error('Missing email. Please sign up again.');
       return;
     }
 
     setResending(true);
     try {
       await resendOtp({ email });
-      setToast({ type: 'success', message: 'Đã gửi lại mã OTP mới' });
+      toast.success('Đã gửi lại mã OTP mới');
       setResendCountdown(RESEND_COOLDOWN_SECONDS);
     } catch (err) {
-      setToast({
-        type: 'error',
-        message: err instanceof ApiError ? err.message : 'Could not resend the OTP code. Please try again.',
-      });
+      toast.error(err instanceof ApiError ? err.message : 'Could not resend the OTP code. Please try again.');
     } finally {
       setResending(false);
     }
@@ -108,18 +99,6 @@ export const VerifyOtpPage: React.FC = () => {
 
   return (
     <div className="flex w-full min-h-screen items-center justify-center bg-white p-8 font-sans">
-      {toast && (
-        <div
-          role={toast.type === 'error' ? 'alert' : 'status'}
-          className={`fixed right-4 top-4 z-[80] max-w-sm rounded-xl border px-4 py-3 text-sm font-medium shadow-lg ${
-            toast.type === 'success'
-              ? 'border-emerald-100 bg-emerald-50 text-emerald-800'
-              : 'border-red-100 bg-red-50 text-red-700'
-          }`}
-        >
-          {toast.message}
-        </div>
-      )}
       <div className="w-full max-w-[420px]">
         <div className="mb-6">
           <Logo size={38} to="/" />

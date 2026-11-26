@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { AppShell, Banner, Button, Card, DetailList, ErrorState, PageHeader, Skeleton, StatusChip } from '@/components/ui';
-import { Sparkles } from 'lucide-react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { AppShell, Button, Card, DetailList, ErrorState, PageHeader, Skeleton, StatusChip, avatarTone, initials, toast } from '@/components/ui';
+import { CalendarDays, Copy, Signpost, Sparkles, Wallet } from 'lucide-react';
 import { errorText, formatDate, formatMoney, formatNumber, t } from '@/i18n';
 import { getCurrentUser } from '@/services/authService';
 import { canOpenWorkspace, kickoffErrorText, kickoffProjectDesign, projectApi } from './projectApi';
@@ -50,23 +50,8 @@ export function ProjectDetail() {
   /** Bumped after the Lead changes, so the room assignments are fetched again. */
   const [roomsKey, setRoomsKey] = useState(0);
   const [contractCheckFailed, setContractCheckFailed] = useState(false);
-  /** Toasts stack: saving the team may report the save and the rooms handed to the Lead at once. */
-  const [toasts, setToasts] = useState<(ContractToast & { id: number })[]>([]);
-  const toastSeq = useRef(0);
-  const setToast = useCallback((next: ContractToast) => {
-    const toastId = ++toastSeq.current;
-    setToasts((list) => [...list, { ...next, id: toastId }]);
-    setTimeout(() => setToasts((list) => list.filter((x) => x.id !== toastId)), 3500);
-  }, []);
-
-  // A toast handed over by the page we came back from (the contract page after the PDF upload), shown once.
-  const location = useLocation();
-  useEffect(() => {
-    const handed = (location.state as { toast?: ContractToast } | null)?.toast;
-    if (!handed) return;
-    setToast(handed);
-    navigate(location.pathname, { replace: true, state: null });
-  }, [location.state, location.pathname, navigate, setToast]);
+  /** Child cards and dialogs report through the app toasts (they stack: saving the team may report two at once). */
+  const setToast = (next: ContractToast) => { toast.show(next); };
 
   const load = useCallback(async () => {
     setError('');
@@ -158,6 +143,18 @@ export function ProjectDetail() {
       onProjectChanged={() => void load()} className={className} />
   );
   const open = () => navigate(`/projects/${project.id}/workspace`);
+  const copyCode = async () => {
+    try {
+      await navigator.clipboard.writeText(project.code);
+      toast.success(t('projectDetail.codeCopied', { code: project.code }));
+    } catch { toast.error(t('errors.unknownNoCode')); }
+  };
+  // People card rows: initials in a colour from the person's id; an unassigned designer is a dashed circle.
+  const people = [
+    { role: t('projectDetail.homeowner'), person: project.customer, sub: staff ? project.customer.email : undefined },
+    { role: t('projectDetail.staff'), person: project.staff },
+    { role: t('projectDetail.designer'), person: project.designer },
+  ];
   const projectRole = designer ? resolveProjectRole(project, userId) : null;
   // In design before a concept is chosen, the Lead's next step is the concept, not the layout.
   const conceptNext = projectRole === 'LEAD' && conceptData.conceptDone === false && conceptData.concepts
@@ -198,7 +195,19 @@ export function ProjectDetail() {
         back={back}
         title={project.title}
         chip={waitingDeposit ? <StatusChip label={t('projectDetail.waitingDeposit')} tone="yellow" /> : <StatusChip kind="project" value={project.status} />}
-        description={<>{project.code}<span className="mx-2 text-slate-300">|</span>{t('projectDetail.created', { date: formatDate(project.createdAt) })}</>}
+        description={(
+          <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <button type="button" onClick={() => void copyCode()} title={t('projectDetail.copyCode')} aria-label={`${t('projectDetail.copyCode')}: ${project.code}`}
+              className="group inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-line bg-surface px-2 py-0.5 font-mono text-xs text-slate-700 transition-colors hover:border-brand/40 hover:text-brand focus-visible:outline-2 focus-visible:outline-brand">
+              {project.code}
+              <Copy aria-hidden className="h-3 w-3 text-slate-400 transition-colors group-hover:text-brand" />
+            </button>
+            <span className="inline-flex items-center gap-1.5">
+              <CalendarDays aria-hidden className="h-3.5 w-3.5 text-slate-400" />
+              {t('projectDetail.created', { date: formatDate(project.createdAt) })}
+            </span>
+          </span>
+        )}
         primary={primary}
         secondary={<>
           <Button onClick={() => navigate(`/projects/${encodeURIComponent(project.id)}/ai`)}><Sparkles aria-hidden className="h-4 w-4" />AI assistant</Button>
@@ -222,11 +231,16 @@ export function ProjectDetail() {
       </Card>
 
       {next && (
-        <div className="mb-5">
-          <Banner tone="blue">
-            <p className="text-[13px] font-medium text-blue-700">{t('nextStep.title')}</p>
-            <p className="mt-0.5 text-[15px] font-semibold text-slate-900">{next}</p>
-          </Banner>
+        // The one thing to do now: brand wash, a signpost that pings twice when the page opens, then rests.
+        <div className="step-in mb-5 flex items-center gap-4 overflow-hidden rounded-card border border-brand/20 bg-linear-to-r from-brand-soft via-brand-soft/50 to-surface px-4 py-4 shadow-card sm:px-5">
+          <span className="relative grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-brand text-white shadow-card">
+            <span aria-hidden className="absolute inset-0 animate-ping rounded-xl bg-brand/35 [animation-iteration-count:2] motion-reduce:hidden" />
+            <Signpost aria-hidden className="relative h-5 w-5" />
+          </span>
+          <div className="min-w-0">
+            <p className="text-[11px] font-bold uppercase tracking-widest text-brand">{t('nextStep.title')}</p>
+            <p className="mt-0.5 text-[15px] font-semibold leading-snug text-slate-900">{next}</p>
+          </div>
         </div>
       )}
 
@@ -265,12 +279,29 @@ export function ProjectDetail() {
         </Card>}
 
         <Card title={t('projectDetail.people')}>
-          <DetailList items={[
-            { label: t('projectDetail.homeowner'), value: <>{project.customer.fullName}{staff && project.customer.email && <span className="block text-xs text-slate-500">{project.customer.email}</span>}</> },
-            { label: t('projectDetail.staff'), value: project.staff.fullName },
-            { label: t('projectDetail.designer'), value: project.designer ? project.designer.fullName : <span className="text-slate-500">{t('projectDetail.notAssigned')}</span> },
-            ...(staff ? [{ label: t('projectDetail.budget'), value: <span className="tabular-nums">{t('projectDetail.budgetValue', { min: formatMoney(project.budgetMin), max: formatMoney(project.budgetMax) })}</span> }] : []),
-          ]} />
+          <ul className="space-y-3">
+            {people.map(({ role: label, person, sub }) => (
+              <li key={label} className="flex items-center gap-3">
+                {person ? (
+                  <span aria-hidden className={`grid h-9 w-9 shrink-0 place-items-center rounded-full text-xs font-semibold ${avatarTone(person.id)}`}>{initials(person.fullName)}</span>
+                ) : <span aria-hidden className="h-9 w-9 shrink-0 rounded-full border-2 border-dashed border-slate-300" />}
+                <div className="min-w-0 flex-1">
+                  <p className={`truncate text-sm ${person ? 'font-medium text-slate-900' : 'text-slate-500'}`}>{person ? person.fullName : t('projectDetail.notAssigned')}</p>
+                  {sub && <p className="truncate text-xs text-slate-500">{sub}</p>}
+                </div>
+                <span className="shrink-0 rounded-full bg-canvas px-2.5 py-0.5 text-[11px] font-medium text-slate-600 ring-1 ring-inset ring-line">{label}</span>
+              </li>
+            ))}
+          </ul>
+          {staff && (
+            <div className="mt-4 flex items-center gap-3 rounded-xl border border-line bg-canvas px-3.5 py-3">
+              <span aria-hidden className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-brand-soft text-brand"><Wallet className="h-[18px] w-[18px]" /></span>
+              <div className="min-w-0">
+                <p className="text-xs text-slate-500">{t('projectDetail.budget')}</p>
+                <p className="font-semibold tabular-nums text-slate-900">{t('projectDetail.budgetValue', { min: formatMoney(project.budgetMin), max: formatMoney(project.budgetMax) })}</p>
+              </div>
+            </div>
+          )}
 
           {(designer || staff) && project.designer && (
             <div className="mt-5 border-t border-slate-100 pt-4">
@@ -311,19 +342,6 @@ export function ProjectDetail() {
           onCreated={() => { setContractOpen(false); navigate(`${contractPage}&next=upload`); }}
           onAlreadyExists={() => { setContractOpen(false); void load(); void loadContract(); setTimeout(() => navigate(contractPage), 1200); }}
         />
-      )}
-      {toasts.length > 0 && (
-        <div className="fixed right-4 top-4 z-[80] flex max-w-sm flex-col gap-2">
-          {toasts.map((toast) => (
-            <div key={toast.id} role={toast.tone === 'success' ? 'status' : 'alert'}
-              className={`max-w-sm rounded-xl border px-4 py-3 text-sm font-medium shadow-lg ${
-                toast.tone === 'success' ? 'border-emerald-100 bg-emerald-50 text-emerald-800'
-                  : toast.tone === 'warning' ? 'border-amber-200 bg-amber-50 text-amber-800'
-                    : 'border-red-100 bg-red-50 text-red-700'}`}>
-              {toast.message}
-            </div>
-          ))}
-        </div>
       )}
 
       {project.status === 'COMPLETED' && (
