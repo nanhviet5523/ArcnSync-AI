@@ -6,6 +6,8 @@ export interface LogoProps {
   className?: string;
   /** When set, the logo becomes an SPA link to this route. Omit for static logos (e.g. Footer). */
   to?: string;
+  /** 'onDark': for dark backgrounds (the footer): olive mark, light text. */
+  tone?: 'default' | 'onDark';
 }
 
 export const Logo: React.FC<LogoProps> = ({
@@ -13,12 +15,14 @@ export const Logo: React.FC<LogoProps> = ({
   showText = true,
   className = '',
   to,
+  tone = 'default',
 }: LogoProps) => {
+  const onDark = tone === 'onDark';
   const mark = (
     <div className={`inline-flex items-center gap-2.5 ${className}`}>
       {/* Rounded dark background icon */}
       <div
-        className="bg-slate-900 flex items-center justify-center shrink-0"
+        className={`${onDark ? 'bg-brand' : 'bg-slate-900'} flex items-center justify-center shrink-0`}
         style={{
           width: `${size}px`,
           height: `${size}px`,
@@ -53,7 +57,7 @@ export const Logo: React.FC<LogoProps> = ({
       {/* Brand name */}
       {showText && (
         <span
-          className="font-extrabold text-slate-900 tracking-tight select-none"
+          className={`font-extrabold ${onDark ? 'text-white' : 'text-slate-900'} tracking-tight select-none`}
           style={{
             fontSize: `${size * 0.55}px`,
           }}

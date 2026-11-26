@@ -1,4 +1,4 @@
-import { Lock, Paperclip } from 'lucide-react';
+import { Lock, Paperclip, SquarePen } from 'lucide-react';
 import { Avatar, Button, EmptyState, ErrorState, Skeleton, roleLabel } from '@/components/ui';
 import { t } from '@/i18n';
 import { getCurrentUser } from '@/services/authService';
@@ -18,10 +18,12 @@ function preview(c: ConversationItem, meId: string | undefined) {
  * The viewer's conversations, in the order the backend sends them (latest message first).
  * State comes from useConversations, so the page can share it. With `onSelect` each row is a button.
  */
-export function ConversationList({ data, selectedId, onSelect, className = '' }: {
+export function ConversationList({ data, selectedId, onSelect, onNewChat, className = '' }: {
   data: Conversations;
   selectedId?: string;
   onSelect?: (conversation: ConversationItem) => void;
+  /** Shows a "New message" button that opens the contact list (GET /chat-contacts). */
+  onNewChat?: () => void;
   className?: string;
 }) {
   const { enabled, items, total, loading, loadingMore, error, hasMore, loadMore, retry } = data;
@@ -30,9 +32,17 @@ export function ConversationList({ data, selectedId, onSelect, className = '' }:
 
   return (
     <section aria-labelledby="conversations-title" className={`flex min-h-0 flex-col rounded-card border border-line bg-surface shadow-card ${className}`}>
-      <header className="flex items-baseline justify-between gap-3 border-b border-line px-4 py-3">
-        <h2 id="conversations-title" className="text-[15px] font-semibold text-slate-900">{t('chat.conversations.title')}</h2>
-        {!loading && !error && total > 0 && <span className="text-xs text-slate-500">{total}</span>}
+      <header className="flex items-center justify-between gap-3 border-b border-line px-4 py-3">
+        <h2 id="conversations-title" className="flex items-baseline gap-2 text-[15px] font-semibold text-slate-900">
+          {t('chat.conversations.title')}
+          {!loading && !error && total > 0 && <span className="text-xs font-normal text-slate-500">{total}</span>}
+        </h2>
+        {onNewChat && (
+          <Button size="sm" variant="primary" onClick={onNewChat}>
+            <SquarePen aria-hidden className="h-3.5 w-3.5" />
+            {t('chat.conversations.newChat')}
+          </Button>
+        )}
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-2" aria-busy={loading}>
@@ -43,7 +53,11 @@ export function ConversationList({ data, selectedId, onSelect, className = '' }:
         ) : error && items.length === 0 ? (
           <div className="p-1"><ErrorState message={error} onRetry={retry} /></div>
         ) : items.length === 0 ? (
-          <div className="p-1"><EmptyState compact title={t('chat.conversations.empty')} /></div>
+          <div className="p-1"><EmptyState
+            compact
+            title={t('chat.conversations.empty')}
+            action={onNewChat && <Button size="sm" onClick={onNewChat}>{t('chat.conversations.emptyAction')}</Button>}
+          /></div>
         ) : (
           <ul className="space-y-1">
             {items.map((c) => (

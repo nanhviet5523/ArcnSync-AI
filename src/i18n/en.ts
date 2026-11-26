@@ -1648,11 +1648,14 @@ export const en = {
       hasConversation: 'Chat started',
       loadMore: 'Load more',
       showing: 'Showing {shown} of {total}',
+      back: 'Back to conversations',
     },
     /** GET /conversations, the left column of /messages. */
     conversations: {
       title: 'Conversations',
       empty: 'No conversations yet. Messages with the people on your projects appear here.',
+      newChat: 'New message',
+      emptyAction: 'Find someone to message',
       noMessages: 'No messages yet',
       you: 'You: {text}',
       file: 'File: {name}',

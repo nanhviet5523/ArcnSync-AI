@@ -8,6 +8,7 @@ import type { ConversationItem } from '@/types/chat';
 import { chatApi } from './chatApi';
 import { chatCache } from './chatCache';
 import { chatSocket } from './chatSocket';
+import { ChatContactList } from './components/ChatContactList';
 import { ConversationList } from './components/ConversationList';
 import { MessageComposer } from './components/MessageComposer';
 import { MessageThread } from './components/MessageThread';
@@ -30,6 +31,10 @@ export function MessagesPage() {
   const [params, setParams] = useSearchParams();
   const selectedId = params.get('c') ?? undefined;
   const [notFound, setNotFound] = useState(false);
+  // Left column: the conversation list, or the contact list to start a new chat ("New message").
+  const [showContacts, setShowContacts] = useState(false);
+  // Opening a contact navigates to ?c=<id>: go back to the list, where that conversation is now highlighted.
+  useEffect(() => { setShowContacts(false); }, [selectedId]);
 
   // 404 (or a `c` that is not a UUID) from the conversation or its messages: drop `c` and say so.
   const onNotFound = useCallback(() => {
@@ -151,7 +156,7 @@ export function MessagesPage() {
   };
 
   return (
-    <AppShell wide>
+    <AppShell wide footer={false}>
       <PageHeader title={t('chat.page.title')} description={t('chat.page.description')} />
       {notFound && (
         <div className="mb-4">
@@ -160,7 +165,21 @@ export function MessagesPage() {
       )}
       <div className="grid h-[calc(100dvh-14rem)] min-h-112 grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[340px_minmax(0,1fr)]">
         <div className={`min-h-0 ${selectedId ? 'hidden lg:block' : ''}`}>
-          <ConversationList data={data} selectedId={selectedId} onSelect={select} className="h-full" />
+          {showContacts ? (
+            <ChatContactList
+              selectedUserId={selected?.otherUser.id}
+              onBack={() => setShowContacts(false)}
+              className="h-full"
+            />
+          ) : (
+            <ConversationList
+              data={data}
+              selectedId={selectedId}
+              onSelect={select}
+              onNewChat={() => setShowContacts(true)}
+              className="h-full"
+            />
+          )}
         </div>
         <section
           aria-label={selected ? selected.otherUser.fullName : t('chat.page.selectTitle')}

@@ -23,20 +23,22 @@ const COLUMNS: { title: string; links: { label: string; hash?: string; to?: stri
   },
 ];
 
-const linkClass = 'cursor-pointer rounded text-left text-slate-500 transition-colors hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-brand';
+/* Dark ink footer (the logo's colour): closes the page and stays apart from the cream header and cards.
+ * Olive stays for buttons and the current tab only. text-white is the card cream (see globals.css). */
+const linkClass = 'cursor-pointer rounded text-left text-white/65 transition-colors hover:text-white focus-visible:outline-2 focus-visible:outline-accent';
 
 export const Footer: React.FC = () => (
-  <footer className="w-full border-t border-line bg-surface px-6 py-12 text-slate-900 lg:px-12">
+  <footer className="w-full bg-navy px-6 py-12 text-white lg:px-12">
     <div className="mx-auto grid max-w-7xl gap-10 sm:grid-cols-2 lg:grid-cols-4">
       {/* Brand: wide on desktop so the two link columns sit on the right */}
       <div className="max-w-sm sm:col-span-2">
-        <Logo size={32} to="/" />
-        <p className="mt-3 text-xs leading-relaxed text-slate-500">{t('footer.slogan')}</p>
+        <Logo size={32} to="/" tone="onDark" />
+        <p className="mt-3 text-xs leading-relaxed text-white/65">{t('footer.slogan')}</p>
       </div>
 
       {COLUMNS.map((col) => (
         <nav key={col.title} aria-label={col.title}>
-          <h4 className="mb-3.5 text-sm font-bold text-slate-900">{col.title}</h4>
+          <h4 className="mb-3.5 text-sm font-bold text-white">{col.title}</h4>
           <ul className="space-y-2.5 text-xs">
             {col.links.map((link) => (
               <li key={link.label}>
@@ -50,7 +52,7 @@ export const Footer: React.FC = () => (
       ))}
     </div>
 
-    <div className="mx-auto mt-10 max-w-7xl border-t border-line pt-6 text-xs text-slate-400">
+    <div className="mx-auto mt-10 max-w-7xl border-t border-white/15 pt-6 text-xs text-white/50">
       {t('footer.copyright')}
     </div>
   </footer>
