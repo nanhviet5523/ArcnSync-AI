@@ -9,7 +9,7 @@ interface LoginPageProps {
 
 export const LoginPage: React.FC<LoginPageProps> = ({ onNavigateToSignUp }) => {
   return (
-    <div className="flex w-full h-screen overflow-hidden font-sans bg-white">
+    <div className="flex w-full h-screen overflow-hidden font-sans bg-canvas">
       {/* Left Column: Form Section (50%) */}
       <div className="flex-1 flex items-center justify-center p-6 lg:p-12 overflow-y-auto">
         <LoginForm onSignUpClick={onNavigateToSignUp} />
@@ -23,8 +23,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigateToSignUp }) => {
         }}
       >
         {/* AI Concept Badge */}
-        <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-md px-3.5 py-1.5 rounded-full text-xs font-medium w-fit mb-6">
-          <Sparkles className="w-3.5 h-3.5 text-sky-400" />
+        <div className="inline-flex items-center gap-2 bg-dark/20 backdrop-blur-md px-3.5 py-1.5 rounded-full text-xs font-medium w-fit mb-6">
+          <Sparkles className="w-3.5 h-3.5 text-brand-on-dark" />
           <span>AI direction · Japandi townhouse · 80 m²</span>
         </div>
 

@@ -89,9 +89,9 @@ export const AcceptInvitation: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50/60 font-sans flex flex-col justify-between">
+    <div className="min-h-screen bg-sand-50/60 font-sans flex flex-col justify-between">
       {/* Minimal Public Top Header */}
-      <header className="bg-white border-b border-slate-200/80">
+      <header className="bg-surface border-b border-line/80">
         <div className="w-full max-w-[1440px] mx-auto px-6 lg:px-12 h-16 flex items-center">
           <Logo size={32} to="/" />
         </div>
@@ -101,13 +101,13 @@ export const AcceptInvitation: React.FC = () => {
       <main className="flex-1 flex items-center justify-center p-6 py-12">
         {isExpired ? (
           /* STATE 4: EXPIRED (Image 2) */
-          <div className="w-full max-w-[390px] bg-white rounded-3xl border border-slate-200/80 shadow-xs p-8 text-center animate-in fade-in zoom-in-95 duration-200">
+          <div className="w-full max-w-[390px] bg-surface rounded-3xl border border-line/80 shadow-xs p-8 text-center animate-in fade-in zoom-in-95 duration-200">
             {/* Info Circle Icon */}
             <div className="w-11 h-11 rounded-full bg-cyan-50 text-cyan-600 flex items-center justify-center mx-auto mb-4 font-serif italic text-base font-bold">
               i
             </div>
 
-            <h1 className="text-xl font-extrabold text-slate-900 tracking-tight">
+            <h1 className="text-xl font-extrabold text-ink tracking-tight">
               This invitation link has expired
             </h1>
             <p className="text-xs text-slate-500 mt-2 mb-6">
@@ -117,20 +117,20 @@ export const AcceptInvitation: React.FC = () => {
             <button
               type="button"
               onClick={() => navigate('/login')}
-              className="w-full py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold text-xs rounded-xl transition cursor-pointer shadow-2xs"
+              className="w-full py-2.5 bg-surface border border-line hover:bg-sand-50 text-ink font-semibold text-xs rounded-xl transition cursor-pointer shadow-2xs"
             >
               Back to sign in
             </button>
           </div>
         ) : isSuccess ? (
           /* STATE 3: SUCCESS (Image 1) */
-          <div className="w-full max-w-[390px] bg-white rounded-3xl border border-slate-200/80 shadow-xs p-8 text-center animate-in fade-in zoom-in-95 duration-200">
+          <div className="w-full max-w-[390px] bg-surface rounded-3xl border border-line/80 shadow-xs p-8 text-center animate-in fade-in zoom-in-95 duration-200">
             {/* Checkmark Circle Icon */}
             <div className="w-11 h-11 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto mb-4">
               <Check className="w-5 h-5 stroke-[2.5]" />
             </div>
 
-            <h1 className="text-xl font-extrabold text-slate-900 tracking-tight">
+            <h1 className="text-xl font-extrabold text-ink tracking-tight">
               Your account is ready
             </h1>
             <p className="text-xs text-slate-500 mt-2 mb-6">
@@ -147,9 +147,9 @@ export const AcceptInvitation: React.FC = () => {
           </div>
         ) : (
           /* STATE 1 & 2: DEFAULT & ERROR (Image 4 & Image 3) */
-          <div className="w-full max-w-[460px] bg-white rounded-3xl border border-slate-200/80 shadow-xs p-8 animate-in fade-in zoom-in-95 duration-200">
+          <div className="w-full max-w-[460px] bg-surface rounded-3xl border border-line/80 shadow-xs p-8 animate-in fade-in zoom-in-95 duration-200">
             {/* Logo Squircle Icon */}
-            <div className="w-9 h-9 rounded-xl bg-slate-900 text-white flex items-center justify-center mb-5 shadow-xs">
+            <div className="w-9 h-9 rounded-xl bg-dark text-surface flex items-center justify-center mb-5 shadow-xs">
               <svg
                 className="w-5 h-5 text-white"
                 viewBox="0 0 24 24"
@@ -164,7 +164,7 @@ export const AcceptInvitation: React.FC = () => {
               </svg>
             </div>
 
-            <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+            <h1 className="text-2xl font-extrabold text-ink tracking-tight">
               You're invited to ArcnSync AI
             </h1>
             <p className="text-xs text-slate-500 mt-1">
@@ -173,13 +173,13 @@ export const AcceptInvitation: React.FC = () => {
 
             {/* Invitee User Box */}
             {email.trim() && (
-              <div className="mt-5 p-4 rounded-2xl border border-slate-200/80 bg-slate-50/60 flex items-center gap-3.5">
+              <div className="mt-5 p-4 rounded-2xl border border-line/80 bg-sand-50/60 flex items-center gap-3.5">
                 <div className="w-10 h-10 rounded-full bg-brand text-white flex items-center justify-center font-bold text-xs shrink-0 uppercase">
                   {email.trim().charAt(0)}
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="text-xs text-slate-500 leading-tight">Invited as</div>
-                  <div className="text-xs font-bold text-slate-900 leading-tight mt-0.5 truncate">{email.trim()}</div>
+                  <div className="text-xs font-bold text-ink leading-tight mt-0.5 truncate">{email.trim()}</div>
                 </div>
               </div>
             )}
@@ -188,7 +188,7 @@ export const AcceptInvitation: React.FC = () => {
             <form onSubmit={handleSubmit} noValidate className="mt-5 space-y-4">
               {/* Email */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">Email</label>
+                <label className="block text-xs font-semibold text-ink mb-1.5">Email</label>
                 <input
                   type="email"
                   value={email}
@@ -198,14 +198,14 @@ export const AcceptInvitation: React.FC = () => {
                     clearFieldError('email');
                   }}
                   placeholder="you@example.com"
-                  className={`${inputClass('email')} ${emailFromUrl ? 'bg-slate-50 text-slate-500 cursor-not-allowed' : ''}`}
+                  className={`${inputClass('email')} ${emailFromUrl ? 'bg-sand-50 text-slate-500 cursor-not-allowed' : ''}`}
                 />
                 {renderError('email')}
               </div>
 
               {/* OTP */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">OTP code</label>
+                <label className="block text-xs font-semibold text-ink mb-1.5">OTP code</label>
                 <input
                   type="text"
                   inputMode="numeric"
@@ -223,7 +223,7 @@ export const AcceptInvitation: React.FC = () => {
 
               {/* Password */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                <label className="block text-xs font-semibold text-ink mb-1.5">
                   Password
                 </label>
                 <PasswordInput
@@ -240,7 +240,7 @@ export const AcceptInvitation: React.FC = () => {
 
               {/* Confirm Password */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                <label className="block text-xs font-semibold text-ink mb-1.5">
                   Confirm password
                 </label>
                 <PasswordInput
@@ -282,12 +282,12 @@ export const AcceptInvitation: React.FC = () => {
                     className={`w-4 h-4 rounded flex items-center justify-center transition ${
                       hasMinLength
                         ? 'bg-brand text-white'
-                        : 'border border-slate-300 bg-white'
+                        : 'border border-slate-300 bg-surface'
                     }`}
                   >
                     {hasMinLength && <Check className="w-3 h-3 stroke-[3]" />}
                   </div>
-                  <span className="text-[11px] font-medium text-slate-700">
+                  <span className="text-[11px] font-medium text-ink">
                     At least 8 characters
                   </span>
                 </label>
@@ -298,12 +298,12 @@ export const AcceptInvitation: React.FC = () => {
                     className={`w-4 h-4 rounded flex items-center justify-center transition ${
                       hasNumber
                         ? 'bg-brand text-white'
-                        : 'border border-slate-300 bg-white'
+                        : 'border border-slate-300 bg-surface'
                     }`}
                   >
                     {hasNumber && <Check className="w-3 h-3 stroke-[3]" />}
                   </div>
-                  <span className="text-[11px] font-medium text-slate-700">
+                  <span className="text-[11px] font-medium text-ink">
                     One number
                   </span>
                 </label>
@@ -314,12 +314,12 @@ export const AcceptInvitation: React.FC = () => {
                     className={`w-4 h-4 rounded flex items-center justify-center transition ${
                       hasUppercase
                         ? 'bg-brand text-white'
-                        : 'border border-slate-300 bg-white'
+                        : 'border border-slate-300 bg-surface'
                     }`}
                   >
                     {hasUppercase && <Check className="w-3 h-3 stroke-[3]" />}
                   </div>
-                  <span className="text-[11px] font-medium text-slate-700">
+                  <span className="text-[11px] font-medium text-ink">
                     One uppercase letter
                   </span>
                 </label>
@@ -334,12 +334,12 @@ export const AcceptInvitation: React.FC = () => {
                     className={`w-4 h-4 rounded flex items-center justify-center transition ${
                       agreeTerms
                         ? 'bg-brand text-white'
-                        : 'border border-slate-300 bg-white'
+                        : 'border border-slate-300 bg-surface'
                     }`}
                   >
                     {agreeTerms && <Check className="w-3 h-3 stroke-[3]" />}
                   </div>
-                  <span className="text-[11px] font-medium text-slate-700">
+                  <span className="text-[11px] font-medium text-ink">
                     I agree to the terms of use
                   </span>
                 </label>
@@ -368,7 +368,7 @@ export const AcceptInvitation: React.FC = () => {
               </button>
 
               {/* Link expiration note */}
-              <p className="text-[11px] text-slate-400 text-center pt-1 font-medium">
+              <p className="text-[11px] text-subtext text-center pt-1 font-medium">
                 This link expires in 7 days.
               </p>
             </form>

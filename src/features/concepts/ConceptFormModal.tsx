@@ -46,9 +46,9 @@ export function ImagePicker({ files, onChange, existing = 0, disabled, onError }
         onDragOver={(e) => { e.preventDefault(); if (!disabled) setOver(true); }}
         onDragLeave={() => setOver(false)}
         onDrop={drop}
-        className={`flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-4 py-6 text-center transition ${over ? 'border-brand bg-brand-soft' : 'border-slate-300 bg-slate-50'}`}
+        className={`flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-4 py-6 text-center transition ${over ? 'border-brand bg-brand-soft' : 'border-slate-300 bg-sand-50'}`}
       >
-        <ImagePlus aria-hidden className="h-6 w-6 text-slate-400" />
+        <ImagePlus aria-hidden className="h-6 w-6 text-subtext" />
         <p className="text-sm text-slate-700">{t('concepts.dropHint')}</p>
         <input ref={input} type="file" multiple accept={CONCEPT_IMAGE_TYPES.join(',')} className="hidden"
           onChange={(e) => { const picked = [...(e.target.files ?? [])]; e.target.value = ''; add(picked); }} />
@@ -58,11 +58,11 @@ export function ImagePicker({ files, onChange, existing = 0, disabled, onError }
       {files.length > 0 && (
         <ul className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-5">
           {files.map((f, i) => (
-            <li key={`${f.name}-${i}`} className="relative aspect-square overflow-hidden rounded-lg border border-slate-200 bg-slate-100">
+            <li key={`${f.name}-${i}`} className="relative aspect-square overflow-hidden rounded-lg border border-line bg-slate-100">
               <img src={previews[i]} alt={f.name} className="h-full w-full object-cover" />
               {!disabled && (
                 <button type="button" aria-label={t('concepts.removePicked', { name: f.name })} onClick={() => onChange(files.filter((_, j) => j !== i))}
-                  className="absolute right-1 top-1 grid h-6 w-6 place-items-center rounded-full bg-white/90 text-rose-700 shadow hover:bg-white">
+                  className="absolute right-1 top-1 grid h-6 w-6 place-items-center rounded-full bg-surface/90 text-rose-700 shadow hover:bg-surface">
                   <X aria-hidden className="h-3.5 w-3.5" />
                 </button>
               )}

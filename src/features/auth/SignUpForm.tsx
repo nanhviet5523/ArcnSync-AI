@@ -137,7 +137,7 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({
   const inputClass = (field: FieldName) =>
     `w-full px-4 py-3 text-sm rounded-xl border border-control bg-sand-100 text-ink focus-visible:ring-2 focus-visible:border-brand focus-visible:ring-brand-soft transition placeholder:text-subtext ${
       fieldErrors[field]
-        ? 'border-red-400 focus:ring-red-500'
+        ? 'border-danger focus:ring-danger/20'
         : ''
     }`;
 
@@ -223,7 +223,7 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({
       </div>
 
       {/* Header Title */}
-      <h1 className="text-3xl lg:text-4xl font-extrabold text-slate-900 tracking-tight mb-2">
+      <h1 className="text-3xl lg:text-4xl font-extrabold text-ink tracking-tight mb-2">
         Create your account
       </h1>
 
@@ -234,7 +234,7 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({
       {/* Form */}
       <form onSubmit={handleSubmit} noValidate className="space-y-3.5">
         <div>
-          <label className="block text-xs font-bold text-slate-900 mb-1.5 uppercase tracking-wide">
+          <label className="block text-xs font-bold text-ink mb-1.5 uppercase tracking-wide">
             Full name
           </label>
 
@@ -254,7 +254,7 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-bold text-slate-900 mb-1.5 uppercase tracking-wide">
+            <label className="block text-xs font-bold text-ink mb-1.5 uppercase tracking-wide">
               Email
             </label>
 
@@ -273,7 +273,7 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-900 mb-1.5 uppercase tracking-wide">
+            <label className="block text-xs font-bold text-ink mb-1.5 uppercase tracking-wide">
               Phone number
             </label>
 
@@ -295,7 +295,7 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({
         {/* Password & Confirm Password */}
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-bold text-slate-900 mb-1.5 uppercase tracking-wide">
+            <label className="block text-xs font-bold text-ink mb-1.5 uppercase tracking-wide">
               Password
             </label>
 
@@ -313,7 +313,7 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-900 mb-1.5 uppercase tracking-wide">
+            <label className="block text-xs font-bold text-ink mb-1.5 uppercase tracking-wide">
               Confirm password
             </label>
 
@@ -333,7 +333,7 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({
 
         {/* Checkbox Terms */}
         <div className="pt-1">
-          <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-slate-700">
+          <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-ink">
             <input
               type="checkbox"
               checked={agreeTerms}
@@ -341,7 +341,7 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({
                 setAgreeTerms(e.target.checked);
                 clearFieldError('terms');
               }}
-              className="w-4 h-4 rounded border-slate-300 text-brand-text focus:ring-blue-500 cursor-pointer"
+              className="w-4 h-4 rounded border-slate-300 text-brand-text focus-visible:ring-brand-soft accent-brand cursor-pointer"
             />
 
             <span>
@@ -396,7 +396,7 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({
         <button
           type="submit"
           disabled={loading}
-          className="w-full py-3.5 bg-brand hover:bg-brand-hover text-white font-bold text-sm rounded-xl shadow-md transition duration-200 mt-1 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          className="w-full py-3.5 bg-brand hover:bg-brand-hover active:bg-brand-hover text-white font-bold text-sm rounded-xl shadow-md transition duration-200 mt-1 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           {loading && (
             <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
@@ -409,10 +409,10 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({
       {/* Divider */}
       <div className="relative my-4 flex items-center justify-center">
         <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-slate-200" />
+          <div className="w-full border-t border-control" />
         </div>
 
-        <span className="relative bg-white px-3 text-xs text-slate-400 uppercase tracking-widest">
+        <span className="relative bg-surface px-3 text-xs text-subtext uppercase tracking-widest">
           or
         </span>
       </div>
@@ -421,7 +421,7 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({
       <button
         type="button"
         onClick={() => navigate('/no-api')}
-        className="w-full py-3.5 px-4 border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-sm rounded-xl flex items-center justify-center gap-3 transition"
+        className="w-full py-3.5 px-4 border border-control hover:bg-sand-50 text-ink font-bold text-sm rounded-xl flex items-center justify-center gap-3 transition"
       >
         <svg className="w-5 h-5" viewBox="0 0 24 24">
           <path

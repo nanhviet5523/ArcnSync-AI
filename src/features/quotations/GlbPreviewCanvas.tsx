@@ -150,7 +150,7 @@ export function GlbPreviewCanvas({ assetId }: { assetId: string }) {
 
   return (
     <div className="space-y-2">
-      <div className="relative h-[58vh] min-h-[320px] w-full overflow-hidden rounded-xl border border-slate-200 bg-stage">
+      <div className="relative h-[58vh] min-h-[320px] w-full overflow-hidden rounded-xl border border-line bg-stage">
         <div ref={mountRef} className="h-full w-full touch-none overscroll-contain" />
         {loading && !error && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-stage/85 text-sm text-slate-600">
@@ -159,7 +159,7 @@ export function GlbPreviewCanvas({ assetId }: { assetId: string }) {
           </div>
         )}
         {error && (
-          <div className="absolute inset-0 flex items-center justify-center bg-white/95 p-6">
+          <div className="absolute inset-0 flex items-center justify-center bg-surface/95 p-6">
             <div className="w-full max-w-md">
               <ErrorState message={error} onRetry={retry} />
             </div>

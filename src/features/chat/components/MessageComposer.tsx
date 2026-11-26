@@ -134,7 +134,7 @@ export function MessageComposer({ conversation, callbacks }: { conversation: Con
                 value={projectId}
                 onChange={(e) => setProjectId(e.target.value)}
                 disabled={sending}
-                className="min-w-0 max-w-56 truncate rounded-lg border border-line bg-surface px-2 py-1 text-xs text-slate-800 disabled:opacity-50"
+                className="min-w-0 max-w-56 truncate rounded-lg border border-line bg-surface px-2 py-1 text-xs text-ink disabled:opacity-50"
               >
                 <option value="">{t('chat.composer.noProject')}</option>
                 {conversation.sharedProjects.map((p) => <option key={p.id} value={p.id}>{p.code} · {p.title}</option>)}
@@ -172,14 +172,14 @@ export function MessageComposer({ conversation, callbacks }: { conversation: Con
           placeholder={t('chat.composer.placeholder')}
           aria-label={t('chat.composer.label')}
           aria-invalid={tooLong || undefined}
-          className="min-h-9 flex-1 resize-none rounded-lg border border-line bg-surface px-3 py-2 text-sm leading-5 text-slate-900 placeholder:text-slate-400 focus-visible:outline-2 focus-visible:outline-brand read-only:opacity-70"
+          className="min-h-9 flex-1 resize-none rounded-lg border border-line bg-surface px-3 py-2 text-sm leading-5 text-ink placeholder:text-subtext focus-visible:outline-2 focus-visible:outline-brand read-only:opacity-70"
         />
         <button
           type="submit"
           disabled={!ready}
           aria-label={t('chat.composer.send')}
           title={t('chat.composer.send')}
-          className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-brand text-white hover:bg-brand-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-brand text-[#FBF8EF] hover:bg-brand-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:cursor-not-allowed disabled:opacity-50"
         >
           {sending
             ? <span aria-hidden className="h-4 w-4 animate-spin rounded-full border-2 border-current border-r-transparent" />

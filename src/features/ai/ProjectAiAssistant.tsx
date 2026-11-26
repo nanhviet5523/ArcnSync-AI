@@ -217,9 +217,9 @@ export function ProjectAiAssistant() {
       {error && <div className="mb-4"><ErrorState message={error} onRetry={() => void loadConversations()} /></div>}
 
       <div className="grid min-h-[min(72vh,760px)] gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
-        <aside className="flex min-h-[220px] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm lg:min-h-0">
-          <div className="flex items-center justify-between gap-2 border-b border-slate-100 p-3">
-            <h2 className="text-sm font-semibold text-slate-900">Conversations</h2>
+        <aside className="flex min-h-[220px] flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-sm lg:min-h-0">
+          <div className="flex items-center justify-between gap-2 border-b border-line p-3">
+            <h2 className="text-sm font-semibold text-ink">Conversations</h2>
             <Button size="sm" variant="primary" loading={creating} onClick={() => void createConversation()}>
               <MessageSquarePlus className="mr-1.5 h-4 w-4" /> New chat
             </Button>
@@ -230,7 +230,7 @@ export function ProjectAiAssistant() {
                 : <ul className="space-y-1">{conversations.map((conversation) => (
                   <li key={conversation.id}>
                     <button type="button" onClick={() => void loadThread(conversation.id)}
-                      className={`w-full rounded-xl px-3 py-2.5 text-left transition ${selectedId === conversation.id ? 'bg-blue-50 text-dark' : 'text-slate-700 hover:bg-slate-50'}`}>
+                      className={`w-full rounded-xl px-3 py-2.5 text-left transition ${selectedId === conversation.id ? 'bg-sand-100 text-dark' : 'text-slate-700 hover:bg-sand-50'}`}>
                       <span className="block truncate text-sm font-medium">{conversation.title || 'New conversation'}</span>
                       <span className="mt-1 block text-[11px] text-slate-500">{new Date(conversation.updatedAt).toLocaleString()}</span>
                     </button>
@@ -239,20 +239,20 @@ export function ProjectAiAssistant() {
           </div>
         </aside>
 
-        <section className="flex min-h-[420px] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm lg:min-h-0" aria-label="AI conversation">
+        <section className="flex min-h-[420px] flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-sm lg:min-h-0" aria-label="AI conversation">
           {!selectedId ? (
             <div className="flex flex-1 flex-col items-center justify-center p-8 text-center">
               <span className="mb-3 grid h-12 w-12 place-items-center rounded-2xl bg-violet-50 text-violet-700"><Sparkles className="h-6 w-6" /></span>
-              <h2 className="text-lg font-semibold text-slate-900">Your project, with an AI guide</h2>
+              <h2 className="text-lg font-semibold text-ink">Your project, with an AI guide</h2>
               <p className="mt-2 max-w-md text-sm leading-6 text-slate-600">Ask about design direction or get product ideas that fit the project brief.</p>
               <Button variant="primary" className="mt-5" loading={creating} onClick={() => void createConversation()}>Start a conversation</Button>
             </div>
           ) : (
             <>
-              <header className="flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-3">
+              <header className="flex items-center justify-between gap-3 border-b border-line px-4 py-3">
                 <div className="flex min-w-0 items-center gap-2.5">
                   <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-violet-50 text-violet-700"><Bot className="h-5 w-5" /></span>
-                  <div className="min-w-0"><h2 className="truncate text-sm font-semibold text-slate-900">{detail?.title || conversations.find((c) => c.id === selectedId)?.title || 'Project assistant'}</h2>
+                  <div className="min-w-0"><h2 className="truncate text-sm font-semibold text-ink">{detail?.title || conversations.find((c) => c.id === selectedId)?.title || 'Project assistant'}</h2>
                     <p className="text-xs text-slate-500">{status === 'SEARCHING_STYLES' ? 'Looking up design styles…' : status === 'SEARCHING_PRODUCTS' ? 'Finding matching products…' : sending ? 'Writing a response…' : 'AI assistant'}</p>
                   </div>
                 </div>
@@ -265,12 +265,12 @@ export function ProjectAiAssistant() {
                       : messages.map((message) => <MessageBubble key={message.id} message={message} />)}
                 {threadError && messages.length > 0 && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">{threadError}</p>}
               </div>
-              <form onSubmit={(event) => { event.preventDefault(); void send(); }} className="border-t border-slate-100 p-3 sm:p-4">
+              <form onSubmit={(event) => { event.preventDefault(); void send(); }} className="border-t border-line p-3 sm:p-4">
                 <label htmlFor="ai-question" className="sr-only">Ask the project AI</label>
-                <div className="flex items-end gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-2 focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100">
+                <div className="flex items-end gap-2 rounded-2xl border border-line bg-sand-50 p-2 focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100">
                   <textarea id="ai-question" value={draft} maxLength={2000} rows={2} disabled={sending || threadLoading}
                     onChange={(event) => setDraft(event.target.value)} placeholder="Ask about the project, a design style, or suitable products…"
-                    className="max-h-36 min-h-12 flex-1 resize-y bg-transparent px-2 py-2 text-sm text-slate-800 outline-none placeholder:text-slate-400 disabled:opacity-60" />
+                    className="max-h-36 min-h-12 flex-1 resize-y bg-transparent px-2 py-2 text-sm text-ink outline-none placeholder:text-subtext disabled:opacity-60" />
                   <Button type="submit" variant="primary" disabled={!draft.trim() || sending || threadLoading || Boolean(quota && quota.used >= quota.limit)} aria-label="Send question">
                     <Send className="h-4 w-4" />
                   </Button>
@@ -292,17 +292,17 @@ function MessageBubble({ message }: { message: AiMessage }) {
       <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-full ${user ? 'bg-info text-white' : 'bg-violet-100 text-violet-700'}`}>
         {user ? <UserRound className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
       </span>
-      <div className={`max-w-[min(88%,720px)] rounded-2xl px-4 py-3 ${user ? 'bg-info text-white' : 'bg-slate-50 text-slate-800'}`}>
+      <div className={`max-w-[min(88%,720px)] rounded-2xl px-4 py-3 ${user ? 'bg-info text-white' : 'bg-sand-50 text-ink'}`}>
         {message.content && <p className="whitespace-pre-wrap text-sm leading-6">{message.content}</p>}
         {message.products.length > 0 && <div className="mt-3 grid gap-2 sm:grid-cols-2">{message.products.map((product) => (
-          <div key={product.id} className="rounded-xl border border-slate-200 bg-white p-3 text-slate-800">
+          <div key={product.id} className="rounded-xl border border-line bg-surface p-3 text-ink">
             <div className="flex gap-2"><Package className="mt-0.5 h-4 w-4 shrink-0 text-brand-text" /><div className="min-w-0"><p className="truncate text-sm font-semibold">{product.name}</p>
               <p className="mt-1 text-xs text-slate-600">{product.categoryName || 'Product'}{product.supplierName ? ` · ${product.supplierName}` : ''}</p>
               <p className="mt-1 text-xs font-semibold">{Number(product.price).toLocaleString('en-US')} VND / {product.unit}</p>
             </div></div>
           </div>
         ))}</div>}
-        <time className={`mt-2 block text-[10px] ${user ? 'text-blue-100' : 'text-slate-400'}`} dateTime={message.createdAt}>{new Date(message.createdAt).toLocaleString()}</time>
+        <time className={`mt-2 block text-[10px] ${user ? 'text-blue-100' : 'text-subtext'}`} dateTime={message.createdAt}>{new Date(message.createdAt).toLocaleString()}</time>
       </div>
     </article>
   );

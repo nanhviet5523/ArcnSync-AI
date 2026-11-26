@@ -69,7 +69,7 @@ export function UserMenus({ role, showBadge = true }: { role: UserRole; showBadg
       ? currentUser.name.trim().split(/\s+/).map((part) => part[0]?.toUpperCase()).slice(0, 2).join('')
       : FALLBACK_INITIALS[role];
 
-  const menuItem = 'flex w-full cursor-pointer items-center gap-2 px-4 py-2 text-left text-xs font-medium text-slate-700 transition-colors hover:bg-slate-50';
+  const menuItem = 'flex w-full cursor-pointer items-center gap-2 px-4 py-2 text-left text-xs font-medium text-slate-700 transition-colors hover:bg-sand-50';
 
   return (
     <div className="flex shrink-0 items-center gap-3">
@@ -84,7 +84,7 @@ export function UserMenus({ role, showBadge = true }: { role: UserRole; showBadg
           aria-expanded={notifOpen}
           aria-label="Open notifications menu"
           title="Notifications"
-          className={`relative flex h-8.5 w-8.5 cursor-pointer items-center justify-center rounded-full border border-line transition focus-visible:outline-2 focus-visible:outline-brand ${notifOpen ? 'bg-slate-100 text-slate-900' : 'text-slate-700 hover:bg-slate-50'}`}
+          className={`relative flex h-8.5 w-8.5 cursor-pointer items-center justify-center rounded-full border border-line transition focus-visible:outline-2 focus-visible:outline-brand ${notifOpen ? 'bg-sand-100 text-ink' : 'text-slate-700 hover:bg-sand-50'}`}
         >
           <Bell className="h-4 w-4" />
           {unreadCount > 0 && <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-brand" />}
@@ -93,7 +93,7 @@ export function UserMenus({ role, showBadge = true }: { role: UserRole; showBadg
         {notifOpen && (
           <div className="absolute right-0 top-11 z-[80] w-80 rounded-card border border-line bg-surface p-4 shadow-float sm:w-96">
             <div className="flex items-center justify-between border-b border-line pb-3">
-              <h3 className="text-sm font-bold text-slate-900">Notifications</h3>
+              <h3 className="text-sm font-bold text-ink">Notifications</h3>
               {unreadCount > 0 && (
                 <button type="button" onClick={markAllAsRead} className="cursor-pointer text-xs font-semibold text-brand hover:underline">Mark all as read</button>
               )}
@@ -103,7 +103,7 @@ export function UserMenus({ role, showBadge = true }: { role: UserRole; showBadg
                 <div key={item.id} className="flex items-start justify-between gap-3 py-3 first:pt-2 last:pb-1">
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-bold leading-snug text-slate-800">{item.title}</p>
-                    <p className="mt-1 text-[11px] text-slate-400">{item.time}</p>
+                    <p className="mt-1 text-[11px] text-subtext">{item.time}</p>
                   </div>
                   {item.unread && <div className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-brand" />}
                 </div>
@@ -128,7 +128,7 @@ export function UserMenus({ role, showBadge = true }: { role: UserRole; showBadg
         {accountOpen && (
           <div className="absolute right-0 top-11 z-[80] w-56 rounded-card border border-line bg-surface py-2 shadow-float">
             <div className="border-b border-line px-4 py-2.5">
-              <p className="text-sm font-bold text-slate-900">{currentUser?.name ?? config.badge}</p>
+              <p className="text-sm font-bold text-ink">{currentUser?.name ?? config.badge}</p>
               <p className="mt-0.5 text-xs text-slate-500">{currentUser?.email ?? `${config.badge} Account`}</p>
             </div>
             <div className="py-1">
@@ -173,7 +173,7 @@ export const Header: React.FC<HeaderProps> = ({ role, activeTab, onLoginClick, o
               <SectionLink
                 key={hash}
                 hash={hash}
-                className="rounded text-slate-600 transition-colors hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+                className="rounded text-slate-600 transition-colors hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
               >
                 {label}
               </SectionLink>
@@ -235,7 +235,7 @@ export const Header: React.FC<HeaderProps> = ({ role, activeTab, onLoginClick, o
                   onClick={() => navigate(item.path)}
                   aria-current={active ? 'page' : undefined}
                   className={`cursor-pointer whitespace-nowrap border-b-2 pt-0.5 font-medium transition-colors focus-visible:outline-2 focus-visible:outline-brand ${
-                    active ? 'border-brand font-semibold text-brand' : 'border-transparent text-slate-600 hover:text-slate-900'
+                    active ? 'border-brand font-semibold text-brand' : 'border-transparent text-slate-600 hover:text-ink'
                   }`}
                 >
                   {item.label}

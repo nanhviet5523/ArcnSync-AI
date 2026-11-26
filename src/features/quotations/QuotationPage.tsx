@@ -190,7 +190,7 @@ export function QuotationPage() {
           </>}>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[640px] text-left text-sm">
-              <thead className="border-b border-line bg-slate-50/70 text-[13px] text-slate-500">
+              <thead className="border-b border-line bg-sand-50/70 text-[13px] text-slate-500">
                 <tr>
                   <th scope="col" className="w-10 px-4 py-2.5 font-medium">{t('quotation.col.no')}</th>
                   <th scope="col" className="px-2 py-2.5 font-medium">{t('quotation.col.product')}</th>
@@ -204,10 +204,10 @@ export function QuotationPage() {
                 const Chevron = shut ? ChevronRight : ChevronDown;
                 return (
                   <tbody key={group} className="divide-y divide-slate-100 border-b border-line last:border-b-0">
-                    <tr className="bg-slate-50/40">
+                    <tr className="bg-sand-50/40">
                       <th scope="rowgroup" colSpan={4} className="px-4 py-2 text-[13px] font-semibold text-slate-700">
                         <button type="button" aria-expanded={!shut} onClick={() => toggleGroup(group)}
-                          className="-mx-1 inline-flex items-center gap-1.5 rounded px-1 text-left hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-brand">
+                          className="-mx-1 inline-flex items-center gap-1.5 rounded px-1 text-left hover:text-ink focus-visible:outline-2 focus-visible:outline-brand">
                           <Chevron aria-hidden className="h-4 w-4 text-slate-500" />
                           {t(`quotation.group.${group}`)}
                           {shut && <span className="font-normal text-slate-500">· {t('quotation.groupLines', { n: items.length })}</span>}
@@ -222,7 +222,7 @@ export function QuotationPage() {
                         <tr key={item.id} className="align-top">
                           <td className="px-4 py-3 tabular-nums text-slate-500">{lineNo.get(item.id)}</td>
                           <td className="px-2 py-3">
-                            <p className={`font-medium ${pick ? 'text-slate-400 line-through' : 'text-slate-900'}`}>{item.productName}</p>
+                            <p className={`font-medium ${pick ? 'text-subtext line-through' : 'text-ink'}`}>{item.productName}</p>
                             {item.supplierName && <p className="text-xs text-slate-500">{item.supplierName}</p>}
                             {pick && (
                               <p className="mt-1 text-xs font-medium text-brand">
@@ -240,7 +240,7 @@ export function QuotationPage() {
                             {Number(item.quantity).toLocaleString('en-US')} <span className="text-xs text-slate-500">{t(`quotation.unit.${item.unit}`)}</span>
                           </td>
                           <td className="px-2 py-3 text-right tabular-nums text-slate-700">{formatMoney(item.unitPrice)}</td>
-                          <td className="px-4 py-3 text-right font-semibold tabular-nums text-slate-900">{formatMoney(item.lineTotal)}</td>
+                          <td className="px-4 py-3 text-right font-semibold tabular-nums text-ink">{formatMoney(item.lineTotal)}</td>
                         </tr>
                       );
                     })}
@@ -260,11 +260,11 @@ export function QuotationPage() {
             ]} />
             <div className="mt-4 border-t border-line pt-4">
               <p className="text-[13px] text-slate-500">{t('quotation.total')}</p>
-              <p className="text-2xl font-bold tabular-nums text-slate-900">{formatMoney(q.totalAmount)}</p>
+              <p className="text-2xl font-bold tabular-nums text-ink">{formatMoney(q.totalAmount)}</p>
               {estimate && (
                 <div className="mt-3 rounded-lg bg-brand-soft px-3 py-2">
                   <p className="text-[13px] font-medium text-brand">{t('quotation.whatIf')} · {t('quotation.whatIfChanges', { n: pickedCount })}</p>
-                  <p className="text-lg font-bold tabular-nums text-slate-900">{formatMoney(estimate.total)}</p>
+                  <p className="text-lg font-bold tabular-nums text-ink">{formatMoney(estimate.total)}</p>
                   <p className="text-xs tabular-nums text-slate-600">{signedMoney(estimate.total - Number(q.totalAmount))}</p>
                   <p className="mt-1 text-xs text-slate-600">{t('quotation.whatIfNotSaved')}</p>
                 </div>
@@ -293,8 +293,8 @@ export function QuotationPage() {
                 return (
                   <li key={g}>
                     <div className="flex items-baseline justify-between gap-3 text-sm">
-                      <span className="truncate font-medium text-slate-800">{t(`quotation.group.${g}`)}</span>
-                      <span className="tabular-nums text-slate-900">{formatMoney(amount)}</span>
+                      <span className="truncate font-medium text-ink">{t(`quotation.group.${g}`)}</span>
+                      <span className="tabular-nums text-ink">{formatMoney(amount)}</span>
                     </div>
                     <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-100" aria-hidden>
                       <div className="h-full rounded-full bg-brand" style={{ width: `${Math.min(100, share)}%` }} />
@@ -312,7 +312,7 @@ export function QuotationPage() {
                 {revisions.map((r) => (
                   <li key={r.id}>
                     <button type="button" onClick={() => load(r.id)} aria-current={r.id === q.id ? 'true' : undefined}
-                      className={`flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-slate-50 ${r.id === q.id ? 'bg-slate-50 font-semibold' : ''}`}>
+                      className={`flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-sand-50 ${r.id === q.id ? 'bg-sand-50 font-semibold' : ''}`}>
                       <span>{t('quotation.revision', { n: r.revisionNo })} · <span className="tabular-nums">{formatMoney(r.totalAmount)}</span></span>
                       <StatusChip kind="quotation" value={r.status} size="sm" />
                     </button>

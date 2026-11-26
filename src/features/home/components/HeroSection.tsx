@@ -29,7 +29,7 @@ export function HeroSection({ user }: { user: User | null }) {
             <Ruler aria-hidden className="h-3.5 w-3.5 shrink-0 text-brand" />
             {t('home.hero.eyebrow')}
           </p>
-          <h1 className="mt-6 text-3xl font-extrabold leading-[1.15] tracking-tight text-slate-900 sm:text-4xl xl:text-[44px]">
+          <h1 className="mt-6 text-3xl font-extrabold leading-[1.15] tracking-tight text-ink sm:text-4xl xl:text-[44px]">
             {t('home.hero.title')}
           </h1>
           <p className="mt-5 max-w-xl text-base leading-relaxed text-slate-600">{t('home.hero.description')}</p>

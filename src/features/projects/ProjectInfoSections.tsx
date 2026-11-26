@@ -38,7 +38,7 @@ export function HomeCard({ project, className = '' }: { project: Project; classN
         {floors.length ? (
           <ul className="flex flex-wrap gap-2">
             {floors.map((f) => (
-              <li key={f.id} className="rounded-full border border-line bg-slate-50 px-3 py-1 text-[13px] text-slate-700">
+              <li key={f.id} className="rounded-full border border-line bg-sand-50 px-3 py-1 text-[13px] text-slate-700">
                 {t('homeownerDetail.floorChip', { name: f.name, h: (Math.round(f.floorHeightMm / 100) / 10).toLocaleString('en-US') })}
               </li>
             ))}
@@ -56,7 +56,7 @@ function PersonRow({ person, role }: { person: Person | null; role: string }) {
         {person ? initials(person.fullName) : '?'}
       </span>
       <div className="min-w-0">
-        <p className={`truncate text-sm font-semibold ${person ? 'text-slate-900' : 'text-slate-500'}`}>{person?.fullName ?? t('projectDetail.notAssigned')}</p>
+        <p className={`truncate text-sm font-semibold ${person ? 'text-ink' : 'text-slate-500'}`}>{person?.fullName ?? t('projectDetail.notAssigned')}</p>
         <p className="text-xs text-slate-500">{role}</p>
       </div>
     </li>
@@ -77,7 +77,7 @@ export function PeopleCard({ project }: { project: Project }) {
 export function BudgetCard({ project }: { project: Project }) {
   return (
     <Card title={t('projectDetail.budget')}>
-      <p className="text-2xl font-bold tracking-tight tabular-nums text-slate-900">
+      <p className="text-2xl font-bold tracking-tight tabular-nums text-ink">
         {t('projectDetail.budgetValue', { min: formatMoney(project.budgetMin), max: formatMoney(project.budgetMax) })}
       </p>
     </Card>

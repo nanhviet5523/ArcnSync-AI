@@ -95,7 +95,7 @@ export function ContactPage() {
       <section className="mx-auto w-full max-w-[1200px] px-6 py-12 lg:px-16 lg:py-16">
         <div className="grid items-start gap-8 lg:grid-cols-5">
           <aside className="rounded-2xl border border-line bg-surface p-6 shadow-card sm:p-8 lg:col-span-2">
-            <h2 className="text-base font-bold text-slate-900">{t('home.contact.infoTitle')}</h2>
+            <h2 className="text-base font-bold text-ink">{t('home.contact.infoTitle')}</h2>
             <dl className="mt-6 space-y-5">
               {CONTACTS.map(({ key, icon: Icon, href }) => {
                 const value = t(`home.contact.values.${key}`);
@@ -106,7 +106,7 @@ export function ContactPage() {
                     </span>
                     <div className="min-w-0">
                       <dt className="text-xs font-medium text-slate-500">{t(`home.contact.${key}`)}</dt>
-                      <dd className="mt-0.5 wrap-break-word text-sm font-semibold text-slate-900">
+                      <dd className="mt-0.5 wrap-break-word text-sm font-semibold text-ink">
                         {href
                           ? <a href={href(value)} className="rounded transition-colors hover:text-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">{value}</a>
                           : value}
@@ -128,7 +128,7 @@ export function ContactPage() {
                   <CheckCircle2 aria-hidden className="h-6 w-6" />
                 </div>
                 <div className="space-y-1.5">
-                  <h2 className="text-xl font-bold tracking-tight text-slate-900">{t('contactPage.successTitle')}</h2>
+                  <h2 className="text-xl font-bold tracking-tight text-ink">{t('contactPage.successTitle')}</h2>
                   <p className="text-sm leading-relaxed text-slate-700">{successMessage}</p>
                 </div>
                 <div className="pt-2">
@@ -138,7 +138,7 @@ export function ContactPage() {
             ) : (
               <form onSubmit={(e) => void handleSubmit(e)} noValidate className="space-y-5">
                 <div>
-                  <h2 className="text-lg font-bold tracking-tight text-slate-900">{t('contactPage.formTitle')}</h2>
+                  <h2 className="text-lg font-bold tracking-tight text-ink">{t('contactPage.formTitle')}</h2>
                   <p className="mt-1 text-xs text-slate-500">{t('contactPage.formHint')}</p>
                 </div>
 

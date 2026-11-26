@@ -47,7 +47,7 @@ export const StatusActionsMenu: React.FC<StatusActionsMenuProps> = ({ label, act
           const rect = buttonRef.current?.getBoundingClientRect();
           if (rect) setPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
         }}
-        className="rounded-lg p-1.5 hover:bg-slate-100 hover:text-slate-700"
+        className="rounded-lg p-1.5 hover:bg-sand-100 hover:text-slate-700"
       >
         <MoreVertical size={16} />
       </button>
@@ -55,7 +55,7 @@ export const StatusActionsMenu: React.FC<StatusActionsMenuProps> = ({ label, act
         <ul
           role="menu"
           style={{ top: pos.top, right: pos.right }}
-          className="fixed z-40 min-w-[150px] rounded-xl border border-slate-200 bg-white py-1 text-sm shadow-lg"
+          className="fixed z-40 min-w-[150px] rounded-xl border border-line bg-surface py-1 text-sm shadow-lg"
         >
           {actions.map((action) => {
             const meta = STATUS_ACTION_META[action];
@@ -69,7 +69,7 @@ export const StatusActionsMenu: React.FC<StatusActionsMenuProps> = ({ label, act
                     setPos(null);
                     onSelect(action);
                   }}
-                  className={`w-full px-4 py-2 text-left font-medium hover:bg-slate-50 ${
+                  className={`w-full px-4 py-2 text-left font-medium hover:bg-sand-50 ${
                     meta.tone === 'danger' ? 'text-red-600' : 'text-slate-700'
                   }`}
                 >

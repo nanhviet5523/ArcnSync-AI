@@ -31,7 +31,7 @@ export function LegalDocument({ doc, sections }: { doc: 'terms' | 'privacy'; sec
             <p className="text-xs text-slate-500">{t('legalPage.lastUpdated')}</p>
             {sections.map((s, i) => (
               <section key={s} id={s} className="mt-8 scroll-mt-24 first-of-type:mt-6">
-                <h2 className="text-lg font-bold tracking-tight text-slate-900">{i + 1}. {k(`sections.${s}.title`)}</h2>
+                <h2 className="text-lg font-bold tracking-tight text-ink">{i + 1}. {k(`sections.${s}.title`)}</h2>
                 <div className="mt-3 space-y-3 text-sm leading-relaxed text-slate-700">
                   {tList(`legalPage.${doc}.sections.${s}.body`).map((p) => <p key={p}>{p}</p>)}
                 </div>

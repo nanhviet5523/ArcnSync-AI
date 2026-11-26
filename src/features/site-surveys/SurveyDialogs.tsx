@@ -23,7 +23,7 @@ function SlotRow({ value, onChange, error, label, onRemove, removeLabel }: {
 }) {
   const [today] = useState(() => vnDate(new Date()));
   return (
-    <fieldset className="rounded-lg border border-slate-200 p-3">
+    <fieldset className="rounded-lg border border-line p-3">
       <legend className="px-1 text-[13px] font-medium text-slate-700">{label}</legend>
       <div className="grid grid-cols-[1fr_auto_auto] items-end gap-2 sm:grid-cols-[1fr_7rem_7rem_auto]">
         <Field label={t('siteSurvey.booking.date')} className="col-span-3 sm:col-span-1">
@@ -140,7 +140,7 @@ export function BookingModal({ projectId, survey, onClose, onSaved }: {
       <form id="survey-booking" onSubmit={(e) => void submit(e)} noValidate className="space-y-5">
         <FormError message={formError} />
         <section>
-          <h3 className="text-[13px] font-semibold text-slate-800">{t('siteSurvey.booking.slots')}</h3>
+          <h3 className="text-[13px] font-semibold text-ink">{t('siteSurvey.booking.slots')}</h3>
           <p className="mb-2 text-xs text-slate-500">{t('siteSurvey.booking.slotsHint')} {t('siteSurvey.booking.timeZone')}</p>
           {editing && survey?.status === 'SCHEDULED' && <p className="mb-2 text-xs text-amber-700">{t('siteSurvey.booking.slotsChangedNote')}</p>}
           <div className="space-y-2">
@@ -236,12 +236,12 @@ export function ScheduleModal({ survey, onClose, onSaved }: { survey: SiteSurvey
         <fieldset className="space-y-2">
           <legend className="mb-2 text-[13px] font-medium text-slate-700">{t('siteSurvey.schedule.offered')} <span className="font-normal text-slate-500">· {t('siteSurvey.booking.timeZone')}</span></legend>
           {survey.proposedSlots.map((slot, i) => (
-            <label key={i} className={`flex items-center gap-3 rounded-lg border px-3 py-2.5 text-sm ${isPast(slot) ? 'border-slate-100 text-slate-400' : 'cursor-pointer border-slate-200 text-slate-800 hover:bg-slate-50'}`}>
+            <label key={i} className={`flex items-center gap-3 rounded-lg border px-3 py-2.5 text-sm ${isPast(slot) ? 'border-line text-subtext' : 'cursor-pointer border-line text-ink hover:bg-sand-50'}`}>
               <input type="radio" name="slot" className="accent-brand" disabled={isPast(slot)} checked={choice === i} onChange={() => setChoice(i)} />
               <span>{slotLabel(slot)}{isPast(slot) && <span className="ml-1.5 text-xs">({t('siteSurvey.schedule.past')})</span>}</span>
             </label>
           ))}
-          <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-slate-200 px-3 py-2.5 text-sm text-slate-800 hover:bg-slate-50">
+          <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-line px-3 py-2.5 text-sm text-ink hover:bg-sand-50">
             <input type="radio" name="slot" className="accent-brand" checked={choice === 'other'} onChange={() => setChoice('other')} />
             {t('siteSurvey.schedule.other')}
           </label>

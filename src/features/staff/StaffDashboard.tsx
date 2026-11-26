@@ -15,7 +15,7 @@ export const StaffDashboard: React.FC = () => {
       title: 'NEW REQUESTS',
       value: String(workspace.requests.filter((request) => request.status === 'AI brief ready').length),
       icon: <FileText className="w-5 h-5 text-brand-text" />,
-      bgColor: 'bg-blue-50',
+      bgColor: 'bg-sand-100',
     },
     {
       title: 'CONTRACTS PENDING',
@@ -39,8 +39,8 @@ export const StaffDashboard: React.FC = () => {
 
   const requests = workspace.requests.map((request) => {
     const project = workspace.projects.find((item) => item.id === request.projectId);
-    const statusBg = request.status === 'Signed' ? 'bg-emerald-50 text-emerald-700' : request.status === 'AI brief ready' ? 'bg-blue-50 text-brand-text' : request.status === 'Designer assigned' ? 'bg-violet-50 text-violet-700' : 'bg-amber-50 text-amber-700';
-    return project ? { projectId: project.id, homeowner: project.homeowner, project: project.name, type: project.buildingType, budget: `${Math.round(project.budgetMin / 1e6)}–${Math.round(project.budgetMax / 1e6)}M`, status: request.status, statusBg, designer: project.designer, action: 'Open', actionStyle: 'border border-slate-200 text-slate-700 hover:bg-slate-50', isCreateContract: false } : null;
+    const statusBg = request.status === 'Signed' ? 'bg-emerald-50 text-emerald-700' : request.status === 'AI brief ready' ? 'bg-sand-100 text-ink' : request.status === 'Designer assigned' ? 'bg-violet-50 text-violet-700' : 'bg-amber-50 text-amber-700';
+    return project ? { projectId: project.id, homeowner: project.homeowner, project: project.name, type: project.buildingType, budget: `${Math.round(project.budgetMin / 1e6)}–${Math.round(project.budgetMax / 1e6)}M`, status: request.status, statusBg, designer: project.designer, action: 'Open', actionStyle: 'border border-line text-slate-700 hover:bg-sand-50', isCreateContract: false } : null;
   }).filter((item): item is NonNullable<typeof item> => item !== null).slice(0, 5);
   // Sample data for today's consultations.
   const consultations = [
@@ -71,7 +71,7 @@ export const StaffDashboard: React.FC = () => {
     statusBg: contract.status === 'Signed' ? 'bg-emerald-50 text-emerald-600' : contract.status === 'Draft' ? 'bg-slate-100 text-slate-600' : 'bg-amber-50 text-amber-700',
   }));
   return (
-    <div className="min-h-screen bg-slate-50/60 font-sans flex flex-col justify-between">
+    <div className="min-h-screen bg-sand-50/60 font-sans flex flex-col justify-between">
       <Header role="staff" />
 
       {/* Main Content Container */}
@@ -79,7 +79,7 @@ export const StaffDashboard: React.FC = () => {
         {/* Breadcrumb & Title Section */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight mt-1">
+            <h1 className="text-3xl font-extrabold text-ink tracking-tight mt-1">
               Welcome back, Tran Nam
             </h1>
             <p className="text-sm text-slate-500 mt-1">
@@ -103,7 +103,7 @@ export const StaffDashboard: React.FC = () => {
           {stats.map((stat, idx) => (
             <div
               key={idx}
-              className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4"
+              className="bg-surface p-5 rounded-2xl border border-line shadow-sm flex items-center gap-4"
             >
               <div
                 className={`w-12 h-12 rounded-xl ${stat.bgColor} flex items-center justify-center flex-shrink-0`}
@@ -111,10 +111,10 @@ export const StaffDashboard: React.FC = () => {
                 {stat.icon}
               </div>
               <div>
-                <span className="block text-[11px] font-bold text-slate-400 tracking-wider">
+                <span className="block text-[11px] font-bold text-subtext tracking-wider">
                   {stat.title}
                 </span>
-                <span className="text-2xl font-extrabold text-slate-900 mt-0.5 block">
+                <span className="text-2xl font-extrabold text-ink mt-0.5 block">
                   {stat.value}
                 </span>
               </div>
@@ -125,9 +125,9 @@ export const StaffDashboard: React.FC = () => {
         {/* Main Grid: Left Table & Right Sidebars */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Column Left (2 Cols): Incoming Requests Table */}
-          <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+          <div className="lg:col-span-2 bg-surface rounded-2xl border border-line shadow-sm p-6">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-bold text-slate-900">Incoming requests</h2>
+              <h2 className="text-lg font-bold text-ink">Incoming requests</h2>
               <button
                 type="button"
                 onClick={() => navigate('/staff-requests')}
@@ -141,7 +141,7 @@ export const StaffDashboard: React.FC = () => {
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="border-b border-slate-100 text-[11px] font-bold text-slate-400 uppercase tracking-wider bg-slate-50/80">
+                  <tr className="border-b border-line text-[11px] font-bold text-subtext uppercase tracking-wider bg-sand-50/80">
                     <th className="py-3 px-4 rounded-l-xl">HOMEOWNER</th>
                     <th className="py-3 px-4">PROJECT</th>
                     <th className="py-3 px-4">TYPE</th>
@@ -152,8 +152,8 @@ export const StaffDashboard: React.FC = () => {
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-xs">
                   {requests.map((item, idx) => (
-                    <tr key={idx} className="hover:bg-slate-50/50 transition">
-                      <td className="py-4 px-4 font-bold text-slate-900">{item.homeowner}</td>
+                    <tr key={idx} className="hover:bg-sand-50/50 transition">
+                      <td className="py-4 px-4 font-bold text-ink">{item.homeowner}</td>
                       <td className="py-4 px-4 font-medium text-slate-700">{item.project}</td>
                       <td className="py-4 px-4 text-slate-500">{item.type}</td>
                       <td className="py-4 px-4 font-semibold text-slate-700">{item.budget}</td>
@@ -185,22 +185,22 @@ export const StaffDashboard: React.FC = () => {
           {/* Column Right (1 Col): Today's consultations & Contracts */}
           <div className="space-y-6">
             {/* Box 1: Today's consultations */}
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
-              <h2 className="text-base font-bold text-slate-900 mb-4">
+            <div className="bg-surface rounded-2xl border border-line shadow-sm p-6">
+              <h2 className="text-base font-bold text-ink mb-4">
                 Today's consultations
               </h2>
               <div className="space-y-3">
                 {consultations.map((item, idx) => (
                   <div
                     key={idx}
-                    className="flex items-center justify-between p-3.5 rounded-xl bg-slate-50/70 border border-slate-100"
+                    className="flex items-center justify-between p-3.5 rounded-xl bg-sand-50/70 border border-line"
                   >
                     <div className="flex items-center gap-3">
-                      <span className="text-xs font-bold text-brand-text bg-blue-50 px-2 py-1 rounded-md">
+                      <span className="text-xs font-bold text-brand-text bg-sand-100 px-2 py-1 rounded-md">
                         {item.time}
                       </span>
                       <div>
-                        <h4 className="text-xs font-bold text-slate-900">{item.name}</h4>
+                        <h4 className="text-xs font-bold text-ink">{item.name}</h4>
                         <p className="text-[11px] text-slate-500">{item.desc}</p>
                       </div>
                     </div>
@@ -219,8 +219,8 @@ export const StaffDashboard: React.FC = () => {
             </div>
 
             {/* Box 2: Contracts in progress */}
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
-              <h2 className="text-base font-bold text-slate-900 mb-4">
+            <div className="bg-surface rounded-2xl border border-line shadow-sm p-6">
+              <h2 className="text-base font-bold text-ink mb-4">
                 Contracts in progress
               </h2>
               <div className="space-y-3">
@@ -228,10 +228,10 @@ export const StaffDashboard: React.FC = () => {
                   <div
                     key={idx}
                     onClick={() => navigate(`/staff-contract-detail?contractId=${item.id}`)}
-                    className="flex items-center justify-between p-3.5 rounded-xl border border-slate-100 cursor-pointer hover:bg-slate-50"
+                    className="flex items-center justify-between p-3.5 rounded-xl border border-line cursor-pointer hover:bg-sand-50"
                   >
                     <div>
-                      <h4 className="text-xs font-bold text-slate-900">{item.id}</h4>
+                      <h4 className="text-xs font-bold text-ink">{item.id}</h4>
                       <p className="text-[11px] text-slate-500">{item.name}</p>
                     </div>
                     <span

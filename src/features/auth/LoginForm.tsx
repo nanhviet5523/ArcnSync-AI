@@ -96,7 +96,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSignUpClick }) => {
   const inputClass = (hasError: boolean) =>
     `w-full px-4 py-3.5 text-sm rounded-xl border border-control bg-sand-100 text-ink focus-visible:ring-2 focus-visible:border-brand focus-visible:ring-brand-soft transition placeholder:text-subtext ${
       hasError
-        ? 'border-red-400 focus:ring-red-500'
+        ? 'border-danger focus:ring-danger/20'
         : ''
     }`;
 
@@ -108,11 +108,11 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSignUpClick }) => {
       </div>
 
       {/* Header Title */}
-      <h1 className="text-3xl lg:text-4xl font-extrabold text-slate-900 tracking-tight mb-2">
+      <h1 className="text-3xl lg:text-4xl font-extrabold text-ink tracking-tight mb-2">
         Welcome back
       </h1>
 
-      <p className="text-sm lg:text-base text-slate-500 mb-6 leading-relaxed">
+      <p className="text-sm lg:text-base text-subtext mb-6 leading-relaxed">
         Log in to follow your project and collaborate with our design team.
       </p>
 
@@ -122,7 +122,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSignUpClick }) => {
         <div>
           <label
             htmlFor="login-email"
-            className="block text-xs font-bold text-slate-900 mb-2 uppercase tracking-wide"
+            className="block text-xs font-bold text-ink mb-2 uppercase tracking-wide"
           >
             Email
           </label>
@@ -164,7 +164,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSignUpClick }) => {
         <div>
           <label
             htmlFor="login-password"
-            className="block text-xs font-bold text-slate-900 mb-2 uppercase tracking-wide"
+            className="block text-xs font-bold text-ink mb-2 uppercase tracking-wide"
           >
             Password
           </label>
@@ -196,13 +196,13 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSignUpClick }) => {
 
         {/* Remember Me & Forgot Password */}
         <div className="flex items-center justify-between pt-1">
-          <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-slate-700">
+          <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-ink">
             <input
               type="checkbox"
               checked={rememberMe}
               disabled={loading}
               onChange={(e) => setRememberMe(e.target.checked)}
-              className="w-4 h-4 rounded border-slate-300 text-brand-text focus:ring-blue-500 cursor-pointer"
+              className="w-4 h-4 rounded border-slate-300 text-brand-text focus-visible:ring-brand-soft accent-brand cursor-pointer"
             />
             <span>Remember me</span>
           </label>
@@ -220,7 +220,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSignUpClick }) => {
         <button
           type="submit"
           disabled={loading}
-          className="w-full py-3.5 bg-brand hover:bg-brand-hover text-white font-bold text-sm rounded-xl shadow-md transition duration-200 mt-2 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          className="w-full py-3.5 bg-brand hover:bg-brand-hover active:bg-brand-hover text-white font-bold text-sm rounded-xl shadow-md transition duration-200 mt-2 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           {loading && (
             <span
@@ -241,9 +241,9 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSignUpClick }) => {
       {/* Divider */}
       <div className="relative my-4 flex items-center justify-center">
         <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-slate-200" />
+          <div className="w-full border-t border-control" />
         </div>
-        <span className="relative bg-white px-3 text-xs text-slate-400 uppercase tracking-widest">
+        <span className="relative bg-surface px-3 text-xs text-subtext uppercase tracking-widest">
           or
         </span>
       </div>
@@ -252,7 +252,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSignUpClick }) => {
       <button
         type="button"
         onClick={() => navigate('/no-api')}
-        className="w-full py-3.5 px-4 border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-sm rounded-xl flex items-center justify-center gap-3 transition"
+        className="w-full py-3.5 px-4 border border-control hover:bg-sand-50 text-ink font-bold text-sm rounded-xl flex items-center justify-center gap-3 transition"
       >
         <svg className="w-5 h-5" viewBox="0 0 24 24">
           <path
@@ -276,7 +276,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSignUpClick }) => {
       </button>
 
       {/* Link Sign Up */}
-      <p className="text-center text-sm text-slate-500 my-4">
+      <p className="text-center text-sm text-subtext my-4">
         Don't have an account?{' '}
         <button
           type="button"
@@ -288,12 +288,12 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSignUpClick }) => {
       </p>
 
       {/* Account Access Notice */}
-      <div className="bg-sand-100 border border-sand-200 rounded-2xl p-4 text-xs lg:text-sm text-slate-500 leading-relaxed mb-4">
+      <div className="bg-sand-100 border border-sand-200 rounded-2xl p-4 text-xs lg:text-sm text-ink leading-relaxed mb-4">
         Access follows the role assigned to your account. All users sign in through this page.
       </div>
 
       {/* Footer Copyright */}
-      <div className="text-xs text-slate-400">
+      <div className="text-xs text-subtext">
         © 2026 ArcnSync AI
       </div>
     </div>

@@ -159,7 +159,7 @@ export function VideoCallOverlay({
     return (
       <aside
         aria-label={peerName}
-        className={`fixed right-4 bottom-4 ${Z.modal} flex items-center gap-3 rounded-2xl border border-slate-700/80 bg-slate-950/95 px-4 py-3 text-white shadow-2xl backdrop-blur-md sm:right-6 sm:bottom-6`}
+        className={`fixed right-4 bottom-4 ${Z.modal} flex items-center gap-3 rounded-2xl border border-dark-hover/80 bg-dark/95 px-4 py-3 text-[#FBF8EF] shadow-2xl backdrop-blur-md sm:right-6 sm:bottom-6`}
       >
         {/* Keep remote audio playing while minimized */}
         <div className="sr-only">
@@ -170,13 +170,13 @@ export function VideoCallOverlay({
             <Avatar id={peer.id} name={peer.fullName} size="md" />
           </span>
         ) : (
-          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-brand text-white">
+          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-brand text-[#FBF8EF]">
             <Video aria-hidden className="h-4 w-4" />
           </span>
         )}
         <div className="min-w-0">
           <p className="max-w-40 truncate text-sm font-semibold">{peerName}</p>
-          <p className="flex items-center gap-1.5 text-xs text-slate-300 tabular-nums">
+          <p className="flex items-center gap-1.5 text-xs text-brand-on-dark tabular-nums">
             <span aria-hidden className={`h-2 w-2 rounded-full ${statusDotClass}`} />
             {phase === 'ongoing' ? formatCallDuration(elapsed) : statusText}
           </p>
@@ -189,7 +189,7 @@ export function VideoCallOverlay({
             aria-label={isMuted ? t('chat.call.unmuteMic') : t('chat.call.muteMic')}
             title={isMuted ? t('chat.call.unmuteMic') : t('chat.call.muteMic')}
             className={`flex h-9 w-9 cursor-pointer items-center justify-center rounded-xl transition disabled:cursor-not-allowed disabled:opacity-40 ${
-              isMuted ? 'bg-rose-500/20 text-rose-300' : 'bg-slate-800 text-slate-200 hover:bg-slate-700'
+              isMuted ? 'bg-rose-500/20 text-rose-300' : 'bg-dark-hover text-[#FBF8EF] hover:bg-dark-hover'
             }`}
           >
             {isMuted ? <MicOff aria-hidden className="h-4 w-4" /> : <Mic aria-hidden className="h-4 w-4" />}
@@ -199,7 +199,7 @@ export function VideoCallOverlay({
             onClick={() => setMinimized(false)}
             aria-label={t('chat.call.expand')}
             title={t('chat.call.expand')}
-            className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-xl bg-slate-800 text-slate-200 transition hover:bg-slate-700"
+            className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-xl bg-dark-hover text-[#FBF8EF] transition hover:bg-dark-hover"
           >
             <Maximize2 aria-hidden className="h-4 w-4" />
           </button>
@@ -209,7 +209,7 @@ export function VideoCallOverlay({
             disabled={ending}
             aria-label={phase === 'ringing-outgoing' ? t('chat.call.cancelCall') : t('chat.call.endCall')}
             title={phase === 'ringing-outgoing' ? t('chat.call.cancelCall') : t('chat.call.endCall')}
-            className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-xl bg-rose-600 text-white transition hover:bg-rose-500 disabled:opacity-60"
+            className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-xl bg-rose-600 text-[#FBF8EF] transition hover:bg-rose-500 disabled:opacity-60"
           >
             <PhoneOff aria-hidden className="h-4 w-4" />
           </button>
@@ -223,32 +223,32 @@ export function VideoCallOverlay({
       role="dialog"
       aria-modal="true"
       aria-label={`${t('chat.call.startButton')} · ${peerName}`}
-      className={`fixed inset-0 ${Z.modal} flex flex-col bg-[#070c18] text-slate-100`}
+      className={`fixed inset-0 ${Z.modal} flex flex-col bg-dark text-slate-100`}
     >
       {/* Top Bar */}
-      <header className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-slate-800/80 bg-[#0b1224]/95 px-4 sm:px-6">
+      <header className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-dark-hover/80 bg-dark/95 px-4 sm:px-6">
         <div className="flex min-w-0 items-center gap-3">
           {peer ? (
             <Avatar id={peer.id} name={peer.fullName} size="md" />
           ) : (
-            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-brand text-white">
+            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-brand text-[#FBF8EF]">
               <Video aria-hidden className="h-4 w-4" />
             </span>
           )}
           <div className="min-w-0">
-            <h2 className="truncate text-sm font-semibold text-white">{peerName}</h2>
-            {peerMeta && <p className="truncate text-xs text-slate-400">{peerMeta}</p>}
+            <h2 className="truncate text-sm font-semibold text-[#FBF8EF]">{peerName}</h2>
+            {peerMeta && <p className="truncate text-xs text-brand-on-dark">{peerMeta}</p>}
           </div>
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3">
-          <span className="inline-flex items-center gap-2 rounded-full border border-slate-700/70 bg-slate-900/90 px-3 py-1 text-xs font-medium text-slate-200">
+          <span className="inline-flex items-center gap-2 rounded-full border border-dark-hover/70 bg-dark/90 px-3 py-1 text-xs font-medium text-[#FBF8EF]">
             <span aria-hidden className={`h-2 w-2 rounded-full ${statusDotClass}`} />
             <span>{statusText}</span>
           </span>
 
           {phase === 'ongoing' && (
-            <span className="rounded-full border border-slate-700/70 bg-slate-900/90 px-3 py-1 font-mono text-xs font-semibold text-slate-200 tabular-nums">
+            <span className="rounded-full border border-dark-hover/70 bg-dark/90 px-3 py-1 font-mono text-xs font-semibold text-[#FBF8EF] tabular-nums">
               {formatCallDuration(elapsed)}
             </span>
           )}
@@ -268,7 +268,7 @@ export function VideoCallOverlay({
             }}
             aria-label={t('chat.call.openChat')}
             title={t('chat.call.openChat')}
-            className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-xl border border-slate-700/70 bg-slate-900/80 text-slate-200 transition hover:bg-slate-800"
+            className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-xl border border-dark-hover/70 bg-dark/80 text-[#FBF8EF] transition hover:bg-dark-hover"
           >
             <MessageSquare aria-hidden className="h-4 w-4" />
           </button>
@@ -278,7 +278,7 @@ export function VideoCallOverlay({
             onClick={() => setMinimized(true)}
             aria-label={t('chat.call.minimize')}
             title={t('chat.call.minimize')}
-            className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-xl border border-slate-700/70 bg-slate-900/80 text-slate-200 transition hover:bg-slate-800"
+            className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-xl border border-dark-hover/70 bg-dark/80 text-[#FBF8EF] transition hover:bg-dark-hover"
           >
             <Minimize2 aria-hidden className="h-4 w-4" />
           </button>
@@ -287,7 +287,7 @@ export function VideoCallOverlay({
 
       {/* Main Video Stage */}
       <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden p-3 sm:p-5">
-        <div className="relative flex h-full w-full max-w-6xl items-center justify-center overflow-hidden rounded-2xl border border-slate-800/80 bg-[#0d152a] shadow-2xl">
+        <div className="relative flex h-full w-full max-w-6xl items-center justify-center overflow-hidden rounded-2xl border border-dark-hover/80 bg-dark-hover shadow-2xl">
           {/* Remote Video */}
           <StreamVideo
             stream={remoteStream}
@@ -309,14 +309,14 @@ export function VideoCallOverlay({
                     <Avatar id={peer.id} name={peer.fullName} size="md" />
                   </span>
                 ) : (
-                  <span className="relative flex h-20 w-20 items-center justify-center rounded-full bg-slate-800 text-slate-300 ring-2 ring-slate-700">
+                  <span className="relative flex h-20 w-20 items-center justify-center rounded-full bg-dark-hover text-brand-on-dark ring-2 ring-slate-700">
                     <Video aria-hidden className="h-8 w-8" />
                   </span>
                 )}
               </div>
               <div>
-                <p className="text-lg font-semibold text-white">{peerName}</p>
-                <p className="mt-1 text-sm text-slate-400">
+                <p className="text-lg font-semibold text-[#FBF8EF]">{peerName}</p>
+                <p className="mt-1 text-sm text-brand-on-dark">
                   {phase === 'ringing-outgoing' || phase === 'starting'
                     ? t('chat.call.waitingForPeer', { name: peerName })
                     : t('chat.call.waitingForVideo', { name: peerName })}
@@ -346,7 +346,7 @@ export function VideoCallOverlay({
           )}
 
           {/* Local PiP Preview */}
-          <div className="absolute right-3 bottom-3 flex h-32 w-44 items-center justify-center overflow-hidden rounded-xl border border-slate-700/80 bg-slate-900/95 shadow-xl sm:right-5 sm:bottom-5 sm:h-40 sm:w-56">
+          <div className="absolute right-3 bottom-3 flex h-32 w-44 items-center justify-center overflow-hidden rounded-xl border border-dark-hover/80 bg-dark/95 shadow-xl sm:right-5 sm:bottom-5 sm:h-40 sm:w-56">
             <StreamVideo
               stream={localStream}
               muted
@@ -354,12 +354,12 @@ export function VideoCallOverlay({
               className={`h-full w-full object-cover ${localHasLiveVideo ? 'block' : 'hidden'}`}
             />
             {!localHasLiveVideo && (
-              <div className="flex flex-col items-center gap-1 text-slate-400">
+              <div className="flex flex-col items-center gap-1 text-brand-on-dark">
                 <VideoOff aria-hidden className="h-5 w-5" />
                 <span className="text-[11px] font-medium">{t('chat.call.cameraOff')}</span>
               </div>
             )}
-            <span className="absolute bottom-2 left-2 rounded-md bg-slate-950/75 px-2 py-0.5 text-[11px] font-medium text-slate-200">
+            <span className="absolute bottom-2 left-2 rounded-md bg-dark/75 px-2 py-0.5 text-[11px] font-medium text-[#FBF8EF]">
               {t('chat.call.you')}
               {isMuted ? ' · Muted' : ''}
             </span>
@@ -368,7 +368,7 @@ export function VideoCallOverlay({
       </div>
 
       {/* Bottom Control Toolbar */}
-      <footer className="flex shrink-0 items-center justify-center gap-3 border-t border-slate-800/80 bg-[#0b1224]/95 px-4 py-4">
+      <footer className="flex shrink-0 items-center justify-center gap-3 border-t border-dark-hover/80 bg-dark/95 px-4 py-4">
         <button
           type="button"
           onClick={onToggleMute}
@@ -378,7 +378,7 @@ export function VideoCallOverlay({
           className={`flex h-12 w-12 cursor-pointer items-center justify-center rounded-2xl border transition disabled:cursor-not-allowed disabled:opacity-40 ${
             isMuted
               ? 'border-rose-500/50 bg-rose-600/20 text-rose-300 hover:bg-rose-600/30'
-              : 'border-slate-700/70 bg-slate-800/90 text-slate-100 hover:bg-slate-700'
+              : 'border-dark-hover/70 bg-dark-hover/90 text-slate-100 hover:bg-dark-hover'
           }`}
         >
           {isMuted ? <MicOff aria-hidden className="h-5 w-5" /> : <Mic aria-hidden className="h-5 w-5" />}
@@ -393,7 +393,7 @@ export function VideoCallOverlay({
           className={`flex h-12 w-12 cursor-pointer items-center justify-center rounded-2xl border transition disabled:cursor-not-allowed disabled:opacity-40 ${
             isCameraOff
               ? 'border-rose-500/50 bg-rose-600/20 text-rose-300 hover:bg-rose-600/30'
-              : 'border-slate-700/70 bg-slate-800/90 text-slate-100 hover:bg-slate-700'
+              : 'border-dark-hover/70 bg-dark-hover/90 text-slate-100 hover:bg-dark-hover'
           }`}
         >
           {isCameraOff ? <VideoOff aria-hidden className="h-5 w-5" /> : <Video aria-hidden className="h-5 w-5" />}
@@ -407,8 +407,8 @@ export function VideoCallOverlay({
             title={isSharingScreen ? t('chat.call.stopSharing') : t('chat.call.shareScreen')}
             className={`flex h-12 w-12 cursor-pointer items-center justify-center rounded-2xl border transition ${
               isSharingScreen
-                ? 'border-blue-400 bg-brand text-white hover:bg-blue-500'
-                : 'border-slate-700/70 bg-slate-800/90 text-slate-100 hover:bg-slate-700'
+                ? 'border-blue-400 bg-brand text-[#FBF8EF] hover:bg-brand'
+                : 'border-dark-hover/70 bg-dark-hover/90 text-slate-100 hover:bg-dark-hover'
             }`}
           >
             {isSharingScreen ? <MonitorOff aria-hidden className="h-5 w-5" /> : <Monitor aria-hidden className="h-5 w-5" />}
@@ -419,7 +419,7 @@ export function VideoCallOverlay({
           type="button"
           onClick={onEndCall}
           disabled={ending}
-          className="ml-2 inline-flex h-12 cursor-pointer items-center gap-2 rounded-2xl bg-rose-600 px-5 text-sm font-semibold text-white shadow-lg transition hover:bg-rose-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-400 disabled:cursor-wait disabled:opacity-60"
+          className="ml-2 inline-flex h-12 cursor-pointer items-center gap-2 rounded-2xl bg-rose-600 px-5 text-sm font-semibold text-[#FBF8EF] shadow-lg transition hover:bg-rose-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-400 disabled:cursor-wait disabled:opacity-60"
         >
           {ending ? (
             <span aria-hidden className="h-4 w-4 animate-spin rounded-full border-2 border-current border-r-transparent" />

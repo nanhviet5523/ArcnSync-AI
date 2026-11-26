@@ -121,7 +121,7 @@ export function SiteSurveyCard({ project, viewer, canCancel = viewer !== 'member
     {status && isBooked(status) && canCancel && viewer !== 'member' && (
       <Button size="sm" variant="ghost" className="text-rose-700" onClick={() => setDialog('cancel')}>{t('siteSurvey.cancel')}</Button>
     )}
-    {homeLink && <Link to={homeLink} className="inline-flex h-8 items-center rounded-lg border border-line-strong px-2.5 text-[13px] font-medium text-slate-800 hover:bg-slate-50">{t('siteSurvey.viewHome')}</Link>}
+    {homeLink && <Link to={homeLink} className="inline-flex h-8 items-center rounded-lg border border-line-strong px-2.5 text-[13px] font-medium text-ink hover:bg-sand-50">{t('siteSurvey.viewHome')}</Link>}
   </>;
 
   return (
@@ -148,7 +148,7 @@ export function SiteSurveyCard({ project, viewer, canCancel = viewer !== 'member
         </div>
       ) : (
         <div className="space-y-4">
-          <p className="text-sm font-medium text-slate-800">{t(`siteSurvey.statusText.${survey.status}.${audience}`)}</p>
+          <p className="text-sm font-medium text-ink">{t(`siteSurvey.statusText.${survey.status}.${audience}`)}</p>
 
           {status === 'REJECTED' && survey.rejectionReason && (
             <Banner tone="amber"><span className="font-semibold">{t('siteSurvey.rejectionReason')}:</span> <span className="whitespace-pre-line">{survey.rejectionReason}</span></Banner>
@@ -164,7 +164,7 @@ export function SiteSurveyCard({ project, viewer, canCancel = viewer !== 'member
             },
             ...(!survey.scheduledSlot || status === 'REQUESTED' ? [{
               label: t('siteSurvey.proposedTimes'),
-              value: <ul className="space-y-0.5">{survey.proposedSlots.map((s, i) => <li key={i} className={isPast(s) ? 'text-slate-400 line-through' : ''}>{slotLabel(s)}</li>)}</ul>,
+              value: <ul className="space-y-0.5">{survey.proposedSlots.map((s, i) => <li key={i} className={isPast(s) ? 'text-subtext line-through' : ''}>{slotLabel(s)}</li>)}</ul>,
             }] : []),
             { label: t('siteSurvey.home'), value: <>{[survey.buildingName, survey.tower, survey.unitNo].filter(Boolean).join(', ')}<span className="block text-xs text-slate-500">{survey.address}</span></> },
             ...(survey.floorNo != null ? [{ label: t('siteSurvey.floorNo'), value: String(survey.floorNo) }] : []),
@@ -182,7 +182,7 @@ export function SiteSurveyCard({ project, viewer, canCancel = viewer !== 'member
           {resultShown && (
             <div className="border-t border-line pt-4">
               <div className="mb-3 flex items-center justify-between gap-2">
-                <h3 className="text-[13px] font-semibold text-slate-800">{t('siteSurvey.result')}</h3>
+                <h3 className="text-[13px] font-semibold text-ink">{t('siteSurvey.result')}</h3>
                 {status === 'CONFIRMED' && survey.floors.length > 0 && (
                   <Button size="sm" variant="ghost" aria-expanded={resultOpen} onClick={() => setShowResult((v) => !v)}>{t(resultOpen ? 'siteSurvey.hideResult' : 'siteSurvey.showResult')}</Button>
                 )}

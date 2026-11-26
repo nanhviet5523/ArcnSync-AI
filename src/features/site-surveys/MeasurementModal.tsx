@@ -183,7 +183,7 @@ export function MeasurementModal({ survey, onClose, onSaved }: { survey: SiteSur
         {formError && <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{formError}</p>}
 
         <section>
-          <h3 className="mb-3 text-[13px] font-semibold text-slate-800">{t('siteSurvey.measure.home')}</h3>
+          <h3 className="mb-3 text-[13px] font-semibold text-ink">{t('siteSurvey.measure.home')}</h3>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label={t('siteSurvey.booking.propertyType')}>
               {(p) => <Select {...p} value={home.propertyType} onChange={(e) => setH('propertyType', e.target.value as PropertyType)}>
@@ -221,7 +221,7 @@ export function MeasurementModal({ survey, onClose, onSaved }: { survey: SiteSur
 
         <section>
           <div className="mb-1 flex items-center justify-between gap-3">
-            <h3 className="text-[13px] font-semibold text-slate-800">{t('siteSurvey.measure.floors')}</h3>
+            <h3 className="text-[13px] font-semibold text-ink">{t('siteSurvey.measure.floors')}</h3>
             <Button size="sm" disabled={floors.length >= MAX_FLOORS} onClick={addFloor}>+ {t('siteSurvey.measure.addFloor')}</Button>
           </div>
           <p className="mb-3 text-xs text-slate-500">{t('siteSurvey.measure.floorsHint')}</p>
@@ -231,8 +231,8 @@ export function MeasurementModal({ survey, onClose, onSaved }: { survey: SiteSur
             {floors.map((f) => {
               const k = `f${f.key}`;
               return (
-                <fieldset key={f.key} className="rounded-xl border border-slate-200 p-4">
-                  <legend className="px-1 text-sm font-semibold text-slate-800">{f.name || t('siteSurvey.measure.floorName')}</legend>
+                <fieldset key={f.key} className="rounded-xl border border-line p-4">
+                  <legend className="px-1 text-sm font-semibold text-ink">{f.name || t('siteSurvey.measure.floorName')}</legend>
                   <div className="grid gap-3 sm:grid-cols-[6rem_1fr_8rem_9rem]">
                     <Field label={t('siteSurvey.measure.level')} error={errors[`${k}.level`]}>
                       {(p) => <Input {...p} type="number" min={-5} max={200} value={f.level} invalid={!!errors[`${k}.level`]} onChange={(e) => { patchFloor(f.key, { level: e.target.value }); clear(`${k}.level`); }} />}
