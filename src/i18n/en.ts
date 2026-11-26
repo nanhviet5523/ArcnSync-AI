@@ -1777,7 +1777,7 @@ export const en = {
    * The 7 steps are keyed by backend ProjectStatus, in order (CANCELLED left out).
    */
   home: {
-    nav: { hero: 'Home', howItWorks: 'How it works', features: 'Features', contact: 'Contact' },
+    nav: { hero: 'Home', howItWorks: 'How it works', features: 'Features', inspiration: 'Inspiration', contact: 'Contact', outline: 'Page sections' },
     cta: {
       signUp: 'Create an account',
       logIn: 'Log in',

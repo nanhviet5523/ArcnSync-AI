@@ -1,4 +1,6 @@
+import type { CSSProperties } from 'react';
 import { t } from '@/i18n';
+import { useReveal } from '../useReveal';
 
 /** Sample projects; copy in home.inspiration.<key>. Not links: there is no gallery page. */
 const INSPIRATION_CARDS = [
@@ -21,20 +23,23 @@ const INSPIRATION_CARDS = [
 
 /** Section 4: three featured sample projects. */
 export function InspirationsSection() {
+  const intro = useReveal<HTMLDivElement>();
+  const cards = useReveal<HTMLUListElement>();
+
   return (
-    <section className="w-full bg-canvas px-6 py-20 lg:px-12">
+    <section id="inspiration" className="w-full scroll-mt-16 bg-canvas px-6 py-20 lg:px-12">
       <div className="mx-auto max-w-7xl">
-        <div className="mb-10">
+        <div {...intro} className="reveal mb-10">
           <p className="text-xs font-bold uppercase tracking-widest text-brand">{t('home.inspiration.eyebrow')}</p>
           <h2 className="mt-2 text-3xl font-extrabold tracking-tight text-slate-900 md:text-4xl">{t('home.inspiration.title')}</h2>
           <p className="mt-2 text-sm text-slate-500">{t('home.inspiration.intro')}</p>
         </div>
 
-        <ul className="grid grid-cols-1 gap-7 md:grid-cols-2 lg:grid-cols-3">
-          {INSPIRATION_CARDS.map((card) => {
+        <ul {...cards} className="reveal-group grid grid-cols-1 gap-7 md:grid-cols-2 lg:grid-cols-3">
+          {INSPIRATION_CARDS.map((card, i) => {
             const title = t(`home.inspiration.${card.key}.title`);
             return (
-              <li key={card.key} className="group flex flex-col overflow-hidden rounded-3xl border border-line bg-surface shadow-card">
+              <li key={card.key} style={{ '--i': i } as CSSProperties} className="reveal-item group flex flex-col overflow-hidden rounded-3xl border border-line bg-surface shadow-card">
                 <div className="h-64 overflow-hidden">
                   <img
                     src={card.img}

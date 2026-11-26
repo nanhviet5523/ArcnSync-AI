@@ -6,6 +6,7 @@ import { HowItWorksSection } from './components/HowItWorksSection';
 import { FeaturesSection } from './components/FeaturesSection';
 import { InspirationsSection } from './components/InspirationsSection';
 import { ContactSection } from './components/ContactSection';
+import { SectionDots } from './components/SectionDots';
 
 interface HomePageProps {
   onNavigateToLogin?: () => void;
@@ -50,6 +51,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigateToLogin, onNavigat
         <InspirationsSection />
         <ContactSection user={user} />
       </main>
+      <SectionDots />
       <Footer />
     </div>
   );

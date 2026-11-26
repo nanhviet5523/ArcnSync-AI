@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import type { LucideIcon } from 'lucide-react';
 import { ArrowRight, Mail, MapPin, MessageCircle, Phone } from 'lucide-react';
 import { t, tList } from '@/i18n';
+import { useReveal } from '../useReveal';
 import type { User } from '@/types/role';
 import { ctaPrimary, startFor } from '../landing';
 
@@ -16,17 +17,19 @@ const CONTACTS: { key: string; icon: LucideIcon; href?: (value: string) => strin
 /** Section 5: contact details on the left; creating an account (or going back to your projects) on the right. */
 export function ContactSection({ user }: { user: User | null }) {
   const start = user ? startFor(user) : null;
+  const intro = useReveal<HTMLDivElement>();
+  const body = useReveal<HTMLDivElement>();
 
   return (
     <section id="contact" className="scroll-mt-16 border-t border-line bg-surface px-6 py-20 lg:px-12">
       <div className="mx-auto max-w-7xl">
-        <div className="max-w-2xl">
+        <div {...intro} className="reveal max-w-2xl">
           <p className="text-xs font-bold uppercase tracking-widest text-brand">{t('home.contact.eyebrow')}</p>
           <h2 className="mt-2 text-3xl font-extrabold tracking-tight text-slate-900 md:text-4xl">{t('home.contact.title')}</h2>
           <p className="mt-4 text-sm leading-relaxed text-slate-600 sm:text-base">{t('home.contact.intro')}</p>
         </div>
 
-        <div className="mt-10 grid gap-6 lg:grid-cols-5">
+        <div {...body} className="reveal mt-10 grid gap-6 lg:grid-cols-5">
           <div className="rounded-2xl border border-line bg-canvas p-6 sm:p-8 lg:col-span-2">
             <h3 className="text-base font-bold text-slate-900">{t('home.contact.infoTitle')}</h3>
             <dl className="mt-6 space-y-5">
