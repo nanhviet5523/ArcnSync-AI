@@ -145,7 +145,7 @@ export function HandoverCard({ project, role, projectRole, className = '', onCha
       description={t('handover.milestone', { name: h.milestone.name, amount: formatMoney(h.milestone.amount) })}
       actions={actions}>
       <div className="space-y-3 border-b border-line px-5 py-4">
-        <p className={`text-sm ${reviewing || (editable && h.status === 'CHANGES_REQUESTED') ? 'font-medium text-slate-900' : 'text-slate-700'}`}>{message}</p>
+        <p className={`text-sm ${reviewing || (editable && h.status === 'CHANGES_REQUESTED') ? 'font-medium text-ink' : 'text-slate-700'}`}>{message}</p>
         {editable && render3dBlocked && <p id="handover-wait-3d" className="text-sm font-medium text-amber-800">{t('handover.waitRender3d')}</p>}
         {homeowner && approved && !canDownload && <p className="text-sm font-medium text-amber-800">{t('handover.payToDownload')}</p>}
         {h.latestRevisionRequest && (
@@ -196,7 +196,7 @@ export function HandoverCard({ project, role, projectRole, className = '', onCha
               {files.length > 0 && type === 'RENDER_IMAGE' && allowPreview ? (
                 <ul className="mt-3 grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-4">
                   {files.map((a) => (
-                    <li key={a.id} className="group overflow-hidden rounded-xl border border-slate-200 bg-white transition hover:border-slate-300 hover:shadow-sm">
+                    <li key={a.id} className="group overflow-hidden rounded-xl border border-line bg-surface transition hover:border-slate-300 hover:shadow-sm">
                       <button type="button" onClick={() => setDialog({ kind: 'image', assetId: a.id })}
                         aria-label={t('handover.viewImage', { name: a.fileName })}
                         className="block aspect-[4/3] w-full overflow-hidden bg-slate-100 focus-visible:outline-2 focus-visible:outline-brand">
@@ -204,7 +204,7 @@ export function HandoverCard({ project, role, projectRole, className = '', onCha
                       </button>
                       <div className="flex items-center gap-1.5 px-2.5 py-2">
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-xs font-medium text-slate-800" title={a.fileName}>{a.fileName}</p>
+                          <p className="truncate text-xs font-medium text-ink" title={a.fileName}>{a.fileName}</p>
                           <p className="text-[11px] tabular-nums text-slate-500">{fileSize(a.sizeBytes)}</p>
                         </div>
                         {canDownload && (
@@ -226,8 +226,8 @@ export function HandoverCard({ project, role, projectRole, className = '', onCha
               ) : files.length > 0 && (
                 <ul className="mt-2 space-y-1">
                   {files.map((a) => (
-                    <li key={a.id} className="flex flex-wrap items-center gap-2 sm:flex-nowrap sm:gap-3 rounded-lg px-2 py-1.5 text-sm hover:bg-slate-50">
-                      <span className="min-w-0 flex-1 truncate text-slate-800" title={a.fileName}>{a.fileName}</span>
+                    <li key={a.id} className="flex flex-wrap items-center gap-2 sm:flex-nowrap sm:gap-3 rounded-lg px-2 py-1.5 text-sm hover:bg-sand-50">
+                      <span className="min-w-0 flex-1 truncate text-ink" title={a.fileName}>{a.fileName}</span>
                       <span className="shrink-0 text-xs tabular-nums text-slate-500">{fileSize(a.sizeBytes)}</span>
                       {type === 'MODEL_3D' && allowPreview && (
                         <Button size="sm" onClick={() => setDialog({ kind: 'model', asset: a })}>
@@ -355,7 +355,7 @@ function HandoverPreviewImage({ assetId, alt, className = '' }: { assetId: strin
   const mine = state?.id === assetId ? state : null;
   if (mine?.failed) {
     return (
-      <span className={`grid h-full w-full place-items-center bg-slate-100 px-2 text-center text-slate-400 ${className}`}>
+      <span className={`grid h-full w-full place-items-center bg-slate-100 px-2 text-center text-subtext ${className}`}>
         <span className="flex flex-col items-center gap-1">
           <ImageOff aria-hidden className="h-5 w-5" />
           <span className="text-[11px] text-slate-500">{t('handover.previewFailed')}</span>
@@ -422,7 +422,7 @@ function HandoverImageLightbox({ images, activeId, canDownload, onSelect, onDown
         <Button variant="primary" onClick={onClose}>{t('common.close')}</Button>
       </>}
     >
-      <div className="flex min-h-[260px] items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
+      <div className="flex min-h-[260px] items-center justify-center overflow-hidden rounded-xl border border-line bg-slate-100">
         <HandoverPreviewImage assetId={current.id} alt={current.fileName} className="max-h-[65vh] w-full object-contain" />
       </div>
     </Modal>

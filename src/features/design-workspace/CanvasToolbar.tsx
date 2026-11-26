@@ -20,7 +20,7 @@ function Segment<T extends string>({ label, value, onChange, items, accent }: { 
     <div role="radiogroup" aria-label={label} onKeyDown={onKey} className="flex rounded-lg bg-slate-100 p-0.5">
       {items.map((it) => (
         <button key={it.id} type="button" role="radio" aria-checked={value === it.id} tabIndex={value === it.id ? 0 : -1} title={it.title} onClick={() => onChange(it.id)}
-          className={`inline-flex h-7 items-center gap-1.5 rounded-md px-2.5 text-xs font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-brand ${value === it.id ? (accent ? 'bg-brand-soft text-brand ring-1 ring-inset ring-brand/40' : 'bg-surface text-slate-900 shadow-sm') : 'text-slate-600 hover:text-slate-900'}`}>
+          className={`inline-flex h-7 items-center gap-1.5 rounded-md px-2.5 text-xs font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-brand ${value === it.id ? (accent ? 'bg-brand-soft text-brand ring-1 ring-inset ring-brand/40' : 'bg-surface text-ink shadow-sm') : 'text-slate-600 hover:text-ink'}`}>
           {it.label}
         </button>
       ))}
@@ -79,11 +79,11 @@ export function CanvasToolbar({ mode, onMode, nav, onNav, onZoomIn, onZoomOut, o
           <div className="flex items-center gap-1.5 pl-1">
             <label className="flex min-h-6 cursor-pointer items-center gap-2 text-xs font-semibold text-slate-700">
               <input type="checkbox" role="switch" checked={compare.on} onChange={compare.toggle} className="peer sr-only" aria-label={t('ws.compareWith', { label: compare.selected.label })} />
-              <span aria-hidden className="relative h-4 w-7 shrink-0 rounded-full bg-slate-300 transition-colors peer-checked:bg-brand peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-brand after:absolute after:left-0.5 after:top-0.5 after:h-3 after:w-3 after:rounded-full after:bg-white after:transition-transform peer-checked:after:translate-x-3" />
+              <span aria-hidden className="relative h-4 w-7 shrink-0 rounded-full bg-slate-300 transition-colors peer-checked:bg-brand peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-brand after:absolute after:left-0.5 after:top-0.5 after:h-3 after:w-3 after:rounded-full after:bg-surface after:transition-transform peer-checked:after:translate-x-3" />
               {t('ws.compareWithLabel')}
             </label>
             <Dropdown label={t('ws.compareVersion')} up align="right"
-              className="inline-flex h-7 items-center gap-1 rounded-md border border-line px-2 text-xs font-semibold text-slate-800 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-brand"
+              className="inline-flex h-7 items-center gap-1 rounded-md border border-line px-2 text-xs font-semibold text-ink hover:bg-sand-50 focus-visible:outline-2 focus-visible:outline-brand"
               button={<>{compare.selected.label}<ChevronDown aria-hidden className="h-3.5 w-3.5 text-slate-500" /></>}>
               {(close) => compare.options.map((o) => (
                 <button key={o.id} type="button" role="menuitem" aria-current={o.id === compare.selected.id || undefined} className={menuItem} onClick={() => { compare.onPick(o.id); close(); }}>
@@ -114,7 +114,7 @@ export function CanvasMenu({ items }: { items: { label: string; icon: ReactNode;
   if (!items.length) return null;
   return (
     <Dropdown label={t('ws.moreActions')} align="right"
-      className="flex h-8 w-8 items-center justify-center rounded-lg border border-line bg-surface text-slate-700 shadow-float hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-brand"
+      className="flex h-8 w-8 items-center justify-center rounded-lg border border-line bg-surface text-slate-700 shadow-float hover:bg-sand-50 focus-visible:outline-2 focus-visible:outline-brand"
       button={<MoreHorizontal className="h-4 w-4" />}>
       {(close) => items.map((it) => (
         <button key={it.label} type="button" role="menuitem" className={menuItem} onClick={() => { it.run(); close(); }}>

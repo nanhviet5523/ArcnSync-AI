@@ -22,7 +22,7 @@ function PhotoThumb({ floorId, photo, onDelete }: { floorId: string; photo: Surv
   }, [floorId, photo.id]);
 
   return (
-    <li className="group relative aspect-square overflow-hidden rounded-lg border border-slate-200 bg-slate-100">
+    <li className="group relative aspect-square overflow-hidden rounded-lg border border-line bg-slate-100">
       {url ? (
         <a href={url} target="_blank" rel="noreferrer" aria-label={t('siteSurvey.openPhoto', { name: photo.fileName })}>
           <img src={url} alt={photo.fileName} className="h-full w-full object-cover" />
@@ -32,7 +32,7 @@ function PhotoThumb({ floorId, photo, onDelete }: { floorId: string; photo: Surv
       ) : <span aria-hidden className="block h-full w-full animate-pulse" />}
       {onDelete && (
         <button type="button" aria-label={t('siteSurvey.deletePhoto', { name: photo.fileName })} onClick={onDelete}
-          className="absolute right-1 top-1 grid h-6 w-6 place-items-center rounded-full bg-white/90 text-xs font-bold text-rose-700 shadow hover:bg-white">
+          className="absolute right-1 top-1 grid h-6 w-6 place-items-center rounded-full bg-surface/90 text-xs font-bold text-rose-700 shadow hover:bg-surface">
           ✕
         </button>
       )}
@@ -146,14 +146,14 @@ export function SurveyResult({ survey, photosEditable, onFloorPhotos, onMessage 
       ]} />
       <div className="mt-4 space-y-3">
         {survey.floors.map((f) => (
-          <section key={f.id} className="rounded-xl border border-slate-200 p-4">
-            <h4 className="text-sm font-semibold text-slate-900">{f.name}</h4>
+          <section key={f.id} className="rounded-xl border border-line p-4">
+            <h4 className="text-sm font-semibold text-ink">{f.name}</h4>
             <p className="text-xs text-slate-500">{t('siteSurvey.floorMeta', { level: f.level, area: formatNumber(f.measuredArea), height: formatNumber(f.floorHeightMm) })}</p>
             {f.note && <p className="mt-1 whitespace-pre-line text-sm text-slate-600">{f.note}</p>}
             {f.rooms.length ? (
               <table className="mt-3 w-full text-sm">
                 <thead className="text-left text-xs text-slate-500">
-                  <tr className="border-b border-slate-100">
+                  <tr className="border-b border-line">
                     <th className="py-1.5 font-medium">{t('siteSurvey.measure.roomName')}</th>
                     <th className="py-1.5 font-medium">{t('siteSurvey.measure.roomType')}</th>
                     <th className="py-1.5 text-right font-medium">{t('siteSurvey.measure.roomArea')}</th>
@@ -162,7 +162,7 @@ export function SurveyResult({ survey, photosEditable, onFloorPhotos, onMessage 
                 <tbody className="divide-y divide-slate-100">
                   {f.rooms.map((r) => (
                     <tr key={r.name}>
-                      <td className="py-2 text-slate-800">{r.name}{r.purpose && <span className="block text-xs text-slate-500">{r.purpose}</span>}</td>
+                      <td className="py-2 text-ink">{r.name}{r.purpose && <span className="block text-xs text-slate-500">{r.purpose}</span>}</td>
                       <td className="py-2 text-slate-600">{roomTypeLabel(r.roomType)}</td>
                       <td className="py-2 text-right tabular-nums text-slate-600">{r.area ? t('siteSurvey.roomArea', { area: formatNumber(r.area) }) : t('common.none')}</td>
                     </tr>

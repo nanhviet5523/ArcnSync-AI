@@ -461,14 +461,14 @@ export function ChatRealtimeProvider({ children }: { children: ReactNode }) {
         <div
           role="status"
           aria-live="polite"
-          className={`fixed right-4 bottom-4 ${Z.modal} flex items-center gap-3 rounded-xl border border-slate-700/80 bg-slate-900 px-4 py-3 text-sm text-white shadow-xl sm:right-6 sm:bottom-6`}
+          className={`fixed right-4 bottom-4 ${Z.modal} flex items-center gap-3 rounded-xl border border-dark-hover/80 bg-dark px-4 py-3 text-sm text-[#FBF8EF] shadow-xl sm:right-6 sm:bottom-6`}
         >
           <span>{notice}</span>
           <button
             type="button"
             onClick={() => setNotice('')}
             aria-label={t('common.close')}
-            className="cursor-pointer rounded p-0.5 text-slate-400 hover:bg-slate-800 hover:text-white"
+            className="cursor-pointer rounded p-0.5 text-brand-on-dark hover:bg-dark-hover hover:text-[#FBF8EF]"
           >
             <X aria-hidden className="h-4 w-4" />
           </button>

@@ -43,7 +43,7 @@ export function Dropdown({ label, button, align = 'left', up = false, className 
   );
 }
 
-export const menuItem = 'flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-slate-700 hover:bg-slate-50 focus-visible:bg-slate-50 focus-visible:outline-none';
+export const menuItem = 'flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-slate-700 hover:bg-sand-50 focus-visible:bg-sand-50 focus-visible:outline-none';
 
 interface Props {
   role: UserRole;
@@ -73,17 +73,17 @@ interface Props {
 }
 
 export function WorkspaceBar({ role, backTo, title, stage, versions, current, onVersion, canCompare, onCompare, download, step, primary, secondary, onOpenLeft, onOpenRight, openComments, reviewNote, autoApproved }: Props) {
-  const iconBtn = 'rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-brand';
+  const iconBtn = 'rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-ink focus-visible:outline-2 focus-visible:outline-brand';
   return (
     <header className="flex h-14 min-w-0 items-center gap-3 border-b border-line bg-surface px-3 lg:px-4">
       <Link to={backTo} aria-label={t('common.back')} title={t('common.back')} className={iconBtn}><ChevronLeft className="h-5 w-5" /></Link>
       <button type="button" onClick={onOpenLeft} aria-label={t('ws.rooms')} className={`${iconBtn} lg:hidden`}><PanelLeft className="h-5 w-5" /></button>
 
-      <h1 className="min-w-0 max-w-[260px] truncate text-[15px] font-bold tracking-tight text-slate-900 2xl:max-w-[360px]" title={title}>{title}</h1>
+      <h1 className="min-w-0 max-w-[260px] truncate text-[15px] font-bold tracking-tight text-ink 2xl:max-w-[360px]" title={title}>{title}</h1>
       {stage && <span className="hidden sm:inline-flex"><StatusChip kind="stage" value={stage} /></span>}
 
       {current && (
-        <Dropdown label={t('ws.versionMenu')} className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-line px-2.5 text-[13px] font-medium text-slate-800 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-brand"
+        <Dropdown label={t('ws.versionMenu')} className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-line px-2.5 text-[13px] font-medium text-ink hover:bg-sand-50 focus-visible:outline-2 focus-visible:outline-brand"
           button={<>
             <span className="font-semibold">{versionLabel(current.label, role)}</span>
             <span className="hidden text-slate-500 md:inline">· {t(`status.version.${current.status}`)}</span>
@@ -98,9 +98,9 @@ export function WorkspaceBar({ role, backTo, title, stage, versions, current, on
                   return (
                     <li key={v.id} className={`flex items-center gap-1 pr-2 ${on ? 'bg-brand-soft' : ''}`}>
                       <button type="button" role="menuitem" aria-current={on || undefined} onClick={() => { onVersion(v.id); close(); }}
-                        className="min-w-0 flex-1 px-3 py-2 text-left hover:bg-slate-50/60 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand">
+                        className="min-w-0 flex-1 px-3 py-2 text-left hover:bg-sand-50/60 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand">
                         <span className="flex items-center gap-2">
-                          <span className={`text-[13px] font-semibold ${v.status === 'SUPERSEDED' ? 'text-slate-500 line-through' : 'text-slate-900'}`}>{versionLabel(v.label, role)}</span>
+                          <span className={`text-[13px] font-semibold ${v.status === 'SUPERSEDED' ? 'text-slate-500 line-through' : 'text-ink'}`}>{versionLabel(v.label, role)}</span>
                           <StatusChip kind="version" value={v.status} size="sm" />
                           {v.status === 'APPROVED' && autoApproved?.(v.id) && <StatusChip tone="gray" label={t('workspace.autoApproved')} size="sm" />}
                         </span>

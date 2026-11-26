@@ -31,7 +31,7 @@ export function ConversationList({ data, selectedId, onSelect, className = '' }:
   return (
     <section aria-labelledby="conversations-title" className={`flex min-h-0 flex-col rounded-card border border-line bg-surface shadow-card ${className}`}>
       <header className="flex items-baseline justify-between gap-3 border-b border-line px-4 py-3">
-        <h2 id="conversations-title" className="text-[15px] font-semibold text-slate-900">{t('chat.conversations.title')}</h2>
+        <h2 id="conversations-title" className="text-[15px] font-semibold text-ink">{t('chat.conversations.title')}</h2>
         {!loading && !error && total > 0 && <span className="text-xs text-slate-500">{total}</span>}
       </header>
 
@@ -82,23 +82,23 @@ function ConversationRow({ conversation: c, meId, selected, onSelect }: {
       <Avatar id={c.otherUser.id} name={c.otherUser.fullName} size="md" />
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-2">
-          <span className={`truncate text-sm text-slate-900 ${unread ? 'font-bold' : 'font-semibold'}`}>{c.otherUser.fullName}</span>
+          <span className={`truncate text-sm text-ink ${unread ? 'font-bold' : 'font-semibold'}`}>{c.otherUser.fullName}</span>
           <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-700">{roleLabel(c.otherUser.role)}</span>
           <time dateTime={when} className={`ml-auto shrink-0 text-[11px] ${unread ? 'font-semibold text-brand' : 'text-slate-500'}`}>{stamp(when)}</time>
         </span>
         <span className="mt-0.5 flex items-center gap-2">
-          <span className={`flex min-w-0 flex-1 items-center gap-1 text-xs ${unread ? 'font-semibold text-slate-800' : 'text-slate-500'} ${system ? 'italic' : ''}`}>
+          <span className={`flex min-w-0 flex-1 items-center gap-1 text-xs ${unread ? 'font-semibold text-ink' : 'text-slate-500'} ${system ? 'italic' : ''}`}>
             {c.lastMessage?.messageType === 'FILE' && <Paperclip aria-hidden className="h-3.5 w-3.5 shrink-0" />}
             <span className="truncate">{preview(c, meId)}</span>
           </span>
           {!c.canSend && (
-            <span title={t('chat.conversations.readOnlyHint')} className="shrink-0 text-slate-400">
+            <span title={t('chat.conversations.readOnlyHint')} className="shrink-0 text-brand-on-dark">
               <Lock aria-hidden className="h-3.5 w-3.5" />
               <span className="sr-only">{t('chat.conversations.readOnly')}</span>
             </span>
           )}
           {unread && (
-            <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-rose-600 px-1.5 text-[11px] font-bold text-white tabular-nums">
+            <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-rose-600 px-1.5 text-[11px] font-bold text-[#FBF8EF] tabular-nums">
               <span aria-hidden>{c.unreadCount > 99 ? '99+' : c.unreadCount}</span>
               <span className="sr-only">{t('chat.conversations.unread', { n: c.unreadCount })}</span>
             </span>

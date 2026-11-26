@@ -9,7 +9,7 @@ export function PageHeader({ back, title, chip, description, primary, secondary 
   return (
     <div className="mb-6">
       {back && (
-        <Link to={back.to} className="mb-3 inline-flex items-center gap-1 rounded text-[13px] font-medium text-slate-600 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">
+        <Link to={back.to} className="mb-3 inline-flex items-center gap-1 rounded text-[13px] font-medium text-slate-600 hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">
           <svg aria-hidden viewBox="0 0 20 20" className="h-4 w-4"><path fill="currentColor" d="M12.7 4.3 7 10l5.7 5.7-1.06 1.06L4.88 10l6.76-6.76 1.06 1.06Z" /></svg>
           {back.label}
         </Link>
@@ -17,7 +17,7 @@ export function PageHeader({ back, title, chip, description, primary, secondary 
       <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2.5">
-            <h1 className="text-2xl font-semibold tracking-tight text-slate-900">{title}</h1>
+            <h1 className="text-2xl font-semibold tracking-tight text-ink">{title}</h1>
             {chip}
           </div>
           {description && <p className="mt-1 max-w-2xl text-sm text-slate-600">{description}</p>}
@@ -54,9 +54,9 @@ export function Stepper({ steps, current, size = 'md', className = '', emphasis 
             <div className="flex items-center">
               <span className={`h-2 w-px ${i === 0 ? 'bg-transparent' : passed || now ? 'bg-brand' : 'bg-slate-300'}`} />
               <span className={`h-px flex-1 ${i === 0 ? 'bg-transparent' : passed || now ? 'bg-brand' : 'bg-slate-300'}`} />
-              <span className={`flex shrink-0 items-center justify-center rounded-full ${sm ? 'h-4 w-4' : 'h-5 w-5'} ${skip ? 'border border-dashed border-slate-400 bg-white' : now ? 'bg-brand ring-4 ring-brand/15' : done ? 'border border-brand bg-white text-brand' : 'border border-slate-300 bg-white'}`}>
+              <span className={`flex shrink-0 items-center justify-center rounded-full ${sm ? 'h-4 w-4' : 'h-5 w-5'} ${skip ? 'border border-dashed border-slate-400 bg-surface' : now ? 'bg-brand ring-4 ring-brand-soft' : done ? 'border border-brand bg-surface text-brand' : 'border border-slate-300 bg-surface'}`}>
                 {done && <svg aria-hidden viewBox="0 0 12 12" className={sm ? 'h-2.5 w-2.5' : 'h-3 w-3'}><path fill="none" stroke="currentColor" strokeWidth="1.8" d="m2.5 6.2 2.2 2.2 4.8-4.8" /></svg>}
-                {now && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
+                {now && <span className="h-1.5 w-1.5 rounded-full bg-surface" />}
               </span>
               <span className={`h-px flex-1 ${i === steps.length - 1 ? 'bg-transparent' : passed ? 'bg-brand' : 'bg-slate-300'}`} />
               <span className={`h-2 w-px ${i === steps.length - 1 ? 'bg-transparent' : passed ? 'bg-brand' : 'bg-slate-300'}`} />

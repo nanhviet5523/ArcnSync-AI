@@ -46,7 +46,7 @@ export const ResendInviteDialog: React.FC<ResendInviteDialogProps> = ({ target, 
 
   return (
     <div
-      className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-900/50 p-4"
+      className="fixed inset-0 z-[70] flex items-center justify-center bg-dark/50 p-4"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget && !sending) onClose();
       }}
@@ -56,12 +56,12 @@ export const ResendInviteDialog: React.FC<ResendInviteDialogProps> = ({ target, 
         aria-modal="true"
         aria-labelledby="resend-invite-title"
         aria-describedby="resend-invite-desc"
-        className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl"
+        className="w-full max-w-md rounded-2xl bg-surface p-6 shadow-xl"
       >
-        <h2 id="resend-invite-title" className="text-lg font-bold text-slate-900">Resend invitation</h2>
+        <h2 id="resend-invite-title" className="text-lg font-bold text-ink">Resend invitation</h2>
         <p id="resend-invite-desc" className="mt-2 text-sm leading-6 text-slate-600">
           Are you sure you want to resend the invitation email to{' '}
-          <span className="font-semibold text-slate-900 break-all">{target.email}</span>?
+          <span className="font-semibold text-ink break-all">{target.email}</span>?
         </p>
 
         {error && (
@@ -75,7 +75,7 @@ export const ResendInviteDialog: React.FC<ResendInviteDialogProps> = ({ target, 
             type="button"
             onClick={onClose}
             disabled={sending}
-            className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+            className="rounded-xl border border-line bg-surface px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-sand-50 disabled:opacity-50"
           >
             Cancel
           </button>

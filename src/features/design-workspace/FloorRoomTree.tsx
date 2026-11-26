@@ -39,7 +39,7 @@ export function FloorRoomTree({ floors, floorId, onFloor, rooms, roomKey, onRoom
         return (
           <li key={r.key} className="flex items-center gap-1">
             <button type="button" aria-pressed={on} onClick={() => onRoom(on ? null : r.key)}
-              className={`flex min-w-0 flex-1 items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[13px] transition-colors focus-visible:outline-2 focus-visible:outline-brand ${on ? 'bg-brand-soft font-semibold text-brand' : 'text-slate-700 hover:bg-slate-50'}`}>
+              className={`flex min-w-0 flex-1 items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[13px] transition-colors focus-visible:outline-2 focus-visible:outline-brand ${on ? 'bg-brand-soft font-semibold text-brand' : 'text-slate-700 hover:bg-sand-50'}`}>
               <span className="min-w-0 flex-1">
                 <span className="block truncate" title={r.name}>{r.name}</span>
                 {roomMeta?.(r)}
@@ -57,10 +57,10 @@ export function FloorRoomTree({ floors, floorId, onFloor, rooms, roomKey, onRoom
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex h-11 shrink-0 items-center justify-between gap-2 border-b border-line px-3">
-        <h2 className="text-[13px] font-semibold text-slate-900">{multi ? t('ws.floorsRooms') : t('ws.rooms')}</h2>
+        <h2 className="text-[13px] font-semibold text-ink">{multi ? t('ws.floorsRooms') : t('ws.rooms')}</h2>
         {onCollapse && (
           <button type="button" onClick={onCollapse} aria-label={t('ws.collapse')} title={t('ws.collapse')}
-            className="hidden rounded-md p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-brand lg:block">
+            className="hidden rounded-md p-1 text-slate-500 hover:bg-slate-100 hover:text-ink focus-visible:outline-2 focus-visible:outline-brand lg:block">
             <PanelLeftClose className="h-4 w-4" />
           </button>
         )}
@@ -74,7 +74,7 @@ export function FloorRoomTree({ floors, floorId, onFloor, rooms, roomKey, onRoom
               return (
                 <li key={f.id}>
                   <button type="button" aria-expanded={open} onClick={() => onFloor(f.id)}
-                    className={`flex w-full items-center gap-1.5 rounded-lg px-2 py-1.5 text-left text-[13px] font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-brand ${open ? 'text-slate-900' : 'text-slate-600 hover:bg-slate-50'}`}>
+                    className={`flex w-full items-center gap-1.5 rounded-lg px-2 py-1.5 text-left text-[13px] font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-brand ${open ? 'text-ink' : 'text-slate-600 hover:bg-sand-50'}`}>
                     {open ? <ChevronDown className="h-3.5 w-3.5 shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 shrink-0" />}
                     <span className="min-w-0 flex-1 truncate">{f.name}</span>
                     <Badge n={floorCounts[f.id]} />
@@ -92,7 +92,7 @@ export function FloorRoomTree({ floors, floorId, onFloor, rooms, roomKey, onRoom
           {t('ws.showFurniture')}
           <input type="checkbox" role="switch" checked={showFurniture} onChange={(e) => onShowFurniture(e.target.checked)}
             className="peer sr-only" />
-          <span aria-hidden className="relative h-5 w-9 shrink-0 rounded-full bg-slate-300 transition-colors peer-checked:bg-brand peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-brand after:absolute after:left-0.5 after:top-0.5 after:h-4 after:w-4 after:rounded-full after:bg-white after:shadow after:transition-transform peer-checked:after:translate-x-4" />
+          <span aria-hidden className="relative h-5 w-9 shrink-0 rounded-full bg-slate-300 transition-colors peer-checked:bg-brand peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-brand after:absolute after:left-0.5 after:top-0.5 after:h-4 after:w-4 after:rounded-full after:bg-surface after:shadow after:transition-transform peer-checked:after:translate-x-4" />
         </label>
       </div>
     </div>

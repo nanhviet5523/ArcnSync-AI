@@ -40,12 +40,12 @@ export function QuotationSummaryCard({ projectId, homeowner, onlyAfterChangeRequ
         <span aria-hidden className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-orange-50 text-orange-700"><Receipt className="h-5 w-5" /></span>
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <h2 id="quotation-summary" className="text-[15px] font-semibold text-slate-900">{t('quotation.title')}</h2>
+            <h2 id="quotation-summary" className="text-[15px] font-semibold text-ink">{t('quotation.title')}</h2>
             {quotation && <StatusChip kind="quotation" value={expired ? 'EXPIRED' : quotation.status} size="sm" />}
           </div>
           {quotation ? (
             <>
-              <p className="mt-1 text-2xl font-bold tabular-nums text-slate-900">{formatMoney(quotation.totalAmount)}</p>
+              <p className="mt-1 text-2xl font-bold tabular-nums text-ink">{formatMoney(quotation.totalAmount)}</p>
               <p className="mt-0.5 flex flex-wrap items-center gap-2 text-sm text-slate-600">
                 {quotation.quotationNo} · {t('quotation.revision', { n: quotation.revisionNo })}
                 <StatusChip kind="budget" value={budgetStatusFromFlag(quotation.withinBudget)} size="sm" />

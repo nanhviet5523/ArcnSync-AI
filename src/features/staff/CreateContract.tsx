@@ -267,15 +267,15 @@ export const CreateContract: React.FC<CreateContractProps> = ({ onAlreadyExists 
   };
 
   const labelClass = 'block text-[11px] font-bold text-slate-500 mb-1.5';
-  const inputClass = 'w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand';
+  const inputClass = 'w-full px-3 py-2 bg-surface border border-control bg-sand-100 rounded-xl text-xs font-medium text-ink focus:outline-none focus:ring-2 focus-visible:ring-brand';
 
   return (
-    <div className="min-h-screen bg-slate-50/60 font-sans flex flex-col justify-between">
+    <div className="min-h-screen bg-sand-50/60 font-sans flex flex-col justify-between">
       <Header role="staff" />
 
       <main className="w-full max-w-[1100px] mx-auto px-6 lg:px-12 py-10 flex-1">
         <div className="mb-8">
-          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">{editing ? t('editContract.title') : 'Create contract'}</h1>
+          <h1 className="text-3xl font-extrabold text-ink tracking-tight">{editing ? t('editContract.title') : 'Create contract'}</h1>
           <p className="text-sm text-slate-500 mt-1">
             Enter the contract terms and payment schedule. Milestone amounts must equal the design fee.
           </p>
@@ -308,8 +308,8 @@ export const CreateContract: React.FC<CreateContractProps> = ({ onAlreadyExists 
 
         <div className="space-y-6">
           {/* Terms */}
-          <section className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
-            <h2 className="text-sm font-bold text-slate-900 mb-4">Contract details</h2>
+          <section className="bg-surface rounded-2xl border border-line shadow-sm p-6">
+            <h2 className="text-sm font-bold text-ink mb-4">Contract details</h2>
 
             <div className="mb-4">
               <label className={labelClass}>Project ID (UUID)</label>
@@ -375,14 +375,14 @@ export const CreateContract: React.FC<CreateContractProps> = ({ onAlreadyExists 
           </section>
 
           {/* Milestones */}
-          <section className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+          <section className="bg-surface rounded-2xl border border-line shadow-sm p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-bold text-slate-900">Payment milestones</h2>
+              <h2 className="text-sm font-bold text-ink">Payment milestones</h2>
               <button
                 type="button"
                 onClick={addMilestone}
                 disabled={milestones.length >= MAX_MILESTONES}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-surface px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-sand-50 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Plus size={14} /> Add milestone
               </button>
@@ -390,8 +390,8 @@ export const CreateContract: React.FC<CreateContractProps> = ({ onAlreadyExists 
 
             <div className="space-y-3">
               {milestones.map((row, index) => (
-                <div key={index} className="grid grid-cols-1 gap-3 rounded-xl border border-slate-100 bg-slate-50/40 p-3 md:grid-cols-[2.4rem_1fr_1fr_1fr_1fr_2rem] md:items-end">
-                  <div className="text-xs font-bold text-slate-400 md:pb-2.5">#{index + 1}</div>
+                <div key={index} className="grid grid-cols-1 gap-3 rounded-xl border border-line bg-sand-50/40 p-3 md:grid-cols-[2.4rem_1fr_1fr_1fr_1fr_2rem] md:items-end">
+                  <div className="text-xs font-bold text-subtext md:pb-2.5">#{index + 1}</div>
                   <div>
                     <label className={labelClass}>Milestone name</label>
                     <input
@@ -442,7 +442,7 @@ export const CreateContract: React.FC<CreateContractProps> = ({ onAlreadyExists 
                     onClick={() => removeMilestone(index)}
                     disabled={milestones.length === 1}
                     aria-label="Remove milestone"
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40"
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-subtext transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     <Trash2 size={15} />
                   </button>
@@ -451,14 +451,14 @@ export const CreateContract: React.FC<CreateContractProps> = ({ onAlreadyExists 
             </div>
 
             {/* Live total vs fee */}
-            <div className="mt-4 rounded-xl border border-slate-100 bg-white p-4">
+            <div className="mt-4 rounded-xl border border-line bg-surface p-4">
               <div className="flex items-center justify-between text-xs">
                 <span className="text-slate-500">Milestone total</span>
-                <span className="font-bold text-slate-900">VND {vnd.format(milestonesTotal)}</span>
+                <span className="font-bold text-ink">VND {vnd.format(milestonesTotal)}</span>
               </div>
               <div className="mt-1.5 flex items-center justify-between text-xs">
                 <span className="text-slate-500">Total design fee</span>
-                <span className="font-bold text-slate-900">{feeValid ? `VND ${vnd.format(feeNumber)}` : '—'}</span>
+                <span className="font-bold text-ink">{feeValid ? `VND ${vnd.format(feeNumber)}` : '—'}</span>
               </div>
               {feeValid && !totalsMatch && (
                 <p className="mt-2.5 flex items-center gap-1.5 text-[11px] font-semibold text-red-600">
@@ -478,7 +478,7 @@ export const CreateContract: React.FC<CreateContractProps> = ({ onAlreadyExists 
             <button
               type="button"
               onClick={() => navigate(-1)}
-              className="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50"
+              className="rounded-xl border border-line bg-surface px-5 py-2.5 text-xs font-bold text-slate-700 transition hover:bg-sand-50"
             >
               Cancel
             </button>

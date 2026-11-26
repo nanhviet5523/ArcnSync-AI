@@ -9,7 +9,7 @@ interface SignUpPageProps {
 
 export const SignUpPage: React.FC<SignUpPageProps> = ({ onNavigateToLogin }) => {
   return (
-    <div className="flex w-full h-screen overflow-hidden font-sans bg-white">
+    <div className="flex w-full h-screen overflow-hidden font-sans bg-canvas">
       {/* Left Column: Hero Banner Section (50%) */}
       <div
         className="hidden md:flex flex-1 relative bg-cover bg-center p-12 lg:p-16 flex-col justify-end text-white"
@@ -18,8 +18,8 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({ onNavigateToLogin }) => 
         }}
       >
         {/* Badge */}
-        <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-md px-3.5 py-1.5 rounded-full text-xs font-medium w-fit mb-6">
-          <Sparkles className="w-3.5 h-3.5 text-sky-400" />
+        <div className="inline-flex items-center gap-2 bg-dark/20 backdrop-blur-md px-3.5 py-1.5 rounded-full text-xs font-medium w-fit mb-6">
+          <Sparkles className="w-3.5 h-3.5 text-brand-on-dark" />
           <span>Join in under 2 minutes</span>
         </div>
 
@@ -33,7 +33,7 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({ onNavigateToLogin }) => 
       </div>
 
       {/* Right Column: Form Section (50%) */}
-      <div className="flex-1 flex items-center justify-center p-8 lg:p-16 overflow-hidden bg-white">
+      <div className="flex-1 flex items-center justify-center p-8 lg:p-16 overflow-hidden bg-canvas">
         <SignUpForm onLoginClick={onNavigateToLogin} />
       </div>
     </div>

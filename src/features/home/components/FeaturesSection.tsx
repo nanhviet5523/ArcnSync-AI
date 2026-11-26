@@ -15,22 +15,22 @@ const FEATURES: { key: string; icon: LucideIcon }[] = [
 /** Section 3: the homeowner collaboration features, on the dark band. */
 export function FeaturesSection() {
   return (
-    <section id="features" className="scroll-mt-16 bg-dark px-6 py-20 text-surface lg:px-12">
+    <section id="features" className="scroll-mt-16 bg-dark px-6 py-20 text-[#FBF8EF] lg:px-12">
       <div className="mx-auto max-w-7xl">
         <div className="max-w-2xl">
           <p className="text-xs font-bold uppercase tracking-widest text-brand-on-dark">{t('home.features.eyebrow')}</p>
           <h2 className="mt-2 text-3xl font-extrabold tracking-tight md:text-4xl">{t('home.features.title')}</h2>
-          <p className="mt-4 text-sm leading-relaxed text-surface sm:text-base">{t('home.features.intro')}</p>
+          <p className="mt-4 text-sm leading-relaxed text-[#FBF8EF] sm:text-base">{t('home.features.intro')}</p>
         </div>
 
         <ul className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {FEATURES.map(({ key, icon: Icon }) => (
-            <li key={key} className="rounded-2xl border border-dark-hover bg-dark-hover p-6">
+            <li key={key} className="rounded-2xl border border-dark-hover bg-surface/10 p-6">
               <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-dark-hover text-brand-on-dark">
                 <Icon aria-hidden className="h-5 w-5" />
               </span>
               <h3 className="mt-5 text-base font-bold">{t(`home.features.${key}.title`)}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-surface">{t(`home.features.${key}.body`)}</p>
+              <p className="mt-2 text-sm leading-relaxed text-[#FBF8EF]">{t(`home.features.${key}.body`)}</p>
             </li>
           ))}
         </ul>

@@ -138,7 +138,7 @@ export function StaffProjectNew() {
               <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3">
                 <div>
                   <p className="text-[13px] text-emerald-700">{t('newProject.found')}</p>
-                  <p className="font-semibold text-slate-900">{customer.fullName}</p>
+                  <p className="font-semibold text-ink">{customer.fullName}</p>
                   <p className="text-xs text-slate-600">{customer.email}{customer.phone ? `, ${customer.phone}` : ''}</p>
                 </div>
                 <Button variant="primary" onClick={() => { setErrors({}); setStep(1); }}>{t('common.continue')}</Button>

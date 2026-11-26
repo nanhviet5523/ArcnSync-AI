@@ -107,7 +107,7 @@ export const VerifyOtpPage: React.FC = () => {
   };
 
   return (
-    <div className="flex w-full min-h-screen items-center justify-center bg-white p-8 font-sans">
+    <div className="flex w-full min-h-screen items-center justify-center bg-surface p-8 font-sans">
       {toast && (
         <div
           role={toast.type === 'error' ? 'alert' : 'status'}
@@ -124,9 +124,9 @@ export const VerifyOtpPage: React.FC = () => {
         <div className="mb-6">
           <Logo size={38} to="/" />
         </div>
-        <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight mb-2">Verify your email</h1>
+        <h1 className="text-3xl font-extrabold text-ink tracking-tight mb-2">Verify your email</h1>
         <p className="text-sm text-slate-500 mb-6 leading-relaxed">
-          We sent an OTP code to <span className="font-bold text-slate-900">{email || 'your email'}</span>.
+          We sent an OTP code to <span className="font-bold text-ink">{email || 'your email'}</span>.
           Enter it below to activate your account.
         </p>
         <form onSubmit={handleSubmit} className="space-y-3.5">
@@ -141,7 +141,7 @@ export const VerifyOtpPage: React.FC = () => {
           />
           <div className="text-center">
             {resendCountdown > 0 ? (
-              <span className="text-xs font-medium text-slate-400">
+              <span className="text-xs font-medium text-subtext">
                 Gửi lại sau ({resendCountdown}s)
               </span>
             ) : (
@@ -149,7 +149,7 @@ export const VerifyOtpPage: React.FC = () => {
                 type="button"
                 onClick={() => void handleResend()}
                 disabled={resending}
-                className="text-xs font-bold text-brand-text hover:underline disabled:cursor-not-allowed disabled:text-slate-400 disabled:no-underline"
+                className="text-xs font-bold text-brand-text hover:underline disabled:cursor-not-allowed disabled:text-subtext disabled:no-underline"
               >
                 {resending ? 'Đang gửi…' : 'Resend OTP'}
               </button>
@@ -168,7 +168,7 @@ export const VerifyOtpPage: React.FC = () => {
           <button
             type="submit"
             disabled={loading || !!success}
-            className="w-full py-3.5 bg-brand hover:bg-brand-hover text-white font-bold text-sm rounded-xl shadow-md transition duration-200 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="w-full py-3.5 bg-brand hover:bg-brand-hover active:bg-brand-hover text-white font-bold text-sm rounded-xl shadow-md transition duration-200 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {loading && (
               <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />

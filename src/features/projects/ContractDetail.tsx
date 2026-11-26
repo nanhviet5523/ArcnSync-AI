@@ -91,7 +91,7 @@ function formatAmount(value: unknown): string {
 
 /** Shared page chrome for every branch below (loading / empty / error / loaded). */
 const Shell: React.FC<{ role?: UserRole; backTo?: string; children: React.ReactNode }> = ({ role, backTo, children }) => (
-  <div className="min-h-screen bg-slate-50/60 font-sans flex flex-col justify-between">
+  <div className="min-h-screen bg-sand-50/60 font-sans flex flex-col justify-between">
     <Header role={role} />
     <main className="w-full max-w-[1100px] mx-auto px-6 lg:px-12 py-10 flex-1">
       {backTo && <Link to={backTo} className="mb-5 inline-flex items-center gap-2 text-sm font-semibold text-brand-text hover:text-dark"><ArrowLeft size={16} /> Back to project</Link>}
@@ -472,7 +472,7 @@ export const ContractDetail: React.FC = () => {
       // Staff create the contract from the project page (modal), so there is one creation form only.
       return (
         <Shell role={role} backTo={backToProject}>
-          <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-slate-200 bg-white py-20 text-center">
+          <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-line bg-surface py-20 text-center">
             <FileText size={32} className="text-slate-300" />
             <p className="text-sm font-bold text-slate-700">{t('contractPage.noContractTitle')}</p>
             <p className="max-w-sm text-xs text-slate-500">{t('contractPage.noContractStaff')}</p>
@@ -483,7 +483,7 @@ export const ContractDetail: React.FC = () => {
 
     return (
       <Shell role={role} backTo={backToProject}>
-        <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-slate-200 bg-white py-20 text-center">
+        <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-line bg-surface py-20 text-center">
           <FileText size={32} className="text-slate-300" />
           <p className="text-sm font-bold text-slate-700">{t('contractPage.notAvailableTitle')}</p>
           <p className="max-w-sm text-xs text-slate-500">{t('contractPage.notAvailableHint')}</p>
@@ -512,9 +512,9 @@ export const ContractDetail: React.FC = () => {
     <Shell role={role} backTo={backToProject}>
       <div className="mb-8 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Contract {contract.contractNo}</h1>
+          <h1 className="text-3xl font-extrabold text-ink tracking-tight">Contract {contract.contractNo}</h1>
           <p className="mt-1 text-sm text-slate-500">
-            Total design fee: <span className="font-semibold text-slate-800">{formatVnd(contract.totalDesignFee)}</span>
+            Total design fee: <span className="font-semibold text-ink">{formatVnd(contract.totalDesignFee)}</span>
           </p>
         </div>
         <div className="flex gap-2">
@@ -535,7 +535,7 @@ export const ContractDetail: React.FC = () => {
             </>
           )}
         >
-          <iframe src={pdfViewer.url} title={pdfViewer.fileName} className="h-[70vh] w-full rounded-lg border border-slate-100" />
+          <iframe src={pdfViewer.url} title={pdfViewer.fileName} className="h-[70vh] w-full rounded-lg border border-line" />
         </Modal>
       )}
 
@@ -603,20 +603,20 @@ export const ContractDetail: React.FC = () => {
       )}
 
       {contract.note && (
-        <div className="mb-6 rounded-xl border border-slate-100 bg-white p-4 text-sm text-slate-600">
-          <span className="font-bold text-slate-800">Note: </span>{contract.note}
+        <div className="mb-6 rounded-xl border border-line bg-surface p-4 text-sm text-slate-600">
+          <span className="font-bold text-ink">Note: </span>{contract.note}
         </div>
       )}
 
       {/* ---- DRAFT + NOT_SENT: Staff soạn hợp đồng, chưa gửi khách ký ---- */}
       {status === 'DRAFT' && esignStatus === 'NOT_SENT' && isStaff && (
-        <section className="mb-6 rounded-2xl border border-slate-100 bg-white p-6">
-          <h2 className="mb-4 text-sm font-bold text-slate-900">Actions</h2>
+        <section className="mb-6 rounded-2xl border border-line bg-surface p-6">
+          <h2 className="mb-4 text-sm font-bold text-ink">Actions</h2>
           <div className="flex flex-wrap gap-3">
             <button
               type="button"
               onClick={() => navigate(`/staff-edit-contract?contractId=${encodeURIComponent(contract.id)}`)}
-              className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50"
+              className="rounded-xl border border-line bg-surface px-4 py-2.5 text-xs font-bold text-slate-700 transition hover:bg-sand-50"
             >
               Edit contract
             </button>
@@ -624,7 +624,7 @@ export const ContractDetail: React.FC = () => {
               type="button"
               disabled={uploading}
               onClick={() => fileInput.current?.click()}
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-xl border border-line bg-surface px-4 py-2.5 text-xs font-bold text-slate-700 transition hover:bg-sand-50 disabled:opacity-50"
             >
               {uploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
               {uploading ? t('contractFile.uploading') : contract.unsignedFile ? t('contractFile.replace') : t('contractFile.upload')}
@@ -654,10 +654,10 @@ export const ContractDetail: React.FC = () => {
           </div>
 
           <div className="mt-4">
-            <h3 className="mb-2 text-xs font-bold text-slate-900">{t('contractFile.title')}</h3>
+            <h3 className="mb-2 text-xs font-bold text-ink">{t('contractFile.title')}</h3>
             {contract.unsignedFile ? (
               <div className="flex flex-wrap items-center gap-3 text-sm text-slate-600">
-                <span className="inline-flex items-center gap-2"><FileText size={14} className="text-slate-400" />{t('contractFile.current', { name: contract.unsignedFile.fileName })}</span>
+                <span className="inline-flex items-center gap-2"><FileText size={14} className="text-subtext" />{t('contractFile.current', { name: contract.unsignedFile.fileName })}</span>
                 <button
                   type="button"
                   disabled={actionBusy}
@@ -671,20 +671,20 @@ export const ContractDetail: React.FC = () => {
               <p className="text-sm text-slate-500">{t('contractFile.none')}</p>
             )}
             {fileError && <p role="alert" className="mt-2 text-xs font-semibold text-red-700">{fileError}</p>}
-            <p className="mt-2 text-[11px] text-slate-400">{t('contractFile.helper')}</p>
+            <p className="mt-2 text-[11px] text-subtext">{t('contractFile.helper')}</p>
           </div>
         </section>
       )}
 
       {/* ---- DRAFT + AWAITING_CUSTOMER ---- */}
       {status === 'DRAFT' && esignStatus === 'AWAITING_CUSTOMER' && isStaff && (
-        <section className="mb-6 rounded-2xl border border-slate-100 bg-white p-6">
-          <h2 className="mb-4 text-sm font-bold text-slate-900">Actions</h2>
+        <section className="mb-6 rounded-2xl border border-line bg-surface p-6">
+          <h2 className="mb-4 text-sm font-bold text-ink">Actions</h2>
           <button
             type="button"
             disabled={actionBusy}
             onClick={() => setConfirmRecall(true)}
-            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-xl border border-line bg-surface px-4 py-2.5 text-xs font-bold text-slate-700 transition hover:bg-sand-50 disabled:opacity-50"
           >
             <Undo2 size={14} /> {t('contractPage.recallButton')}
           </button>
@@ -692,15 +692,15 @@ export const ContractDetail: React.FC = () => {
       )}
 
       {status === 'DRAFT' && esignStatus === 'AWAITING_CUSTOMER' && isCustomer && (
-        <section className="mb-6 rounded-2xl border border-slate-100 bg-white p-6">
-          <h2 className="mb-4 text-sm font-bold text-slate-900">Sign contract</h2>
+        <section className="mb-6 rounded-2xl border border-line bg-surface p-6">
+          <h2 className="mb-4 text-sm font-bold text-ink">Sign contract</h2>
 
           {contract.unsignedFile && (
             <button
               type="button"
               disabled={actionBusy}
               onClick={() => void handleView(contract.id)}
-              className="mb-4 inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+              className="mb-4 inline-flex items-center gap-2 rounded-xl border border-line bg-surface px-4 py-2.5 text-xs font-bold text-slate-700 transition hover:bg-sand-50 disabled:opacity-50"
             >
               <FileText size={14} /> View contract PDF ({contract.unsignedFile.fileName})
             </button>
@@ -717,7 +717,7 @@ export const ContractDetail: React.FC = () => {
                 {otpRequesting ? <Loader2 size={14} className="animate-spin" /> : <ShieldCheck size={14} />}
                 {otpButtonLabel ?? t('signatureOtp.request')}
               </button>
-              {contract.unsignedFile && <p className="mt-2 text-[11px] text-slate-400">{t('signatureOtp.previewFirst')}</p>}
+              {contract.unsignedFile && <p className="mt-2 text-[11px] text-subtext">{t('signatureOtp.previewFirst')}</p>}
             </>
           ) : (
             <>
@@ -738,7 +738,7 @@ export const ContractDetail: React.FC = () => {
                   disabled={otpExpired}
                   autoComplete="one-time-code"
                   placeholder="123456"
-                  className="w-32 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold tracking-widest text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand"
+                  className="w-32 rounded-xl border border-control bg-sand-100 px-3 py-2 text-sm font-semibold tracking-widest text-ink focus:outline-none focus:ring-2 focus-visible:ring-brand"
                 />
               </div>
               <button
@@ -766,13 +766,13 @@ export const ContractDetail: React.FC = () => {
 
       {/* ---- ACTIVE + SIGNED: cả hai bên tải file đã ký + bảng milestones ---- */}
       {canDownloadSignedFile && (status === 'ACTIVE' || status === 'COMPLETED') && (
-        <section className="mb-6 rounded-2xl border border-slate-100 bg-white p-6">
+        <section className="mb-6 rounded-2xl border border-line bg-surface p-6">
           <button
             type="button"
             disabled={actionBusy || !(contract.unsignedFile || contract.signedFile)}
             title={contract.unsignedFile || contract.signedFile ? undefined : t('contractPage.noPdfYet')}
             onClick={() => void handleDownload(contract.id)}
-            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-xl border border-line bg-surface px-4 py-2.5 text-xs font-bold text-slate-700 transition hover:bg-sand-50 disabled:opacity-50"
           >
             <Download size={14} /> Download signed contract PDF
           </button>
@@ -780,12 +780,12 @@ export const ContractDetail: React.FC = () => {
       )}
 
       {showMilestones && (
-        <section className="rounded-2xl border border-slate-100 bg-white p-6">
-          <h2 className="mb-4 text-sm font-bold text-slate-900">Payment milestones</h2>
+        <section className="rounded-2xl border border-line bg-surface p-6">
+          <h2 className="mb-4 text-sm font-bold text-ink">Payment milestones</h2>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
-                <tr className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                <tr className="text-[10px] font-bold uppercase tracking-wide text-subtext">
                   <th className="px-3 py-2">Milestone</th>
                   <th className="px-3 py-2">Stage</th>
                   <th className="px-3 py-2">Amount</th>
@@ -796,9 +796,9 @@ export const ContractDetail: React.FC = () => {
               <tbody className="divide-y divide-slate-100">
                 {contract.milestones.map((m) => (
                   <tr key={m.id}>
-                    <td className="px-3 py-3 font-semibold text-slate-800">{m.name}</td>
+                    <td className="px-3 py-3 font-semibold text-ink">{m.name}</td>
                     <td className="px-3 py-3 text-slate-600">{m.stageType}</td>
-                    <td className="px-3 py-3 font-semibold text-slate-800">{formatVnd(m.amount)}</td>
+                    <td className="px-3 py-3 font-semibold text-ink">{formatVnd(m.amount)}</td>
                     <td className="px-3 py-3">
                       <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${MILESTONE_STATUS_BADGE[m.status]}`}>
                         {MILESTONE_STATUS_LABEL[m.status]}

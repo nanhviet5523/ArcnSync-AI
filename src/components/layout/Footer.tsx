@@ -50,7 +50,7 @@ export const Footer: React.FC = () => (
       ))}
     </div>
 
-    <div className="mx-auto mt-10 max-w-7xl border-t border-line pt-6 text-xs text-slate-400">
+    <div className="mx-auto mt-10 max-w-7xl border-t border-line pt-6 text-xs text-subtext">
       {t('footer.copyright')}
     </div>
   </footer>

@@ -93,7 +93,7 @@ export function ComparePanel({ merge, role, fromId, toId, floorId, layers, view,
     const f = floorOf(v);
     return (
       <div className="relative min-h-0 min-w-0">
-        <span className="absolute left-3 top-3 z-10 rounded-md bg-surface px-2 py-0.5 text-xs font-semibold text-slate-800 shadow-card">{versionLabel(v.label, role)}</span>
+        <span className="absolute left-3 top-3 z-10 rounded-md bg-surface px-2 py-0.5 text-xs font-semibold text-ink shadow-card">{versionLabel(v.label, role)}</span>
         {handle && legend}
         {f && <Plan2D ref={handle} floor={f} elements={v.elements.filter((e) => e.floor_id === f.id)} layers={layers} highlight={h} view={view} onViewChange={onViewChange}
           selectedId={merge?.selectedId} onSelect={merge ? (e) => { if (e && h[e.id]) merge.onPick(e.id); } : undefined} />}

@@ -31,7 +31,7 @@ export function ReviewsPage() {
 
   const projectPath = (r: ProjectReview) => (role === 'designer' ? `/designer/projects/${r.projectId}` : `/staff/projects/${r.projectId}`);
   const columns: Column<ProjectReview>[] = [
-    { key: 'project', header: t('reviews.col.project'), cell: (r) => <><p className="font-medium text-slate-900">{r.project?.title}</p><p className="text-xs text-slate-500">{r.project?.code}</p></> },
+    { key: 'project', header: t('reviews.col.project'), cell: (r) => <><p className="font-medium text-ink">{r.project?.title}</p><p className="text-xs text-slate-500">{r.project?.code}</p></> },
     { key: 'rating', header: t('reviews.col.rating'), cell: (r) => <Stars value={r.overallRating} />, sort: (r) => r.overallRating },
     { key: 'homeowner', header: t('reviews.col.homeowner'), cell: (r) => r.customer?.fullName ?? '—', hideOnMobile: true },
     { key: 'designer', header: t('reviews.col.designer'), cell: (r) => r.designer?.fullName ?? '—', hideOnMobile: true },

@@ -72,11 +72,11 @@ export function QuickComment({ title, placeholder, x, y, bounds, onSend, onCance
   return (
     <div role="dialog" aria-label={title} onKeyDown={onKey} onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}
       className={`absolute ${Z.canvasOverlay} rounded-card border border-line bg-surface p-3 shadow-float`} style={{ left, top, width: WIDTH }}>
-      <p className="mb-2 truncate text-[13px] font-semibold text-slate-900">{title}</p>
+      <p className="mb-2 truncate text-[13px] font-semibold text-ink">{title}</p>
       {extra && <div className="mb-2">{extra}</div>}
       <textarea ref={area} rows={3} value={text} disabled={busy} onChange={(e) => { setText(e.target.value); onTextChange?.(!!e.target.value.trim()); }}
         aria-label={title} placeholder={placeholder}
-        className="block w-full resize-none rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition placeholder:text-slate-500 focus:border-brand focus:ring-2 focus:ring-brand/20 disabled:bg-slate-50" />
+        className="block w-full resize-none rounded-lg border border-control bg-sand-100 px-3 py-2 text-sm text-ink outline-none transition placeholder:text-subtext focus-visible:border-brand focus-visible:ring-2 focus-visible:ring-brand-soft disabled:bg-sand-100" />
       <div className="mt-2 flex items-center justify-between gap-2">
         <span className="text-xs text-slate-500">{t('ws.quickHint')}</span>
         <div className="flex gap-1.5">

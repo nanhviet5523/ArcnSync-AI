@@ -72,7 +72,7 @@ export function MemberDxfUploadDialog({ floors, multiFloor, initialFloorId, onCl
       <Button variant="primary" loading={busy} disabled={!file} onClick={submit}>{t('drafts.upload')}</Button>
     </>}>
       <div className="space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line bg-slate-50 px-3 py-2.5">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line bg-sand-50 px-3 py-2.5">
           <p className="min-w-0 flex-1 text-[13px] text-slate-700">{t('drafts.uploadHint')}</p>
           <Button size="sm" onClick={() => onDownload(floorId)} disabled={busy}><Download aria-hidden className="h-3.5 w-3.5" />{t('drafts.downloadDxf')}</Button>
         </div>
@@ -88,7 +88,7 @@ export function MemberDxfUploadDialog({ floors, multiFloor, initialFloorId, onCl
         <Field label={t('drafts.dxfFile')} error={fileError}>
           {(f) => (
             <input {...f} type="file" accept=".dxf" disabled={busy} onChange={(e) => pick(e.target.files?.[0] ?? null)}
-              className="block w-full text-[13px] text-slate-700 file:mr-3 file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-[13px] file:font-medium file:text-slate-800 hover:file:bg-slate-200" />
+              className="block w-full text-[13px] text-slate-700 file:mr-3 file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-[13px] file:font-medium file:text-ink hover:file:bg-slate-200" />
           )}
         </Field>
         {busy && (
@@ -139,16 +139,16 @@ export function UploadResultModal({ title, accepted, ignored, nameOf, ownerOfRoo
       <div className="space-y-4">
         {accepted.length ? (
           <section>
-            <h3 className="text-[13px] font-semibold text-slate-900">{t('drafts.accepted', { n: accepted.length, rooms: rooms.join(', ') })}</h3>
+            <h3 className="text-[13px] font-semibold text-ink">{t('drafts.accepted', { n: accepted.length, rooms: rooms.join(', ') })}</h3>
             {rooms.map((room) => (
               <div key={room} className="mt-2 rounded-lg border border-line">
-                <p className="border-b border-line bg-slate-50 px-2.5 py-1.5 text-xs font-semibold text-slate-700">{room}</p>
+                <p className="border-b border-line bg-sand-50 px-2.5 py-1.5 text-xs font-semibold text-slate-700">{room}</p>
                 <ul className="divide-y divide-line">
                   {accepted.filter((a) => a.room_name === room).map((a, i) => (
                     <li key={`${a.op}-${a.handle ?? i}`}>
                       <button type="button" onClick={() => onPick(a)}
-                        className="flex w-full items-center justify-between gap-3 px-2.5 py-2 text-left hover:bg-slate-50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand">
-                        <span className="min-w-0 truncate text-[13px] text-slate-900">{nameOf(a)}</span>
+                        className="flex w-full items-center justify-between gap-3 px-2.5 py-2 text-left hover:bg-sand-50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand">
+                        <span className="min-w-0 truncate text-[13px] text-ink">{nameOf(a)}</span>
                         <OpTag op={a.op} />
                       </button>
                     </li>

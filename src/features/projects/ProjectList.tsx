@@ -101,7 +101,7 @@ export function ProjectList() {
       key: 'project', header: t('projects.col.project'), sort: (p) => p.title.toLowerCase(),
       cell: (p) => (
         <div className="min-w-0">
-          <p className="truncate font-medium text-slate-900">{p.title}</p>
+          <p className="truncate font-medium text-ink">{p.title}</p>
           <p className="text-xs text-slate-500">{p.code}</p>
         </div>
       ),
@@ -110,7 +110,7 @@ export function ProjectList() {
       key: 'home', header: t('projects.col.home'), sort: (p) => (p.apartment?.buildingName ?? "").toLowerCase(),
       cell: (p) => (
         <div className="min-w-0">
-          <p className="truncate text-slate-800">{p.apartment ? `${p.apartment.buildingName}${p.apartment.unitNo ? `, ${p.apartment.unitNo}` : ''}` : t('projectDetail.pendingSurvey')}</p>
+          <p className="truncate text-ink">{p.apartment ? `${p.apartment.buildingName}${p.apartment.unitNo ? `, ${p.apartment.unitNo}` : ''}` : t('projectDetail.pendingSurvey')}</p>
           <p className="text-xs text-slate-500">
             {floors[p.id] === undefined
               ? <span className="inline-block h-3 w-14 animate-pulse rounded bg-slate-100 align-middle" />
@@ -125,7 +125,7 @@ export function ProjectList() {
     }] : []),
     ...(role !== 'designer' ? [{
       key: 'designer', header: t('projects.col.designer'), sort: (p: Project) => p.designer?.fullName.toLowerCase() ?? '~',
-      cell: (p: Project) => (p.designer ? <span className="text-slate-700">{p.designer.fullName}</span> : <span className="text-slate-400">{t('projects.notAssigned')}</span>),
+      cell: (p: Project) => (p.designer ? <span className="text-slate-700">{p.designer.fullName}</span> : <span className="text-subtext">{t('projects.notAssigned')}</span>),
     }] : []),
     {
       key: 'status', header: t('projects.col.status'), sort: (p) => STATUSES.indexOf(p.status),

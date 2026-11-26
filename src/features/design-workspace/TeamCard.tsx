@@ -11,7 +11,7 @@ export function TeamRow({ id, name, label, sub, action }: { id: string; name: st
     <li className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0">
       <Avatar id={id} name={name} label={label} size="md" />
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold text-slate-900">{name}</p>
+        <p className="truncate text-sm font-semibold text-ink">{name}</p>
         <p className="truncate text-xs text-slate-500">{sub}</p>
       </div>
       {action}
@@ -73,7 +73,7 @@ export function TeamCard({ project, role, bare = false, reloadKey = 0 }: Props) 
           </>
         )}
       {/* designers (the Lead included) never manage the team */}
-      {role === 'designer' && <p className="mt-3 border-t border-slate-100 pt-3 text-xs text-slate-500">{t('team.managedByStaff')}</p>}
+      {role === 'designer' && <p className="mt-3 border-t border-line pt-3 text-xs text-slate-500">{t('team.managedByStaff')}</p>}
     </>
   );
   if (!bare) return <Card title={t('team.title')}>{body}</Card>;

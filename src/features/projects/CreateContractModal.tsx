@@ -162,7 +162,7 @@ export function CreateContractModal({ projectId, onClose, onCreated, onAlreadyEx
           <legend className="mb-2 text-[13px] font-medium text-slate-700">{t('newContract.milestones')}</legend>
           <ul className="space-y-3">
             {rows.map((r, i) => (
-              <li key={i} className="rounded-lg border border-slate-200 p-3">
+              <li key={i} className="rounded-lg border border-line p-3">
                 <p className="mb-2 text-xs font-medium text-slate-500">{t('newContract.milestone', { n: i + 1 })} · {t(`newContract.dueTrigger.${i === 0 ? 'ON_CONTRACT_ACTIVE' : 'ON_STAGE_APPROVED'}`)}</p>
                 <div className="grid gap-3 sm:grid-cols-3">
                   <Field label={t('newContract.name')} error={errors[`milestones.${i}.name`]}>

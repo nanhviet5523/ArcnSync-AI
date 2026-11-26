@@ -38,7 +38,7 @@ export const ResetPasswordPage: React.FC = () => {
 
   const inputClass = (field: keyof FieldErrors) =>
     `w-full px-4 py-3 text-sm rounded-xl border border-control bg-sand-100 text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:border-brand focus-visible:ring-brand-soft transition placeholder:text-subtext ${
-      fieldErrors[field] ? 'border-red-400 focus:ring-red-500' : ''
+      fieldErrors[field] ? 'border-danger focus:ring-danger/20' : ''
     }`;
 
   const renderError = (field: keyof FieldErrors) =>
@@ -80,20 +80,20 @@ export const ResetPasswordPage: React.FC = () => {
   };
 
   return (
-    <div className="flex w-full min-h-screen items-center justify-center bg-white p-8 font-sans">
+    <div className="flex w-full min-h-screen items-center justify-center bg-surface p-8 font-sans">
       <div className="w-full max-w-[420px]">
         <div className="mb-6">
           <Logo size={38} to="/" />
         </div>
-        <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight mb-2">Reset your password</h1>
+        <h1 className="text-3xl font-extrabold text-ink tracking-tight mb-2">Reset your password</h1>
         <p className="text-sm text-slate-500 mb-6 leading-relaxed">
-          We sent an OTP code to <span className="font-bold text-slate-900">{email}</span>. Enter it below with
+          We sent an OTP code to <span className="font-bold text-ink">{email}</span>. Enter it below with
           your new password.
         </p>
 
         <form onSubmit={handleSubmit} noValidate className="space-y-3.5">
           <div>
-            <label className="block text-xs font-bold text-slate-900 mb-1.5 uppercase tracking-wide">OTP code</label>
+            <label className="block text-xs font-bold text-ink mb-1.5 uppercase tracking-wide">OTP code</label>
             <input
               type="text"
               inputMode="numeric"
@@ -110,7 +110,7 @@ export const ResetPasswordPage: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-900 mb-1.5 uppercase tracking-wide">
+            <label className="block text-xs font-bold text-ink mb-1.5 uppercase tracking-wide">
               New password
             </label>
             <PasswordInput
@@ -126,7 +126,7 @@ export const ResetPasswordPage: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-900 mb-1.5 uppercase tracking-wide">
+            <label className="block text-xs font-bold text-ink mb-1.5 uppercase tracking-wide">
               Confirm new password
             </label>
             <PasswordInput
@@ -155,7 +155,7 @@ export const ResetPasswordPage: React.FC = () => {
           <button
             type="submit"
             disabled={loading || !!success}
-            className="w-full py-3.5 bg-brand hover:bg-brand-hover text-white font-bold text-sm rounded-xl shadow-md transition duration-200 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="w-full py-3.5 bg-brand hover:bg-brand-hover active:bg-brand-hover text-white font-bold text-sm rounded-xl shadow-md transition duration-200 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {loading && <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />}
             {loading ? 'Resetting...' : 'Reset Password'}

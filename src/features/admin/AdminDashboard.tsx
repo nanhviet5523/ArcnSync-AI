@@ -76,7 +76,7 @@ export function AdminDashboard() {
         <Card title={t('adminDashboard.reviewsTitle')} actions={<Link to="/reviews" className="text-[13px] font-medium text-brand hover:underline">{t('adminDashboard.viewAll')}</Link>}>
           {s ? (s.reviews.count ? (
             <div>
-              <p className="flex items-center gap-2 text-3xl font-bold tabular-nums text-slate-900">{s.reviews.averageOverall}<Stars value={Number(s.reviews.averageOverall)} size="h-5 w-5" /></p>
+              <p className="flex items-center gap-2 text-3xl font-bold tabular-nums text-ink">{s.reviews.averageOverall}<Stars value={Number(s.reviews.averageOverall)} size="h-5 w-5" /></p>
               <p className="mt-1 text-sm text-slate-600">{t('reviews.count', { n: s.reviews.count })}</p>
               {s.reviews.recommendPercent && <p className="mt-1 text-sm text-slate-600">{t('reviews.recommendShare', { p: s.reviews.recommendPercent })}</p>}
             </div>
@@ -89,7 +89,7 @@ export function AdminDashboard() {
               {INQUIRY_STATES.map((k) => (
                 <li key={k} className="rounded-lg border border-line px-3 py-2">
                   <StatusChip kind="inquiry" value={k} size="sm" />
-                  <p className="mt-1 text-xl font-bold tabular-nums text-slate-900">{s.inquiries.byStatus[k]}</p>
+                  <p className="mt-1 text-xl font-bold tabular-nums text-ink">{s.inquiries.byStatus[k]}</p>
                 </li>
               ))}
             </ul>
@@ -103,7 +103,7 @@ export function AdminDashboard() {
             <ul className="divide-y divide-slate-100 text-sm">
               {ROLES.map((r) => (
                 <li key={r} className="flex items-center justify-between py-2 first:pt-0 last:pb-0">
-                  <span className="text-slate-700">{roleLabel(r)}</span><span className="font-semibold tabular-nums text-slate-900">{formatNumber(s.users.byRole[r] ?? 0)}</span>
+                  <span className="text-slate-700">{roleLabel(r)}</span><span className="font-semibold tabular-nums text-ink">{formatNumber(s.users.byRole[r] ?? 0)}</span>
                 </li>
               ))}
             </ul>
@@ -114,9 +114,9 @@ export function AdminDashboard() {
             <ul className="divide-y divide-slate-100">
               {s.recentProjects.map((p) => (
                 <li key={p.id}>
-                  <button type="button" onClick={() => navigate(`/staff/projects/${p.id}`)} className="flex w-full items-center justify-between gap-3 px-5 py-3 text-left transition-colors hover:bg-slate-50">
+                  <button type="button" onClick={() => navigate(`/staff/projects/${p.id}`)} className="flex w-full items-center justify-between gap-3 px-5 py-3 text-left transition-colors hover:bg-sand-50">
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-slate-900">{p.title}</p>
+                      <p className="truncate text-sm font-medium text-ink">{p.title}</p>
                       <p className="truncate text-xs text-slate-500">{p.code} · {p.customerName} · {p.staffName}</p>
                     </div>
                     <div className="flex shrink-0 items-center gap-3">
@@ -136,7 +136,7 @@ export function AdminDashboard() {
           <ul className="divide-y divide-slate-100">
             {s.recentInquiries.map((i) => (
               <li key={i.id} className="flex items-center justify-between gap-3 px-5 py-3 text-sm">
-                <span className="min-w-0 truncate"><span className="font-medium text-slate-900">{i.fullName}</span> <span className="text-slate-500">· {t(`inquiries.topic.${i.topic}`)}</span></span>
+                <span className="min-w-0 truncate"><span className="font-medium text-ink">{i.fullName}</span> <span className="text-slate-500">· {t(`inquiries.topic.${i.topic}`)}</span></span>
                 <span className="flex shrink-0 items-center gap-3"><span className="hidden text-xs text-slate-500 sm:inline">{formatDateTime(i.createdAt)}</span><StatusChip kind="inquiry" value={i.status} size="sm" /></span>
               </li>
             ))}
@@ -154,13 +154,13 @@ function RevenueChart({ months }: { months: DashboardStats['revenue']['monthly']
   if (max <= 0) return <EmptyState compact title={t('adminDashboard.revenueEmpty')} />;
   return (
     <div>
-      <div aria-hidden className="relative flex h-56 items-end gap-3 border-b border-slate-200 pt-6">
+      <div aria-hidden className="relative flex h-56 items-end gap-3 border-b border-line pt-6">
         {months.map((m, i) => {
           const v = values[i];
           return (
             <div key={m.month} tabIndex={0} className="group relative flex h-full flex-1 items-end justify-center outline-none" title={`${monthLabel(m.month)}: ${formatMoney(v)}`}>
               <div className="w-full max-w-12 rounded-t bg-brand transition-opacity group-hover:opacity-80 group-focus-visible:opacity-80" style={{ height: `${Math.max(v > 0 ? 2 : 0, (v / max) * 100)}%` }} />
-              <span className="pointer-events-none absolute -top-1 left-1/2 hidden -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-xs font-medium text-white shadow group-hover:block group-focus-visible:block">
+              <span className="pointer-events-none absolute -top-1 left-1/2 hidden -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-md bg-dark px-2 py-1 text-xs font-medium text-[#FBF8EF] shadow group-hover:block group-focus-visible:block">
                 {formatMoney(v)}
               </span>
             </div>
@@ -190,8 +190,8 @@ function StageBars({ byStatus }: { byStatus: DashboardStats['projects']['byStatu
         return (
           <li key={k} className="grid grid-cols-[minmax(0,9rem)_1fr_2.5rem] items-center gap-3">
             <StatusChip kind="project" value={k} size="sm" />
-            <div aria-hidden className="h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-slate-500" style={{ width: `${(n / max) * 100}%` }} /></div>
-            <span className="text-right text-sm font-semibold tabular-nums text-slate-900">{n}</span>
+            <div aria-hidden className="h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-sand-500" style={{ width: `${(n / max) * 100}%` }} /></div>
+            <span className="text-right text-sm font-semibold tabular-nums text-ink">{n}</span>
           </li>
         );
       })}

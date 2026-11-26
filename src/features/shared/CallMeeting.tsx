@@ -31,7 +31,7 @@ export const CallMeeting: React.FC = () => {
   // Members in Call Data
   const participants = [
     { id: '1', name: 'Minh Anh', role: 'Homeowner', roleColor: 'bg-sky-50 text-sky-600', avatar: 'MA', isMuted: false },
-    { id: '2', name: 'Nguyen Linh', role: 'Designer', roleColor: 'bg-blue-50 text-brand-text', avatar: 'NL', isMuted: false },
+    { id: '2', name: 'Nguyen Linh', role: 'Designer', roleColor: 'bg-sand-100 text-ink', avatar: 'NL', isMuted: false },
     { id: '3', name: 'Tran Nam', role: 'Staff', roleColor: 'bg-purple-50 text-purple-600', avatar: 'TN', isMuted: true },
   ];
 
@@ -84,30 +84,30 @@ export const CallMeeting: React.FC = () => {
   };
 
   return (
-    <div className="w-full h-screen bg-[#080d1a] text-slate-100 font-sans flex flex-col overflow-hidden">
+    <div className="w-full h-screen bg-dark text-slate-100 font-sans flex flex-col overflow-hidden">
       {/* Top Header Bar */}
-      <header className="h-14 px-6 border-b border-slate-800/80 bg-[#0a1124] flex items-center justify-between flex-shrink-0">
+      <header className="h-14 px-6 border-b border-dark-hover/80 bg-dark flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-3">
-          <div className="w-7 h-7 bg-brand rounded-lg flex items-center justify-center font-bold text-xs text-white">
+          <div className="w-7 h-7 bg-brand rounded-lg flex items-center justify-center font-bold text-xs text-[#FBF8EF]">
             <Box size={16} />
           </div>
           <div>
-            <h1 className="text-xs font-bold text-white tracking-wide">
+            <h1 className="text-xs font-bold text-[#FBF8EF] tracking-wide">
               Design consultation
             </h1>
-            <p className="text-[10px] text-slate-400">
+            <p className="text-[10px] text-brand-on-dark">
               Modern Townhouse · Thu Duc · v3
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-slate-800/80 text-sky-400 border border-slate-700/50">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-dark-hover/80 text-sky-400 border border-dark-hover/50">
             <Lock size={12} />
             <span>Encrypted</span>
           </span>
 
-          <span className="text-xs font-mono font-semibold text-slate-300 bg-slate-800/60 px-2.5 py-1 rounded-md border border-slate-700/40">
+          <span className="text-xs font-mono font-semibold text-brand-on-dark bg-dark-hover/60 px-2.5 py-1 rounded-md border border-dark-hover/40">
             12:34
           </span>
 
@@ -121,27 +121,27 @@ export const CallMeeting: React.FC = () => {
       {/* Main Body (2 Columns) */}
       <div className="flex-1 flex overflow-hidden">
         {/* LEFT VIEW: Main Screen & Controls */}
-        <div className="flex-1 flex flex-col p-4 gap-4 overflow-hidden bg-[#070b16]">
+        <div className="flex-1 flex flex-col p-4 gap-4 overflow-hidden bg-dark">
           {/* Shared Screen Preview Box */}
-          <div className="flex-1 bg-[#0b1329] border border-slate-800/80 rounded-2xl relative flex flex-col items-center justify-center overflow-hidden shadow-2xl">
+          <div className="flex-1 bg-dark-hover border border-dark-hover/80 rounded-2xl relative flex flex-col items-center justify-center overflow-hidden shadow-2xl">
             {/* Top Indicator */}
-            <div className="absolute top-4 left-4 bg-slate-900/80 backdrop-blur-md px-3 py-1.5 rounded-lg border border-slate-700/50 text-xs font-medium text-slate-200 flex items-center gap-2">
+            <div className="absolute top-4 left-4 bg-dark/80 backdrop-blur-md px-3 py-1.5 rounded-lg border border-dark-hover/50 text-xs font-medium text-[#FBF8EF] flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
               <span>Nguyen Linh is sharing</span>
             </div>
 
             {/* 3D Model Center Graphic Placeholder */}
-            <div className="flex flex-col items-center justify-center text-slate-400">
-              <div className="w-16 h-16 rounded-2xl border border-slate-700/60 bg-slate-800/40 flex items-center justify-center text-slate-300 mb-3 shadow-inner">
+            <div className="flex flex-col items-center justify-center text-brand-on-dark">
+              <div className="w-16 h-16 rounded-2xl border border-dark-hover/60 bg-dark-hover/40 flex items-center justify-center text-brand-on-dark mb-3 shadow-inner">
                 <Box size={32} />
               </div>
-              <p className="text-xs font-medium text-slate-400">
+              <p className="text-xs font-medium text-brand-on-dark">
                 Shared screen · 3D view · Living room · v3
               </p>
             </div>
 
             {/* Bottom Overlay Info */}
-            <div className="absolute bottom-4 left-4 bg-slate-900/70 backdrop-blur-md px-3 py-1.5 rounded-lg border border-slate-800 text-[11px] text-slate-400">
+            <div className="absolute bottom-4 left-4 bg-dark/70 backdrop-blur-md px-3 py-1.5 rounded-lg border border-dark-hover text-[11px] text-brand-on-dark">
               📌 Pin comments are visible to everyone
             </div>
           </div>
@@ -149,31 +149,31 @@ export const CallMeeting: React.FC = () => {
           {/* Bottom Video Grid Strip (3 Participants) */}
           <div className="h-32 grid grid-cols-3 gap-4 flex-shrink-0">
             {/* Minh Anh */}
-            <div className="bg-[#0b1329] border border-slate-800/80 rounded-2xl relative flex items-center justify-center overflow-hidden">
-              <div className="w-11 h-11 rounded-full bg-emerald-600 text-white font-bold text-xs flex items-center justify-center shadow-md">
+            <div className="bg-dark-hover border border-dark-hover/80 rounded-2xl relative flex items-center justify-center overflow-hidden">
+              <div className="w-11 h-11 rounded-full bg-emerald-600 text-[#FBF8EF] font-bold text-xs flex items-center justify-center shadow-md">
                 MA
               </div>
-              <div className="absolute bottom-2.5 left-3 text-[11px] font-semibold text-slate-300">
+              <div className="absolute bottom-2.5 left-3 text-[11px] font-semibold text-brand-on-dark">
                 Minh Anh (You) <span className="text-slate-500 font-normal">Homeowner</span>
               </div>
             </div>
 
             {/* Nguyen Linh (Active Speaker Highlight) */}
-            <div className="bg-[#0b1329] border-2 border-sky-500/80 rounded-2xl relative flex items-center justify-center overflow-hidden shadow-lg shadow-sky-500/10">
-              <div className="w-11 h-11 rounded-full bg-brand text-white font-bold text-xs flex items-center justify-center shadow-md">
+            <div className="bg-dark-hover border-2 border-sky-500/80 rounded-2xl relative flex items-center justify-center overflow-hidden shadow-lg shadow-sky-500/10">
+              <div className="w-11 h-11 rounded-full bg-brand text-[#FBF8EF] font-bold text-xs flex items-center justify-center shadow-md">
                 NL
               </div>
-              <div className="absolute bottom-2.5 left-3 text-[11px] font-semibold text-slate-300">
+              <div className="absolute bottom-2.5 left-3 text-[11px] font-semibold text-brand-on-dark">
                 Nguyen Linh <span className="text-slate-500 font-normal">Designer</span>
               </div>
             </div>
 
             {/* Tran Nam */}
-            <div className="bg-[#0b1329] border border-slate-800/80 rounded-2xl relative flex items-center justify-center overflow-hidden">
-              <div className="w-11 h-11 rounded-full bg-purple-600 text-white font-bold text-xs flex items-center justify-center shadow-md">
+            <div className="bg-dark-hover border border-dark-hover/80 rounded-2xl relative flex items-center justify-center overflow-hidden">
+              <div className="w-11 h-11 rounded-full bg-purple-600 text-[#FBF8EF] font-bold text-xs flex items-center justify-center shadow-md">
                 TN
               </div>
-              <div className="absolute bottom-2.5 left-3 text-[11px] font-semibold text-slate-300">
+              <div className="absolute bottom-2.5 left-3 text-[11px] font-semibold text-brand-on-dark">
                 Tran Nam <span className="text-slate-500 font-normal">Staff</span>
               </div>
             </div>
@@ -187,7 +187,7 @@ export const CallMeeting: React.FC = () => {
               className={`p-3 rounded-xl border transition cursor-pointer ${
                 isMuted
                   ? 'bg-rose-600/20 border-rose-500/50 text-rose-400'
-                  : 'bg-slate-800/80 border-slate-700/60 text-slate-200 hover:bg-slate-700/80'
+                  : 'bg-dark-hover/80 border-dark-hover/60 text-[#FBF8EF] hover:bg-dark-hover/80'
               }`}
             >
               {isMuted ? <MicOff size={18} /> : <Mic size={18} />}
@@ -199,7 +199,7 @@ export const CallMeeting: React.FC = () => {
               className={`p-3 rounded-xl border transition cursor-pointer ${
                 !isVideoOn
                   ? 'bg-rose-600/20 border-rose-500/50 text-rose-400'
-                  : 'bg-slate-800/80 border-slate-700/60 text-slate-200 hover:bg-slate-700/80'
+                  : 'bg-dark-hover/80 border-dark-hover/60 text-[#FBF8EF] hover:bg-dark-hover/80'
               }`}
             >
               {isVideoOn ? <Video size={18} /> : <VideoOff size={18} />}
@@ -210,8 +210,8 @@ export const CallMeeting: React.FC = () => {
               onClick={() => setIsSharing(!isSharing)}
               className={`p-3 rounded-xl border transition cursor-pointer ${
                 isSharing
-                  ? 'bg-brand border-blue-500 text-white'
-                  : 'bg-slate-800/80 border-slate-700/60 text-slate-200 hover:bg-slate-700/80'
+                  ? 'bg-brand border-blue-500 text-[#FBF8EF]'
+                  : 'bg-dark-hover/80 border-dark-hover/60 text-[#FBF8EF] hover:bg-dark-hover/80'
               }`}
             >
               <Monitor size={18} />
@@ -219,14 +219,14 @@ export const CallMeeting: React.FC = () => {
 
             <button
               type="button"
-              className="p-3 bg-slate-800/80 border border-slate-700/60 rounded-xl text-slate-200 hover:bg-slate-700/80 transition cursor-pointer"
+              className="p-3 bg-dark-hover/80 border border-dark-hover/60 rounded-xl text-[#FBF8EF] hover:bg-dark-hover/80 transition cursor-pointer"
             >
               <MessageSquare size={18} />
             </button>
 
             <button
               type="button"
-              className="p-3 bg-slate-800/80 border border-slate-700/60 rounded-xl text-slate-200 hover:bg-slate-700/80 transition cursor-pointer"
+              className="p-3 bg-dark-hover/80 border border-dark-hover/60 rounded-xl text-[#FBF8EF] hover:bg-dark-hover/80 transition cursor-pointer"
             >
               <Layers size={18} />
             </button>
@@ -235,7 +235,7 @@ export const CallMeeting: React.FC = () => {
             <button
               type="button"
               onClick={() => navigate('/messages')}
-              className="inline-flex items-center gap-2 px-5 py-3 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-lg transition cursor-pointer ml-2"
+              className="inline-flex items-center gap-2 px-5 py-3 bg-rose-600 hover:bg-rose-700 text-[#FBF8EF] font-bold text-xs rounded-xl shadow-lg transition cursor-pointer ml-2"
             >
               <PhoneOff size={16} />
               <span>Leave call</span>
@@ -244,17 +244,17 @@ export const CallMeeting: React.FC = () => {
         </div>
 
         {/* RIGHT SIDEBAR PANEL */}
-        <div className="w-80 border-l border-slate-800/80 bg-[#0a1124] flex flex-col justify-between flex-shrink-0">
+        <div className="w-80 border-l border-dark-hover/80 bg-dark flex flex-col justify-between flex-shrink-0">
           <div className="flex-1 flex flex-col overflow-hidden">
             {/* Top Navigation Tabs */}
-            <div className="p-3 border-b border-slate-800/80 flex items-center justify-between gap-1">
+            <div className="p-3 border-b border-dark-hover/80 flex items-center justify-between gap-1">
               <button
                 type="button"
                 onClick={() => setActiveTab('chat')}
                 className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition cursor-pointer ${
                   activeTab === 'chat'
-                    ? 'bg-slate-800/90 text-white shadow-sm'
-                    : 'text-slate-400 hover:text-slate-200'
+                    ? 'bg-dark-hover/90 text-[#FBF8EF] shadow-sm'
+                    : 'text-brand-on-dark hover:text-[#FBF8EF]'
                 }`}
               >
                 Chat
@@ -265,8 +265,8 @@ export const CallMeeting: React.FC = () => {
                 onClick={() => setActiveTab('people')}
                 className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition cursor-pointer ${
                   activeTab === 'people'
-                    ? 'bg-slate-800/90 text-white shadow-sm'
-                    : 'text-slate-400 hover:text-slate-200'
+                    ? 'bg-dark-hover/90 text-[#FBF8EF] shadow-sm'
+                    : 'text-brand-on-dark hover:text-[#FBF8EF]'
                 }`}
               >
                 People
@@ -277,8 +277,8 @@ export const CallMeeting: React.FC = () => {
                 onClick={() => setActiveTab('project')}
                 className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition cursor-pointer ${
                   activeTab === 'project'
-                    ? 'bg-slate-800/90 text-white shadow-sm'
-                    : 'text-slate-400 hover:text-slate-200'
+                    ? 'bg-dark-hover/90 text-[#FBF8EF] shadow-sm'
+                    : 'text-brand-on-dark hover:text-[#FBF8EF]'
                 }`}
               >
                 Project
@@ -289,7 +289,7 @@ export const CallMeeting: React.FC = () => {
             <div className="flex-1 overflow-y-auto p-4 space-y-6">
               {/* Section: IN THIS CALL */}
               <div>
-                <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3">
+                <h3 className="text-[10px] font-bold text-brand-on-dark uppercase tracking-wider mb-3">
                   IN THIS CALL ({participants.length})
                 </h3>
 
@@ -297,10 +297,10 @@ export const CallMeeting: React.FC = () => {
                   {participants.map((p) => (
                     <div key={p.id} className="flex items-center justify-between">
                       <div className="flex items-center gap-2.5">
-                        <div className="w-7 h-7 rounded-full bg-brand text-white font-bold text-[10px] flex items-center justify-center flex-shrink-0">
+                        <div className="w-7 h-7 rounded-full bg-brand text-[#FBF8EF] font-bold text-[10px] flex items-center justify-center flex-shrink-0">
                           {p.avatar}
                         </div>
-                        <span className="text-xs font-bold text-slate-200">
+                        <span className="text-xs font-bold text-[#FBF8EF]">
                           {p.name}
                         </span>
                       </div>
@@ -309,7 +309,7 @@ export const CallMeeting: React.FC = () => {
                         <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${p.roleColor}`}>
                           {p.role}
                         </span>
-                        <MicIcon size={12} className="text-slate-400" />
+                        <MicIcon size={12} className="text-brand-on-dark" />
                       </div>
                     </div>
                   ))}
@@ -317,8 +317,8 @@ export const CallMeeting: React.FC = () => {
               </div>
 
               {/* Section: CHAT MESSAGES */}
-              <div className="pt-2 border-t border-slate-800/80">
-                <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3">
+              <div className="pt-2 border-t border-dark-hover/80">
+                <h3 className="text-[10px] font-bold text-brand-on-dark uppercase tracking-wider mb-3">
                   CHAT
                 </h3>
 
@@ -326,28 +326,28 @@ export const CallMeeting: React.FC = () => {
                   {messages.map((msg) => (
                     <div key={msg.id} className="space-y-1">
                       <div className="flex items-center gap-2">
-                        <div className={`w-5 h-5 rounded-full ${msg.avatarBg} text-white font-bold text-[9px] flex items-center justify-center`}>
+                        <div className={`w-5 h-5 rounded-full ${msg.avatarBg} text-[#FBF8EF] font-bold text-[9px] flex items-center justify-center`}>
                           {msg.avatar}
                         </div>
-                        <span className="text-xs font-bold text-slate-200">
+                        <span className="text-xs font-bold text-[#FBF8EF]">
                           {msg.sender}
                         </span>
                       </div>
 
-                      <p className="text-xs text-slate-400 pl-7 leading-relaxed">
+                      <p className="text-xs text-brand-on-dark pl-7 leading-relaxed">
                         {msg.text}
                       </p>
 
                       {msg.hasFile && (
-                        <div className="ml-7 mt-2 p-2.5 bg-slate-800/60 border border-slate-700/60 rounded-xl flex items-center justify-between text-xs text-slate-200">
+                        <div className="ml-7 mt-2 p-2.5 bg-dark-hover/60 border border-dark-hover/60 rounded-xl flex items-center justify-between text-xs text-[#FBF8EF]">
                           <div className="flex items-center gap-2 min-w-0">
-                            <Box size={14} className="text-blue-400 flex-shrink-0" />
+                            <Box size={14} className="text-brand-on-dark flex-shrink-0" />
                             <div className="min-w-0">
                               <p className="font-bold text-[11px] truncate">{msg.fileName}</p>
-                              <p className="text-[10px] text-slate-400">Shared by {msg.fileAuthor}</p>
+                              <p className="text-[10px] text-brand-on-dark">Shared by {msg.fileAuthor}</p>
                             </div>
                           </div>
-                          <button type="button" className="text-slate-400 hover:text-white p-1">
+                          <button type="button" className="text-brand-on-dark hover:text-[#FBF8EF] p-1">
                             <Eye size={13} />
                           </button>
                         </div>
@@ -360,18 +360,18 @@ export const CallMeeting: React.FC = () => {
           </div>
 
           {/* Bottom Chat Input Form */}
-          <form onSubmit={handleSendMessage} className="p-3 border-t border-slate-800/80 bg-[#0a1124]">
+          <form onSubmit={handleSendMessage} className="p-3 border-t border-dark-hover/80 bg-dark">
             <div className="relative flex items-center">
               <input
                 type="text"
                 placeholder="Type a message..."
                 value={chatMessage}
                 onChange={(e) => setChatMessage(e.target.value)}
-                className="w-full pl-3.5 pr-9 py-2 bg-slate-800/80 border border-slate-700/60 rounded-xl text-xs font-medium text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-blue-500"
+                className="w-full pl-3.5 pr-9 py-2 bg-dark-hover/80 border border-dark-hover/60 rounded-xl text-xs font-medium text-[#FBF8EF] placeholder:text-slate-500 focus:outline-none focus:border-brand"
               />
               <button
                 type="submit"
-                className="absolute right-2.5 text-slate-400 hover:text-blue-400 cursor-pointer"
+                className="absolute right-2.5 text-brand-on-dark hover:text-brand-on-dark cursor-pointer"
               >
                 <Send size={14} />
               </button>

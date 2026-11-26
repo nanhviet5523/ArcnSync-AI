@@ -79,7 +79,7 @@ function RevisionPicker({ value, onChange, limit, major }: { value: RevisionType
           return (
             <label key={r} className={`rounded-lg border p-3 text-sm transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-brand ${off ? 'cursor-not-allowed border-line opacity-60' : value === r ? 'cursor-pointer border-brand bg-brand-soft' : 'cursor-pointer border-line hover:border-line-strong'}`}>
               <input type="radio" name="revision" className="sr-only" checked={value === r} disabled={off} onChange={() => onChange(r)} />
-              <span className="font-medium text-slate-900">{t(r === 'MINOR' ? 'workspace.minor' : 'workspace.major')}</span>
+              <span className="font-medium text-ink">{t(r === 'MINOR' ? 'workspace.minor' : 'workspace.major')}</span>
               <span className="mt-0.5 block text-xs text-slate-500">{t(r === 'MINOR' ? 'workspace.minorHint' : 'workspace.majorHint')}</span>
             </label>
           );
@@ -160,7 +160,7 @@ function UploadDialog({ floors, first, latest, limit, major, wallHeight, threads
           {rows.map((r) => (
             <div key={r.key} className="rounded-lg border border-line p-3">
               <div className="flex flex-wrap items-end gap-3">
-                {r.floor_id ? <p className="min-w-0 flex-1 pb-2 text-sm font-medium text-slate-900">{r.name}</p> : (
+                {r.floor_id ? <p className="min-w-0 flex-1 pb-2 text-sm font-medium text-ink">{r.name}</p> : (
                   <Field label={t('upload.floorName')} className="min-w-0 flex-1" error={rowErrors[r.key]?.name ?? rowErrors[r.key]?.level}>{(f) => <Input {...f} value={r.name} maxLength={100} onChange={(e) => patch(r.key, { name: e.target.value })} />}</Field>
                 )}
                 <Field label={t('upload.floorHeight')} className="w-32" error={rowErrors[r.key]?.height}>
@@ -170,7 +170,7 @@ function UploadDialog({ floors, first, latest, limit, major, wallHeight, threads
                   <Button size="sm" variant="ghost" aria-label={t('upload.removeFloor', { name: r.name })} className="mb-0.5" onClick={() => setRows(rows.filter((x) => x.key !== r.key))}>×</Button>
                 )}
               </div>
-              <input type="file" accept=".dxf" aria-label={`DXF ${r.name}`} className="mt-2 block w-full text-xs file:mr-3 file:rounded-md file:border file:border-slate-300 file:bg-white file:px-2.5 file:py-1 file:text-xs file:font-medium file:text-slate-700"
+              <input type="file" accept=".dxf" aria-label={`DXF ${r.name}`} className="mt-2 block w-full text-xs file:mr-3 file:rounded-md file:border file:border-slate-300 file:bg-surface file:px-2.5 file:py-1 file:text-xs file:font-medium file:text-slate-700"
                 onChange={(e) => patch(r.key, { file: e.target.files?.[0] ?? null })} />
               {r.floor_id && !r.file && <p className="mt-1 text-xs text-slate-500">{first ? t('upload.noFileFirst') : t('upload.noFileCopy')}</p>}
               {tried && rowErrors[r.key]?.file && <p role="alert" className="mt-1 text-xs text-rose-600">{rowErrors[r.key].file}</p>}
@@ -211,7 +211,7 @@ function PanelTabs({ items, value, onChange }: { items: { id: RightTab; label: s
         const on = it.id === value;
         return (
           <button key={it.id} role="tab" type="button" aria-selected={on} tabIndex={on ? 0 : -1} onClick={() => onChange(it.id)}
-            className={`inline-flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap border-b-2 px-2 text-[13px] font-medium transition-colors focus-visible:outline-2 focus-visible:outline-brand ${on ? 'border-brand text-brand' : 'border-transparent text-slate-600 hover:text-slate-900'}`}>
+            className={`inline-flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap border-b-2 px-2 text-[13px] font-medium transition-colors focus-visible:outline-2 focus-visible:outline-brand ${on ? 'border-brand text-brand' : 'border-transparent text-slate-600 hover:text-ink'}`}>
             {it.label}
             {!!it.badge && <span className="min-w-[18px] rounded-full bg-rose-500 px-1 text-center text-[11px] font-semibold leading-[18px] text-white">{it.badge}</span>}
           </button>
@@ -1043,7 +1043,7 @@ export function WorkspacePage() {
   const awaitingReason = awaiting && !readOnly && viewer.role !== 'homeowner' ? approveBlockers('approveProducts', { role: viewer.role, awaitingDesigner: true })[0] ?? null : null;
 
   return (
-    <div className="grid h-dvh grid-rows-[56px_minmax(0,1fr)] overflow-hidden bg-canvas font-sans text-slate-900">
+    <div className="grid h-dvh grid-rows-[56px_minmax(0,1fr)] overflow-hidden bg-canvas font-sans text-ink">
       <WorkspaceBar role={viewer.role} backTo={backTo} title={project.title} stage={version?.version_type ?? null}
         versions={versions} current={current} onVersion={goVersion}
         canCompare={(v) => compareOptions.some((o) => o.id === v.id)}
@@ -1055,7 +1055,7 @@ export function WorkspacePage() {
         autoApproved={(id) => isAutoApproved(id, milestones)} />
 
       <div className={`relative grid min-h-0 grid-cols-1 ${cols}`}>
-        {drawer && <div className={`fixed inset-0 ${Z.drawerBackdrop} bg-slate-900/30 lg:hidden`} onClick={() => setDrawer(null)} />}
+        {drawer && <div className={`fixed inset-0 ${Z.drawerBackdrop} bg-dark/30 lg:hidden`} onClick={() => setDrawer(null)} />}
 
         {/* left: floors → rooms */}
         <aside ref={leftRef} tabIndex={-1} inert={narrow && drawer !== 'left'} aria-label={t('ws.floorsRooms')} className={`${drawerCls('left')} w-[85vw] max-w-[280px] border-r border-line lg:w-auto lg:max-w-none ${leftCollapsed ? 'lg:hidden' : ''}`}>
@@ -1110,7 +1110,7 @@ export function WorkspacePage() {
           {!version || !floor ? (
             <div className="flex h-full items-center justify-center px-6 text-center">
               <div className="max-w-sm">
-                <p className="text-[15px] font-semibold text-slate-900">{t('workspace.noDrawing')}</p>
+                <p className="text-[15px] font-semibold text-ink">{t('workspace.noDrawing')}</p>
                 <p className="mt-1 text-sm text-slate-600">{conceptFirst ? t('workspace.conceptFirst') : canFirstUpload ? t('workspace.uploadFirst') : t('workspace.waitingDesigner')}</p>
                 {firstUploadReady && <Button variant="primary" className="mt-4" onClick={() => setUploading(true)}>{t('workspace.uploadDxf')}</Button>}
                 {conceptFirst && (
@@ -1175,7 +1175,7 @@ export function WorkspacePage() {
               <div className="pointer-events-none absolute inset-x-3 top-3 flex items-start gap-2">
                 {leftCollapsed && (
                   <button type="button" onClick={() => setLeftCollapsed(false)} aria-label={t('ws.expand')} title={t('ws.expand')}
-                    className="pointer-events-auto hidden h-8 w-8 items-center justify-center rounded-lg border border-line bg-surface text-slate-700 shadow-float hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-brand lg:flex">
+                    className="pointer-events-auto hidden h-8 w-8 items-center justify-center rounded-lg border border-line bg-surface text-slate-700 shadow-float hover:bg-sand-50 focus-visible:outline-2 focus-visible:outline-brand lg:flex">
                     <PanelLeftOpen className="h-4 w-4" />
                   </button>
                 )}
@@ -1187,14 +1187,14 @@ export function WorkspacePage() {
                   <div className="pointer-events-auto absolute left-1/2 top-0 flex -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-full bg-slate-800 py-1 pl-3.5 pr-1 text-xs text-white shadow-float">
                     {t('workspace.readOnly')}
                     {latest && latest.id !== version.id
-                      ? <button type="button" className="rounded-full bg-white/15 px-2.5 py-1 font-medium hover:bg-white/25 focus-visible:outline-2 focus-visible:outline-white" onClick={() => goVersion(latest.id)}>{t('workspace.viewLatest')}</button>
+                      ? <button type="button" className="rounded-full bg-surface/15 px-2.5 py-1 font-medium hover:bg-surface/25 focus-visible:outline-2 focus-visible:outline-white" onClick={() => goVersion(latest.id)}>{t('workspace.viewLatest')}</button>
                       : <span className="pr-2" />}
                   </div>
                 )}
                 {work.previewDraft && (
                   <div role="status" className="pointer-events-auto absolute left-1/2 top-0 flex -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-full bg-slate-800 py-1 pl-3.5 pr-1 text-xs text-white shadow-float">
                     {t('drafts.previewing', { room: work.previewDraft.room_name, name: work.previewDraft.designer_name })}
-                    <button type="button" className="rounded-full bg-white/15 px-2.5 py-1 font-medium hover:bg-white/25 focus-visible:outline-2 focus-visible:outline-white" onClick={() => work.setPreviewId(null)}>{t('drafts.exitPreview')}</button>
+                    <button type="button" className="rounded-full bg-surface/15 px-2.5 py-1 font-medium hover:bg-surface/25 focus-visible:outline-2 focus-visible:outline-white" onClick={() => work.setPreviewId(null)}>{t('drafts.exitPreview')}</button>
                   </div>
                 )}
                 <div className="pointer-events-auto flex items-center gap-2">
@@ -1279,7 +1279,7 @@ export function WorkspacePage() {
               )}
               {leadEditing && (
                 <div className="flex shrink-0 items-center gap-2 border-t border-line bg-surface px-4 py-3">
-                  <span className={`min-w-0 flex-1 truncate text-[13px] ${leadCount ? 'font-medium text-slate-900' : 'text-slate-500'}`}>
+                  <span className={`min-w-0 flex-1 truncate text-[13px] ${leadCount ? 'font-medium text-ink' : 'text-slate-500'}`}>
                     {leadCount ? t('items.draft', { n: leadCount }) : work.readyDrafts.length ? t('drafts.readyCount', { n: work.readyDrafts.length }) : t('ws.noDraft')}
                   </span>
                   {leadCount > 0 && <Button size="sm" variant="ghost" onClick={discardLeadWork} disabled={busy}>{t('items.discard')}</Button>}
@@ -1292,7 +1292,7 @@ export function WorkspacePage() {
               )}
               {reviewing && !leadEditing && (
                 <div className="flex shrink-0 items-center gap-2 border-t border-line bg-surface px-4 py-3">
-                  <span className={`min-w-0 flex-1 truncate text-[13px] ${work.readyDrafts.length ? 'font-medium text-slate-900' : 'text-slate-500'}`}>
+                  <span className={`min-w-0 flex-1 truncate text-[13px] ${work.readyDrafts.length ? 'font-medium text-ink' : 'text-slate-500'}`}>
                     {work.readyDrafts.length ? t('drafts.readyCount', { n: work.readyDrafts.length }) : t('drafts.noneReady')}
                   </span>
                   <Button size="sm" variant="primary" disabled={!work.readyDrafts.length || layoutBlocked || awaitingLayoutPayment} loading={busy}
@@ -1397,7 +1397,7 @@ export function WorkspacePage() {
           }}>{t('workspace.sendRequest')}</Button>
         </>}>
           <p className="mb-3 text-sm text-slate-700">{t('workspace.requestBody', { label: versionLabel(version.label, viewer.role) })}</p>
-          {roundLimit && <p className="mb-3 text-sm font-medium text-slate-900">{t('workspace.roundsLeft', { n: roundLimit.remaining, max: roundLimit.limit })}</p>}
+          {roundLimit && <p className="mb-3 text-sm font-medium text-ink">{t('workspace.roundsLeft', { n: roundLimit.remaining, max: roundLimit.limit })}</p>}
           <Textarea autoFocus rows={3} maxLength={2000} value={text} aria-label={t('workspace.requestChanges')} onChange={(e) => setText(e.target.value)} />
         </Modal>
       )}
@@ -1431,9 +1431,9 @@ export function WorkspacePage() {
           <div className="space-y-4">
             <Field label={t('workspace.titleLabel')}>{(f) => <Input {...f} autoFocus value={text} maxLength={255} onChange={(e) => setText(e.target.value)} placeholder={t('workspace.savePlaceholder')} />}</Field>
             {saveMode === 'first' ? (
-              <p className="rounded-lg border border-line bg-slate-50 px-3 py-2 text-[13px] text-slate-700">{t('workspace.firstSubmission')}</p>
+              <p className="rounded-lg border border-line bg-sand-50 px-3 py-2 text-[13px] text-slate-700">{t('workspace.firstSubmission')}</p>
             ) : saveMode === 'layoutMajor' ? (
-              <p className={`rounded-lg border px-3 py-2 text-[13px] ${layoutBlocked ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-line bg-slate-50 text-slate-700'}`}>
+              <p className={`rounded-lg border px-3 py-2 text-[13px] ${layoutBlocked ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-line bg-sand-50 text-slate-700'}`}>
                 {layoutBlocked ? `${t('reasons.noMajorLeft')} ${t('drafts.discardMovedHint')}`
                   : layoutStage ? t('drafts.layoutRevision', { used: (stageLimit?.used ?? 0) + 1, max: stageLimit?.limit ?? '—' })
                   : t('drafts.majorUse', { used: stageLimit?.used ?? 0, max: stageLimit?.limit ?? '—' })}
@@ -1444,7 +1444,7 @@ export function WorkspacePage() {
             {!layoutStage && (leadCount > 0 || !work.readyDrafts.length) && <p className="text-xs text-slate-500">{t('workspace.draftCount', { n: leadCount })}</p>}
             {!!work.readyDrafts.length && summary && (
               <section aria-label={t('drafts.mergeSummary')} className="rounded-lg border border-line p-3 text-[13px]">
-                <h3 className="font-medium text-slate-900">{t('drafts.mergeSummary')}</h3>
+                <h3 className="font-medium text-ink">{t('drafts.mergeSummary')}</h3>
                 <ul className="mt-1.5 space-y-1">
                   {summary.rooms.map((r) => (
                     <li key={r.key} className="flex justify-between gap-3 text-slate-700">
@@ -1459,7 +1459,7 @@ export function WorkspacePage() {
                     </li>
                   )}
                 </ul>
-                {!layoutStage && <p className="mt-2 flex justify-between gap-3 border-t border-line pt-2 font-semibold text-slate-900">
+                {!layoutStage && <p className="mt-2 flex justify-between gap-3 border-t border-line pt-2 font-semibold text-ink">
                   <span>{t('drafts.mergeTotal')}</span>
                   <span className="tabular-nums">{signedVnd(summary.total)}</span>
                 </p>}

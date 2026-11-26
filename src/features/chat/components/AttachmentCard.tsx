@@ -56,7 +56,7 @@ export function AttachmentCard({
     <>
       <div
         className={`w-64 max-w-full overflow-hidden rounded-xl border ${
-          mine ? 'border-white/30 bg-white/10' : 'border-line bg-surface'
+          mine ? 'border-white/30 bg-surface/10' : 'border-line bg-surface'
         }`}
       >
         {previewable && (
@@ -73,7 +73,7 @@ export function AttachmentCard({
           ) : (
             <span
               className={`flex h-8 w-10 shrink-0 items-center justify-center rounded-lg text-[10px] font-bold tracking-wide ${
-                mine ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-700'
+                mine ? 'bg-surface/20 text-[#FBF8EF]' : 'bg-slate-100 text-slate-700'
               }`}
             >
               {badge}
@@ -84,7 +84,7 @@ export function AttachmentCard({
               {name}
             </p>
             {size && (
-              <p className={`text-xs ${mine ? 'text-white/80' : 'text-slate-500'}`}>{size}</p>
+              <p className={`text-xs ${mine ? 'text-[#FBF8EF]/80' : 'text-slate-500'}`}>{size}</p>
             )}
           </div>
           <button
@@ -94,7 +94,7 @@ export function AttachmentCard({
             aria-label={t('chat.thread.download', { name })}
             title={t('chat.thread.download', { name })}
             className={`flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg focus-visible:outline-2 focus-visible:outline-brand disabled:cursor-wait disabled:opacity-60 ${
-              mine ? 'hover:bg-white/15' : 'hover:bg-slate-100'
+              mine ? 'hover:bg-surface/15' : 'hover:bg-slate-100'
             }`}
           >
             {downloading ? (
@@ -111,7 +111,7 @@ export function AttachmentCard({
           <div
             role="alert"
             className={`flex items-center justify-between gap-2 px-2.5 pb-2 text-xs ${
-              mine ? 'text-white' : 'text-rose-700'
+              mine ? 'text-[#FBF8EF]' : 'text-rose-700'
             }`}
           >
             <span>{downloadError.message}</span>
@@ -199,7 +199,7 @@ function ImagePreview({
           <button
             type="button"
             onClick={() => setAttempt((n) => n + 1)}
-            className="inline-flex cursor-pointer items-center gap-1 rounded-md bg-white px-2.5 py-1 text-xs font-medium text-slate-700 shadow-xs ring-1 ring-slate-200 hover:bg-slate-50"
+            className="inline-flex cursor-pointer items-center gap-1 rounded-md bg-surface px-2.5 py-1 text-xs font-medium text-slate-700 shadow-xs ring-1 ring-slate-200 hover:bg-sand-50"
           >
             <RotateCw aria-hidden className="h-3 w-3" />
             {t('common.retry')}
@@ -221,7 +221,7 @@ function ImagePreview({
       <img src={state.url} alt={alt} className={`${PREVIEW_FRAME} block object-contain`} />
       <span
         aria-hidden
-        className="pointer-events-none absolute right-2 bottom-2 flex h-7 w-7 items-center justify-center rounded-lg bg-slate-900/65 text-white opacity-0 transition group-hover:opacity-100"
+        className="pointer-events-none absolute right-2 bottom-2 flex h-7 w-7 items-center justify-center rounded-lg bg-dark/65 text-[#FBF8EF] opacity-0 transition group-hover:opacity-100"
       >
         <Expand className="h-3.5 w-3.5" />
       </span>
@@ -258,22 +258,22 @@ function ImageLightbox({
       aria-modal="true"
       aria-label={name}
       onClick={onClose}
-      className={`fixed inset-0 ${Z.modal} flex flex-col bg-slate-950/90 p-4 backdrop-blur-xs sm:p-6`}
+      className={`fixed inset-0 ${Z.modal} flex flex-col bg-dark/90 p-4 backdrop-blur-xs sm:p-6`}
     >
       <div
-        className="mx-auto flex w-full max-w-5xl items-center justify-between gap-3 pb-3 text-white"
+        className="mx-auto flex w-full max-w-5xl items-center justify-between gap-3 pb-3 text-[#FBF8EF]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold">{name}</p>
-          {size && <p className="text-xs text-slate-400">{size}</p>}
+          {size && <p className="text-xs text-brand-on-dark">{size}</p>}
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <button
             type="button"
             onClick={onDownload}
             disabled={downloading}
-            className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg bg-white/10 px-3 text-xs font-semibold text-white transition hover:bg-white/20 disabled:opacity-60"
+            className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg bg-surface/10 px-3 text-xs font-semibold text-[#FBF8EF] transition hover:bg-surface/20 disabled:opacity-60"
           >
             <Download aria-hidden className="h-4 w-4" />
             {t('chat.thread.download', { name: '' }).trim()}
@@ -282,7 +282,7 @@ function ImageLightbox({
             type="button"
             onClick={onClose}
             aria-label={t('common.close')}
-            className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg bg-white/10 text-white transition hover:bg-white/20"
+            className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg bg-surface/10 text-[#FBF8EF] transition hover:bg-surface/20"
           >
             <X aria-hidden className="h-4 w-4" />
           </button>

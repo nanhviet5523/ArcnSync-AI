@@ -40,7 +40,7 @@ export function InquiriesPage() {
   const total = counts ? INQUIRY_STATUSES.reduce((n, s) => n + counts[s], 0) : 0;
   const filtered = filter !== 'ALL' || !!topic || !!query || mine;
   const columns: Column<Inquiry>[] = [
-    { key: 'from', header: t('inquiries.col.from'), cell: (i) => <><p className="font-medium text-slate-900">{i.fullName}</p><p className="text-xs text-slate-500">{i.email}</p></>, sort: (i) => i.fullName },
+    { key: 'from', header: t('inquiries.col.from'), cell: (i) => <><p className="font-medium text-ink">{i.fullName}</p><p className="text-xs text-slate-500">{i.email}</p></>, sort: (i) => i.fullName },
     { key: 'topic', header: t('inquiries.col.topic'), cell: (i) => t(`inquiries.topic.${i.topic}`), sort: (i) => i.topic },
     { key: 'message', header: t('inquiries.col.message'), cell: (i) => <p className="line-clamp-2 max-w-md text-slate-700">{i.message}</p>, hideOnMobile: true },
     { key: 'status', header: t('inquiries.col.status'), cell: (i) => <StatusChip kind="inquiry" value={i.status} size="sm" /> },
@@ -62,7 +62,7 @@ export function InquiriesPage() {
             <option value="">{t('inquiries.allTopics')}</option>
             {INQUIRY_TOPICS.map((x) => <option key={x} value={x}>{t(`inquiries.topic.${x}`)}</option>)}
           </Select>
-          <label className="flex h-9 items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700">
+          <label className="flex h-9 items-center gap-2 rounded-lg border border-slate-300 bg-surface px-3 text-sm text-slate-700">
             <input type="checkbox" className="h-4 w-4 accent-brand" checked={mine} onChange={(e) => setMine(e.target.checked)} />
             {t('inquiries.mine')}
           </label>
@@ -106,7 +106,7 @@ function InquiryDialog({ inquiry: i, onClose, onChanged }: { inquiry: Inquiry; o
       <div className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <p className="text-[15px] font-semibold text-slate-900">{i.fullName}</p>
+            <p className="text-[15px] font-semibold text-ink">{i.fullName}</p>
             <p className="text-xs text-slate-500">{t('inquiries.received', { date: formatDateTime(i.createdAt) })}{i.handledAt && ` · ${t('inquiries.handled', { date: formatDateTime(i.handledAt) })}`}</p>
           </div>
           <StatusChip kind="inquiry" value={i.status} />
@@ -117,10 +117,10 @@ function InquiryDialog({ inquiry: i, onClose, onChanged }: { inquiry: Inquiry; o
           ...(i.propertyType ? [{ label: t('inquiries.propertyType'), value: t(`projectDetail.propertyType.${i.propertyType}`) }] : []),
           { label: t('inquiries.col.assignee'), value: i.assignee?.fullName ?? t('inquiries.unassigned') },
         ]} />
-        <p className="whitespace-pre-line rounded-lg border border-line bg-slate-50 px-3 py-2.5 text-sm text-slate-800">{i.message}</p>
+        <p className="whitespace-pre-line rounded-lg border border-line bg-sand-50 px-3 py-2.5 text-sm text-ink">{i.message}</p>
         <div className="flex flex-wrap gap-2">
-          <a href={`mailto:${i.email}`} className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-line-strong bg-surface px-2.5 text-[13px] font-medium text-slate-800 hover:bg-slate-50"><Mail aria-hidden className="h-4 w-4" />{t('inquiries.replyEmail')}</a>
-          {i.phone && <a href={`tel:${i.phone}`} className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-line-strong bg-surface px-2.5 text-[13px] font-medium text-slate-800 hover:bg-slate-50"><Phone aria-hidden className="h-4 w-4" />{t('inquiries.call')}</a>}
+          <a href={`mailto:${i.email}`} className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-line-strong bg-surface px-2.5 text-[13px] font-medium text-ink hover:bg-sand-50"><Mail aria-hidden className="h-4 w-4" />{t('inquiries.replyEmail')}</a>
+          {i.phone && <a href={`tel:${i.phone}`} className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-line-strong bg-surface px-2.5 text-[13px] font-medium text-ink hover:bg-sand-50"><Phone aria-hidden className="h-4 w-4" />{t('inquiries.call')}</a>}
         </div>
         <div>
           <label htmlFor="inquiry-note" className="mb-1.5 block text-[13px] font-medium text-slate-700">{t('inquiries.staffNote')}</label>

@@ -26,7 +26,7 @@ export function ChatContactList({ selectedUserId, className = '' }: {
   return (
     <section aria-labelledby="chat-contacts-title" className={`flex min-h-0 flex-col rounded-card border border-line bg-surface shadow-card ${className}`}>
       <header className="flex items-baseline justify-between gap-3 border-b border-line px-4 py-3">
-        <h2 id="chat-contacts-title" className="text-[15px] font-semibold text-slate-900">{t('chat.contacts.title')}</h2>
+        <h2 id="chat-contacts-title" className="text-[15px] font-semibold text-ink">{t('chat.contacts.title')}</h2>
         {!loading && !error && <span className="text-xs text-slate-500">{t('chat.contacts.count', { n: total })}</span>}
       </header>
 
@@ -90,7 +90,7 @@ function ContactRow({ contact, selected, pending, disabled, onSelect }: {
       <Avatar id={user.id} name={user.fullName} size="md" />
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-2">
-          <span className="truncate text-sm font-semibold text-slate-900">{user.fullName}</span>
+          <span className="truncate text-sm font-semibold text-ink">{user.fullName}</span>
           {conversationId && (
             <MessageCircle aria-label={t('chat.contacts.hasConversation')} className="h-3.5 w-3.5 shrink-0 text-brand" />
           )}

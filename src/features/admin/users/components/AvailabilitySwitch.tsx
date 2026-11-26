@@ -32,7 +32,7 @@ export const AvailabilitySwitch: React.FC<AvailabilitySwitchProps> = ({ isAvaila
         }`}
       >
         <span
-          className={`flex ${s.knob} transform items-center justify-center rounded-full bg-white shadow transition-transform ${
+          className={`flex ${s.knob} transform items-center justify-center rounded-full bg-surface shadow transition-transform ${
             isAvailable ? s.on : 'translate-x-0.5'
           }`}
         >

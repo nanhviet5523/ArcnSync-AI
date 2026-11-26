@@ -217,7 +217,7 @@ export function ProjectDetail() {
         <div className="mb-5">
           <Banner tone="blue">
             <p className="text-[13px] font-medium text-brand-text">{t('nextStep.title')}</p>
-            <p className="mt-0.5 text-[15px] font-semibold text-slate-900">{next}</p>
+            <p className="mt-0.5 text-[15px] font-semibold text-ink">{next}</p>
           </Banner>
         </div>
       )}
@@ -243,11 +243,11 @@ export function ProjectDetail() {
             {floors.length ? (
               <table className="w-full text-sm">
                 <thead className="text-left text-xs text-slate-500">
-                  <tr className="border-b border-slate-100"><th className="py-1.5 font-medium">{t('projectDetail.floorName')}</th><th className="py-1.5 text-right font-medium">{t('projectDetail.floorHeight')}</th></tr>
+                  <tr className="border-b border-line"><th className="py-1.5 font-medium">{t('projectDetail.floorName')}</th><th className="py-1.5 text-right font-medium">{t('projectDetail.floorHeight')}</th></tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {floors.map((f) => (
-                    <tr key={f.id}><td className="py-2 text-slate-800">{f.name}</td><td className="py-2 text-right tabular-nums text-slate-600">{t('projectDetail.heightValue', { mm: formatNumber(f.floorHeightMm) })}</td></tr>
+                    <tr key={f.id}><td className="py-2 text-ink">{f.name}</td><td className="py-2 text-right tabular-nums text-slate-600">{t('projectDetail.heightValue', { mm: formatNumber(f.floorHeightMm) })}</td></tr>
                   ))}
                 </tbody>
               </table>
@@ -265,14 +265,14 @@ export function ProjectDetail() {
           ]} />
 
           {(designer || staff) && project.designer && (
-            <div className="mt-5 border-t border-slate-100 pt-4">
+            <div className="mt-5 border-t border-line pt-4">
               {/* read-only: Staff edit the team below (DesignTeamCard) */}
               <TeamCard bare project={project} role={viewerRole} reloadKey={roomsKey} />
             </div>
           )}
 
           {staff && (
-            <div className="mt-5 border-t border-slate-100 pt-4">
+            <div className="mt-5 border-t border-line pt-4">
               <DesignTeamCard project={project} role={viewerRole} designers={designers} onToast={setToast} onSaved={() => { void load(); setRoomsKey((k) => k + 1); }} />
               {kickoffReady && <p className="mt-3 text-xs text-slate-500">{t('projectDetail.kickoffNote')}</p>}
             </div>

@@ -213,7 +213,7 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({ open, onClose,
         placeholder={opts.placeholder}
         onChange={(e) => set(key, e.target.value)}
         className={`mt-1.5 ${inputBase} ${
-          fieldErrors[key] ? 'border-red-400 focus:ring-red-500' : 'border-slate-200 focus:ring-brand'
+          fieldErrors[key] ? 'border-red-400 focus:ring-red-500' : 'border-control bg-sand-100 focus-visible:ring-brand'
         }`}
       />
       {fieldErrors[key] && <p role="alert" className="mt-1 text-xs font-medium text-red-600">{fieldErrors[key]}</p>}
@@ -222,20 +222,20 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({ open, onClose,
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/50 p-4 sm:items-center"
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-dark/50 p-4 sm:items-center"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget && !loading) onClose();
       }}
     >
-      <div role="dialog" aria-modal="true" aria-labelledby="invite-user-title" className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-xl">
+      <div role="dialog" aria-modal="true" aria-labelledby="invite-user-title" className="w-full max-w-2xl rounded-2xl bg-surface p-6 shadow-xl">
         <div className="mb-1 flex items-start justify-between gap-4">
-          <h2 id="invite-user-title" className="text-xl font-bold text-slate-900">Invite user</h2>
+          <h2 id="invite-user-title" className="text-xl font-bold text-ink">Invite user</h2>
           <button
             type="button"
             onClick={onClose}
             disabled={loading}
             aria-label="Close"
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-50"
+            className="rounded-lg p-1.5 text-subtext hover:bg-sand-100 hover:text-slate-700 disabled:opacity-50"
           >
             <X size={18} />
           </button>
@@ -250,7 +250,7 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({ open, onClose,
             <select
               value={values.role}
               onChange={(e) => set('role', e.target.value)}
-              className={`mt-1.5 bg-white ${inputBase} border-slate-200 focus:ring-brand`}
+              className={`mt-1.5 bg-surface ${inputBase} border-control bg-sand-100 focus-visible:ring-brand`}
             >
               {ROLE_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>{o.label}</option>
@@ -265,7 +265,7 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({ open, onClose,
           </div>
 
           {values.role === 'DESIGNER' && (
-            <fieldset className="space-y-4 rounded-xl border border-slate-200 p-4">
+            <fieldset className="space-y-4 rounded-xl border border-line p-4">
               <legend className="px-2 text-xs font-bold uppercase tracking-wide text-slate-500">Designer profile</legend>
               <div className="grid gap-4 sm:grid-cols-2">
                 {field('employeeCode', 'Employee code', { placeholder: 'NV001' })}
@@ -279,14 +279,14 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({ open, onClose,
                   value={values.bio}
                   onChange={(e) => set('bio', e.target.value)}
                   rows={3}
-                  className={`mt-1.5 ${inputBase} border-slate-200 focus:ring-brand`}
+                  className={`mt-1.5 ${inputBase} border-control bg-sand-100 focus-visible:ring-brand`}
                 />
               </label>
             </fieldset>
           )}
 
           {values.role === 'SUPPLIER' && (
-            <fieldset className="space-y-4 rounded-xl border border-slate-200 p-4">
+            <fieldset className="space-y-4 rounded-xl border border-line p-4">
               <legend className="px-2 text-xs font-bold uppercase tracking-wide text-slate-500">Supplier profile</legend>
               <div className="grid gap-4 sm:grid-cols-2">
                 {field('companyName', 'Company name')}
@@ -311,7 +311,7 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({ open, onClose,
               type="button"
               onClick={onClose}
               disabled={loading}
-              className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+              className="rounded-xl border border-line bg-surface px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-sand-50 disabled:opacity-50"
             >
               Cancel
             </button>

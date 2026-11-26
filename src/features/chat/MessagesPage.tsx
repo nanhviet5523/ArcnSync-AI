@@ -182,7 +182,7 @@ export function MessagesPage() {
               <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-soft text-brand">
                 <MessagesSquare aria-hidden className="h-6 w-6" />
               </span>
-              <h2 className="text-base font-semibold text-slate-900">{t('chat.page.selectTitle')}</h2>
+              <h2 className="text-base font-semibold text-ink">{t('chat.page.selectTitle')}</h2>
               <p className="max-w-sm text-sm text-slate-600">{t('chat.page.selectBody')}</p>
             </div>
           )}
@@ -296,7 +296,7 @@ function ConversationPanel({
         </button>
         <Avatar id={c.otherUser.id} name={c.otherUser.fullName} size="md" />
         <div className="min-w-0 flex-1">
-          <h2 className="truncate text-[15px] font-semibold text-slate-900">{c.otherUser.fullName}</h2>
+          <h2 className="truncate text-[15px] font-semibold text-ink">{c.otherUser.fullName}</h2>
           <p className="truncate text-xs text-slate-500">{who}</p>
         </div>
         <button

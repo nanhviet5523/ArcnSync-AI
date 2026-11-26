@@ -125,8 +125,8 @@
   --color-amber-200: #E5C68D;
   --color-amber-300: #DAAF67;
   --color-amber-400: #CD9C50;
-  --color-amber-500: var(--acc);
-  --color-amber-600: #A6742F;
+  --color-amber-500: var(--warning);
+  --color-amber-600: var(--warning);
   --color-amber-700: var(--acct);
   --color-amber-800: #6E4B18;
   --color-amber-900: #533812;
@@ -152,8 +152,6 @@
   --color-red-700: var(--danger);
   --color-rose-600: var(--danger);
   --color-rose-700: var(--danger);
-  --color-amber-500: var(--warning);
-  --color-amber-600: var(--warning);
 }
 
 body {

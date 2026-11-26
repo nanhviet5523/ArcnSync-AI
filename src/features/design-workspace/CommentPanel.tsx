@@ -41,12 +41,12 @@ export function ProposalChip({ name, price, supplier, thumb, current, unavailabl
 }) {
   const delta = proposalDelta(price, current);
   return (
-    <div className="flex items-center gap-2 rounded-lg border border-line bg-slate-50 p-1.5">
+    <div className="flex items-center gap-2 rounded-lg border border-line bg-sand-50 p-1.5">
       <Thumb path={unavailable ? null : thumb} className="h-9 w-9" />
       <div className="min-w-0 flex-1 text-xs">
-        <p className="truncate font-medium text-slate-900" title={name}>{name}</p>
+        <p className="truncate font-medium text-ink" title={name}>{name}</p>
         <p className="flex flex-wrap gap-x-1.5 tabular-nums text-slate-600">
-          <span className="font-semibold text-slate-900">{formatVnd(price)}</span>
+          <span className="font-semibold text-ink">{formatVnd(price)}</span>
           {delta && <span>{t('comments.vsCurrent', { delta: signedVnd(delta) })}</span>}
           {supplier && <span className="truncate text-slate-500">{supplier}</span>}
         </p>
@@ -118,13 +118,13 @@ export function CommentPanel(p: Props) {
           ]} />
         {p.mine && (
           <button type="button" aria-pressed={mineOnly} onClick={() => setMineOnly(!mineOnly)}
-            className={`rounded-full border px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-brand ${mineOnly ? 'border-brand bg-brand-soft text-brand' : 'border-line text-slate-600 hover:bg-slate-50'}`}>
+            className={`rounded-full border px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-brand ${mineOnly ? 'border-brand bg-brand-soft text-brand' : 'border-line text-slate-600 hover:bg-sand-50'}`}>
             {t('comments.myRooms')}
           </button>
         )}
         {p.room && (
           <button type="button" aria-pressed={roomOnly} onClick={() => setRoomOnly(!roomOnly)}
-            className={`max-w-[160px] truncate rounded-full border px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-brand ${roomOnly ? 'border-brand bg-brand-soft text-brand' : 'border-line text-slate-600 hover:bg-slate-50'}`}>
+            className={`max-w-[160px] truncate rounded-full border px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-brand ${roomOnly ? 'border-brand bg-brand-soft text-brand' : 'border-line text-slate-600 hover:bg-sand-50'}`}>
             {t('ws.onlyRoom', { room: p.room.name })}
           </button>
         )}
@@ -152,14 +152,14 @@ export function CommentPanel(p: Props) {
                   </span>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2">
-                      <p className="min-w-0 truncate text-[13px] font-semibold text-slate-900">{root.author.name}</p>
+                      <p className="min-w-0 truncate text-[13px] font-semibold text-ink">{root.author.name}</p>
                       <StatusChip kind="comment" value={root.status} size="sm" />
                     </div>
                     <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[11px] text-slate-500">
                       {num != null && <span className="font-semibold text-rose-600">{t('ws.pin', { n: num })}</span>}
                       <span>{formatTime(root.created_at)}</span>
                     </p>
-                    <p className="mt-1 whitespace-pre-line break-words text-[13px] leading-5 text-slate-800">{root.content}</p>
+                    <p className="mt-1 whitespace-pre-line break-words text-[13px] leading-5 text-ink">{root.content}</p>
                     {root.proposed_product && (
                       <div className="mt-1.5">
                         <p className="mb-1 text-[11px] font-medium text-slate-500">{t('comments.suggested')}</p>
@@ -181,8 +181,8 @@ export function CommentPanel(p: Props) {
               {open && (
                 <div className="space-y-2 border-t border-line px-3 py-3">
                   {replies.map((r) => (
-                    <div key={r.id} className="rounded-lg bg-slate-50 px-2.5 py-2 text-[13px]">
-                      <p><span className="font-medium text-slate-800">{r.author.name}</span><span className="ml-1.5 text-[11px] text-slate-500">{formatTime(r.created_at)}</span></p>
+                    <div key={r.id} className="rounded-lg bg-sand-50 px-2.5 py-2 text-[13px]">
+                      <p><span className="font-medium text-ink">{r.author.name}</span><span className="ml-1.5 text-[11px] text-slate-500">{formatTime(r.created_at)}</span></p>
                       <p className="mt-0.5 whitespace-pre-line break-words text-slate-700">{r.content}</p>
                     </div>
                   ))}

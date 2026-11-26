@@ -8,7 +8,7 @@ export function HowItWorksSection() {
       <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-12 lg:gap-16">
         <div className="lg:sticky lg:top-28 lg:col-span-5 lg:self-start">
           <p className="text-xs font-bold uppercase tracking-widest text-brand">{t('home.steps.eyebrow')}</p>
-          <h2 className="mt-2 text-3xl font-extrabold tracking-tight text-slate-900 md:text-4xl">{t('home.steps.title')}</h2>
+          <h2 className="mt-2 text-3xl font-extrabold tracking-tight text-ink md:text-4xl">{t('home.steps.title')}</h2>
           <p className="mt-4 max-w-md text-sm leading-relaxed text-slate-600 sm:text-base">{t('home.steps.intro')}</p>
         </div>
 
@@ -21,7 +21,7 @@ export function HowItWorksSection() {
                 {i + 1}
               </span>
               <div className="min-w-0 pt-1.5">
-                <h3 className="text-base font-bold text-slate-900">{t(`home.steps.${status}.title`)}</h3>
+                <h3 className="text-base font-bold text-ink">{t(`home.steps.${status}.title`)}</h3>
                 <p className="mt-1 text-sm leading-relaxed text-slate-600">{t(`home.steps.${status}.body`)}</p>
               </div>
             </li>

@@ -27,7 +27,7 @@ export function ProjectPreview() {
           <div>
             <p className="text-xs font-medium text-slate-500">‹ {t('nav.myProjects')}</p>
             <div className="mt-1.5 flex flex-wrap items-center gap-2">
-              <p className="text-base font-semibold tracking-tight text-slate-900 sm:text-lg">{p('project')}</p>
+              <p className="text-base font-semibold tracking-tight text-ink sm:text-lg">{p('project')}</p>
               <StatusChip label={steps[CURRENT]} tone="blue" size="sm" />
             </div>
             <p className="mt-0.5 text-xs text-slate-500">{t('homeownerDetail.meta', { designer: p('designer'), staff: p('staff') })}</p>
@@ -41,7 +41,7 @@ export function ProjectPreview() {
             {/* latest design with pinned comments: from sm up, phones keep the two cards that matter */}
             <div className="hidden overflow-hidden rounded-xl border border-line sm:col-span-3 sm:block">
               <div className="flex items-center justify-between gap-2 border-b border-line px-3 py-2">
-                <span className="truncate text-xs font-semibold text-slate-900">{t('homeownerDetail.latestDesign', { v: p('version') })}</span>
+                <span className="truncate text-xs font-semibold text-ink">{t('homeownerDetail.latestDesign', { v: p('version') })}</span>
                 <StatusChip kind="version" value="SUBMITTED" size="sm" />
               </div>
               <div className="relative bg-stage">
@@ -55,7 +55,7 @@ export function ProjectPreview() {
             <div className="flex flex-col justify-center gap-4 rounded-xl border border-blue-100 bg-brand-soft p-4 sm:col-span-2">
               <div>
                 <p className="text-xs font-medium text-brand">{t('nextStep.title')}</p>
-                <p className="mt-1 text-sm font-semibold leading-snug text-slate-900 sm:text-base">{t('nextStep.IN_DESIGN.homeowner')}</p>
+                <p className="mt-1 text-sm font-semibold leading-snug text-ink sm:text-base">{t('nextStep.IN_DESIGN.homeowner')}</p>
               </div>
               <span className="inline-flex h-8 items-center gap-1.5 self-start rounded-lg bg-brand px-3 text-[13px] font-medium text-white">
                 {t('homeownerDetail.openDesign')}
@@ -69,7 +69,7 @@ export function ProjectPreview() {
       <div className="absolute -bottom-5 -left-3 hidden items-center gap-2.5 rounded-xl border border-line bg-surface px-3 py-2 shadow-float sm:flex">
         <span className="grid h-8 w-8 place-items-center rounded-lg bg-accent-soft text-accent-text"><CreditCard className="h-4 w-4" /></span>
         <span>
-          <span className="flex items-center gap-1 text-xs font-semibold text-slate-900">{p('paid')}<Check className="h-3.5 w-3.5 text-brand" strokeWidth={3} /></span>
+          <span className="flex items-center gap-1 text-xs font-semibold text-ink">{p('paid')}<Check className="h-3.5 w-3.5 text-brand" strokeWidth={3} /></span>
           <span className="block text-[11px] text-slate-500">{p('paidVia')}</span>
         </span>
       </div>
@@ -90,9 +90,9 @@ function MiniStepper({ steps, current }: { steps: string[]; current: number }) {
           <li key={label} className="flex min-w-0 flex-1 flex-col items-center">
             <div className="flex w-full items-center">
               <span className={`h-px flex-1 ${i === 0 ? 'bg-transparent' : done || now ? 'bg-brand' : 'bg-slate-300'}`} />
-              <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full ${now ? 'bg-brand ring-4 ring-brand/15' : done ? 'border border-brand bg-white text-brand' : 'border border-slate-300 bg-white'}`}>
+              <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full ${now ? 'bg-brand ring-4 ring-brand-soft' : done ? 'border border-brand bg-surface text-brand' : 'border border-slate-300 bg-surface'}`}>
                 {done && <svg viewBox="0 0 12 12" className="h-2.5 w-2.5"><path fill="none" stroke="currentColor" strokeWidth="1.8" d="m2.5 6.2 2.2 2.2 4.8-4.8" /></svg>}
-                {now && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
+                {now && <span className="h-1.5 w-1.5 rounded-full bg-surface" />}
               </span>
               <span className={`h-px flex-1 ${i === steps.length - 1 ? 'bg-transparent' : done ? 'bg-brand' : 'bg-slate-300'}`} />
             </div>

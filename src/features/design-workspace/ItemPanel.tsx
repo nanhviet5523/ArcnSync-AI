@@ -84,7 +84,7 @@ export function ItemPanel({ role, element: e, elements, editable, onSelect, onCh
     <div className="h-full min-h-0 space-y-4 overflow-y-auto p-4">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <h3 className="text-[15px] font-semibold text-slate-900">{elementCategory(e, role)}</h3>
+          <h3 className="text-[15px] font-semibold text-ink">{elementCategory(e, role)}</h3>
           <p className="mt-0.5 text-xs text-slate-500">{t('items.size', { w: e.width_mm, d: e.depth_mm })} · {t('ws.footprintNote')}</p>
         </div>
         <StatusChip kind="choice" value={choice} size="sm" />
@@ -103,11 +103,11 @@ export function ItemPanel({ role, element: e, elements, editable, onSelect, onCh
         <div className="flex gap-3 rounded-card border border-line p-3">
           <Thumb path={e.product.thumbnail_url} className="h-20 w-20" />
           <div className="min-w-0 flex-1 text-[13px]">
-            <p className="font-semibold leading-snug text-slate-900">{e.product.name}</p>
+            <p className="font-semibold leading-snug text-ink">{e.product.name}</p>
             {e.product.unavailable && <p className="mt-0.5 text-xs font-medium text-rose-700">{t('drafts.noLongerAvailable')}</p>}
             <p className="mt-0.5 truncate text-slate-500">{e.product.supplier_name}</p>
             {size && <p className="mt-0.5 tabular-nums text-slate-500">{size}</p>}
-            <p className="mt-1 font-semibold tabular-nums text-slate-900">{e.product.unit_price ? formatVnd(e.product.unit_price) : '—'}</p>
+            <p className="mt-1 font-semibold tabular-nums text-ink">{e.product.unit_price ? formatVnd(e.product.unit_price) : '—'}</p>
           </div>
         </div>
       ) : !isUnknownItem(e) && (
@@ -138,7 +138,7 @@ export function ItemPanel({ role, element: e, elements, editable, onSelect, onCh
       {elementId && (
         <section>
           <div className="mb-2 flex items-baseline justify-between gap-2">
-            <h4 className="text-[13px] font-semibold text-slate-800">{t('ws.alternatives')}</h4>
+            <h4 className="text-[13px] font-semibold text-ink">{t('ws.alternatives')}</h4>
             {onBrowse && <button type="button" onClick={onBrowse} className="rounded text-xs font-medium text-brand hover:underline focus-visible:outline-2 focus-visible:outline-brand">{t('ws.browseCatalog')}</button>}
           </div>
           {error ? <ErrorState message={error} onRetry={() => setReload((n) => n + 1)} /> : !options ? (
@@ -148,10 +148,10 @@ export function ItemPanel({ role, element: e, elements, editable, onSelect, onCh
               {alts.slice(0, ALT_SHOWN).map((p) => (
                 <li key={p.id} className="flex flex-col rounded-lg border border-line p-2 text-xs">
                   <Thumb path={p.thumbnail_url} className="aspect-[4/3] w-full" />
-                  <p className="mt-1.5 line-clamp-2 font-medium leading-snug text-slate-900">{p.name}</p>
+                  <p className="mt-1.5 line-clamp-2 font-medium leading-snug text-ink">{p.name}</p>
                   <p className="truncate text-slate-500">{p.supplier_name}</p>
                   <div className="mt-auto flex items-center justify-between gap-1 pt-1.5">
-                    <span className="font-semibold tabular-nums text-slate-900">{formatVnd(p.unit_price)}</span>
+                    <span className="font-semibold tabular-nums text-ink">{formatVnd(p.unit_price)}</span>
                     {editable ? <Button size="sm" className="h-7 px-2 text-xs" onClick={() => onChange({ product: p, choice: 'CHOSEN' })}>{t('ws.swap')}</Button>
                       : onSuggest && <Button size="sm" className="h-7 px-2 text-xs" onClick={() => onSuggest(p)}>{t('ws.suggestThis')}</Button>}
                   </div>
@@ -174,8 +174,8 @@ export function ItemPanel({ role, element: e, elements, editable, onSelect, onCh
       )}
 
       {!!unknown.length && designer && (
-        <div className="rounded-lg border border-line bg-slate-50 p-3">
-          <p className="text-[13px] font-medium text-slate-800">{t('items.unknownTitle', { n: unknown.length })}</p>
+        <div className="rounded-lg border border-line bg-sand-50 p-3">
+          <p className="text-[13px] font-medium text-ink">{t('items.unknownTitle', { n: unknown.length })}</p>
           <ul className="mt-1 space-y-0.5">
             {unknown.map((u) => (
               <li key={u.id}><button type="button" className="rounded font-mono text-[13px] text-brand hover:underline focus-visible:outline-2 focus-visible:outline-brand" onClick={() => onSelect(u)}>{u.block_name}</button></li>
