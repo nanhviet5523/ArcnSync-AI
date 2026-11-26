@@ -190,7 +190,7 @@ function StageBars({ byStatus }: { byStatus: DashboardStats['projects']['byStatu
         return (
           <li key={k} className="grid grid-cols-[minmax(0,9rem)_1fr_2.5rem] items-center gap-3">
             <StatusChip kind="project" value={k} size="sm" />
-            <div aria-hidden className="h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-sand-500" style={{ width: `${(n / max) * 100}%` }} /></div>
+            <div aria-hidden className="h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-brand" style={{ width: `${(n / max) * 100}%` }} /></div>
             <span className="text-right text-sm font-semibold tabular-nums text-ink">{n}</span>
           </li>
         );
