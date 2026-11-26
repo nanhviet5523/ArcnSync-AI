@@ -101,7 +101,7 @@ export const ApartmentManagement: React.FC = () => {
     <Header role={role} />
     <main className="mx-auto w-full max-w-6xl flex-1 px-5 py-10 lg:px-8">
       <div className="mb-8">
-        <p className="text-sm font-semibold text-blue-600">Project setup</p>
+        <p className="text-sm font-semibold text-brand-text">Project setup</p>
         <h1 className="mt-1 text-3xl font-extrabold tracking-tight text-slate-900">{title}</h1>
         <p className="mt-2 text-sm text-slate-500">Homes with their floors and rooms, as measured in the confirmed site survey of each project.</p>
       </div>
@@ -114,11 +114,11 @@ export const ApartmentManagement: React.FC = () => {
         {error && <div role="alert" className="mb-5 flex items-center justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700"><span>{error}</span><button type="button" onClick={() => void load(page, query)} className="shrink-0 font-semibold underline">Try again</button></div>}
         {loading ? <div className="grid min-h-52 place-items-center text-sm text-slate-500"><span className="inline-flex items-center gap-2"><LoaderCircle size={17} className="animate-spin"/>Loading apartments…</span></div> : items.length ? <div className="grid gap-4 md:grid-cols-2">
           {items.map((apartment) => <article key={apartment.id} className="rounded-2xl border border-slate-200 p-5 transition hover:border-blue-200 hover:shadow-sm">
-            <div className="flex items-start justify-between gap-3"><span className="grid h-11 w-11 place-items-center rounded-xl bg-blue-50 text-blue-700"><Building2 size={21}/></span><span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">{apartment.propertyType === 'HOUSE' ? 'House' : 'Apartment'}</span></div>
+            <div className="flex items-start justify-between gap-3"><span className="grid h-11 w-11 place-items-center rounded-xl bg-blue-50 text-brand-text"><Building2 size={21}/></span><span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">{apartment.propertyType === 'HOUSE' ? 'House' : 'Apartment'}</span></div>
             <h2 className="mt-4 text-lg font-bold text-slate-900">{apartment.buildingName}</h2>
             <p className="mt-1 text-sm text-slate-500">{apartment.address}</p>
             <div className="mt-4 grid grid-cols-2 gap-3 text-sm"><p><span className="block text-xs text-slate-400">Unit</span><b className="text-slate-700">{[apartment.tower, apartment.unitNo].filter(Boolean).join(' · ')}</b></p><p><span className="block text-xs text-slate-400">Owner</span><b className="text-slate-700">{apartment.owner?.fullName ?? '—'}</b></p><p><span className="block text-xs text-slate-400">Area</span><b className="text-slate-700">{apartment.netArea} m²</b></p><p><span className="block text-xs text-slate-400">Bedrooms · bathrooms</span><b className="text-slate-700">{apartment.bedroomCount} · {apartment.bathroomCount}</b></p></div>
-            <div className="mt-5 border-t border-slate-100 pt-4"><button type="button" onClick={() => void openDetail(apartment)} className="rounded-lg bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-100">View floors &amp; rooms</button></div>
+            <div className="mt-5 border-t border-slate-100 pt-4"><button type="button" onClick={() => void openDetail(apartment)} className="rounded-lg bg-blue-50 px-3 py-2 text-sm font-semibold text-brand-text hover:bg-blue-100">View floors &amp; rooms</button></div>
           </article>)}
         </div> : <div className="grid min-h-60 place-items-center text-center"><div className="max-w-md"><Building2 size={30} className="mx-auto text-slate-300"/>
           <h2 className="mt-3 font-semibold text-slate-800">{searched ? 'No properties match your search' : 'No properties yet'}</h2>
@@ -130,7 +130,7 @@ export const ApartmentManagement: React.FC = () => {
     <Footer/>
 
     {selected && <div className="fixed inset-0 z-[70] flex justify-end bg-slate-950/40" onMouseDown={(event) => { if (event.target === event.currentTarget) setSelected(null); }}><aside role="dialog" aria-modal="true" aria-labelledby="apartment-detail-title" className="h-full w-full max-w-2xl overflow-y-auto bg-white p-6 shadow-2xl sm:p-8">
-      <div className="mb-6 flex items-start justify-between"><div><p className="text-sm font-semibold text-blue-600">Property details</p><h2 id="apartment-detail-title" className="mt-1 text-2xl font-extrabold text-slate-900">{selected.buildingName} · {selected.unitNo}</h2><p className="mt-1 text-sm text-slate-500">{selected.address}</p></div><button type="button" onClick={() => setSelected(null)} aria-label="Close details" className="rounded-lg p-2 text-slate-400 hover:bg-slate-100"><X size={20}/></button></div>
+      <div className="mb-6 flex items-start justify-between"><div><p className="text-sm font-semibold text-brand-text">Property details</p><h2 id="apartment-detail-title" className="mt-1 text-2xl font-extrabold text-slate-900">{selected.buildingName} · {selected.unitNo}</h2><p className="mt-1 text-sm text-slate-500">{selected.address}</p></div><button type="button" onClick={() => setSelected(null)} aria-label="Close details" className="rounded-lg p-2 text-slate-400 hover:bg-slate-100"><X size={20}/></button></div>
       {detailError && <p role="alert" className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{detailError}</p>}
       {detailLoading ? <div className="grid min-h-52 place-items-center text-slate-500"><LoaderCircle size={22} className="animate-spin"/></div> : <>
         <div className="mb-6 grid grid-cols-2 gap-3 rounded-2xl bg-slate-50 p-4 text-sm"><p><span className="block text-xs text-slate-400">Layout</span><b>{selected.layoutCode || '—'}</b></p><p><span className="block text-xs text-slate-400">Net area</span><b>{selected.netArea} m²</b></p><p><span className="block text-xs text-slate-400">Bedrooms</span><b>{selected.bedroomCount}</b></p><p><span className="block text-xs text-slate-400">Bathrooms</span><b>{selected.bathroomCount}</b></p></div>

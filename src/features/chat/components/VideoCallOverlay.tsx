@@ -254,7 +254,7 @@ export function VideoCallOverlay({
           )}
 
           {isSharingScreen && (
-            <span className="hidden items-center gap-1.5 rounded-full bg-blue-600/20 px-3 py-1 text-xs font-semibold text-blue-300 ring-1 ring-blue-500/40 sm:inline-flex">
+            <span className="hidden items-center gap-1.5 rounded-full bg-brand/20 px-3 py-1 text-xs font-semibold text-blue-300 ring-1 ring-blue-500/40 sm:inline-flex">
               <Monitor aria-hidden className="h-3.5 w-3.5" />
               {t('chat.call.sharingScreenBadge')}
             </span>
@@ -407,7 +407,7 @@ export function VideoCallOverlay({
             title={isSharingScreen ? t('chat.call.stopSharing') : t('chat.call.shareScreen')}
             className={`flex h-12 w-12 cursor-pointer items-center justify-center rounded-2xl border transition ${
               isSharingScreen
-                ? 'border-blue-400 bg-blue-600 text-white hover:bg-blue-500'
+                ? 'border-blue-400 bg-brand text-white hover:bg-blue-500'
                 : 'border-slate-700/70 bg-slate-800/90 text-slate-100 hover:bg-slate-700'
             }`}
           >

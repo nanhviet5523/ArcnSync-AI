@@ -1,11 +1,11 @@
 import React from 'react';
 
 export const ROLE_BADGE: Record<string, string> = {
-  ADMIN: 'bg-rose-50 text-rose-700',
-  STAFF: 'bg-purple-50 text-purple-700',
-  DESIGNER: 'bg-blue-50 text-blue-700',
-  SUPPLIER: 'bg-slate-100 text-slate-700',
-  CUSTOMER: 'bg-teal-50 text-teal-700',
+  ADMIN: 'bg-sand-100 text-ink',
+  STAFF: 'bg-sand-100 text-ink',
+  DESIGNER: 'bg-sand-100 text-ink',
+  SUPPLIER: 'bg-sand-100 text-ink',
+  CUSTOMER: 'bg-sand-100 text-ink',
 };
 
 export const STATUS_BADGE: Record<string, string> = {

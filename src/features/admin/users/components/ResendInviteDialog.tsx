@@ -83,7 +83,7 @@ export const ResendInviteDialog: React.FC<ResendInviteDialogProps> = ({ target, 
             type="button"
             onClick={handleSend}
             disabled={sending}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-60"
           >
             {sending && <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />}
             {sending ? 'Sending...' : 'Send'}

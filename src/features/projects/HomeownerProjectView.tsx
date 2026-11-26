@@ -108,7 +108,7 @@ export function HomeownerProjectView({ project, onProjectChanged }: { project: P
 
       <section className="mb-5 flex flex-col gap-4 rounded-card border border-blue-100 bg-white p-5 shadow-card sm:flex-row sm:items-center sm:justify-between sm:p-6">
         <div className="flex items-start gap-3">
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-blue-50 text-blue-700"><CreditCard className="h-5 w-5" /></span>
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-blue-50 text-brand-text"><CreditCard className="h-5 w-5" /></span>
           <div><h2 className="text-[15px] font-semibold text-slate-900">Contract payment</h2><p className="mt-1 text-sm text-slate-600">Review the real contract payment schedule and pay an issued installment.</p></div>
         </div>
         <Button variant="primary" onClick={() => navigate(`/homeowner/payments?projectId=${encodeURIComponent(project.id)}`)} className="self-start sm:self-auto">View payment schedule <ArrowRight aria-hidden className="h-4 w-4" /></Button>

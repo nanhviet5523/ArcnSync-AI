@@ -135,10 +135,10 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({
   };
 
   const inputClass = (field: FieldName) =>
-    `w-full px-4 py-3 text-sm rounded-xl border focus:outline-none focus:ring-2 focus:border-transparent transition placeholder:text-slate-400 ${
+    `w-full px-4 py-3 text-sm rounded-xl border border-control bg-sand-100 text-ink focus-visible:ring-2 focus-visible:border-brand focus-visible:ring-brand-soft transition placeholder:text-subtext ${
       fieldErrors[field]
         ? 'border-red-400 focus:ring-red-500'
-        : 'border-slate-200 focus:ring-blue-600'
+        : ''
     }`;
 
   const renderError = (field: FieldName) =>
@@ -341,21 +341,21 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({
                 setAgreeTerms(e.target.checked);
                 clearFieldError('terms');
               }}
-              className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+              className="w-4 h-4 rounded border-slate-300 text-brand-text focus:ring-blue-500 cursor-pointer"
             />
 
             <span>
               I agree to the{' '}
               <a
                 href="#terms"
-                className="font-bold text-blue-600 hover:underline"
+                className="font-bold text-brand-text hover:underline"
               >
                 Terms of Service
               </a>{' '}
               and{' '}
               <a
                 href="#privacy"
-                className="font-bold text-blue-600 hover:underline"
+                className="font-bold text-brand-text hover:underline"
               >
                 Privacy Policy
               </a>
@@ -396,7 +396,7 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({
         <button
           type="submit"
           disabled={loading}
-          className="w-full py-3.5 bg-[#0B132B] hover:bg-slate-900 text-white font-bold text-sm rounded-xl shadow-md transition duration-200 mt-1 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          className="w-full py-3.5 bg-brand hover:bg-brand-hover text-white font-bold text-sm rounded-xl shadow-md transition duration-200 mt-1 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           {loading && (
             <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
@@ -451,7 +451,7 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({
         <button
           type="button"
           onClick={onLoginClick}
-          className="font-bold text-blue-600 hover:underline"
+          className="font-bold text-brand-text hover:underline"
         >
           Login
         </button>

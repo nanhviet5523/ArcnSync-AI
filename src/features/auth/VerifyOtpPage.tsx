@@ -137,7 +137,7 @@ export const VerifyOtpPage: React.FC = () => {
             placeholder="Enter OTP code"
             value={otp}
             onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-            className="w-full px-4 py-3 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition"
+            className="w-full px-4 py-3 text-sm rounded-xl border border-control bg-sand-100 text-ink placeholder:text-subtext focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-soft focus-visible:border-brand transition"
           />
           <div className="text-center">
             {resendCountdown > 0 ? (
@@ -149,7 +149,7 @@ export const VerifyOtpPage: React.FC = () => {
                 type="button"
                 onClick={() => void handleResend()}
                 disabled={resending}
-                className="text-xs font-bold text-blue-600 hover:underline disabled:cursor-not-allowed disabled:text-slate-400 disabled:no-underline"
+                className="text-xs font-bold text-brand-text hover:underline disabled:cursor-not-allowed disabled:text-slate-400 disabled:no-underline"
               >
                 {resending ? 'Đang gửi…' : 'Resend OTP'}
               </button>
@@ -168,7 +168,7 @@ export const VerifyOtpPage: React.FC = () => {
           <button
             type="submit"
             disabled={loading || !!success}
-            className="w-full py-3.5 bg-[#0B132B] hover:bg-slate-900 text-white font-bold text-sm rounded-xl shadow-md transition duration-200 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="w-full py-3.5 bg-brand hover:bg-brand-hover text-white font-bold text-sm rounded-xl shadow-md transition duration-200 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {loading && (
               <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
@@ -177,7 +177,7 @@ export const VerifyOtpPage: React.FC = () => {
           </button>
         </form>
         <p className="text-center text-sm text-slate-500 mt-4">
-          <Link to="/login" className="font-bold text-blue-600 hover:underline">Back to login</Link>
+          <Link to="/login" className="font-bold text-brand-text hover:underline">Back to login</Link>
         </p>
       </div>
     </div>

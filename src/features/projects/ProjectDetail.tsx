@@ -224,7 +224,7 @@ export function ProjectDetail() {
       {next && (
         <div className="mb-5">
           <Banner tone="blue">
-            <p className="text-[13px] font-medium text-blue-700">{t('nextStep.title')}</p>
+            <p className="text-[13px] font-medium text-brand-text">{t('nextStep.title')}</p>
             <p className="mt-0.5 text-[15px] font-semibold text-slate-900">{next}</p>
           </Banner>
         </div>

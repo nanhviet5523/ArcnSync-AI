@@ -79,7 +79,7 @@ export function ReviewCard({ projectId, completed, homeowner }: { projectId: str
           <StarInput label={t('reviews.design')} value={form.designRating} onChange={(v) => setForm({ ...form, designRating: v })} />
           <StarInput label={t('reviews.communication')} value={form.communicationRating} onChange={(v) => setForm({ ...form, communicationRating: v })} />
           <label className="flex items-center gap-2 text-sm text-slate-700">
-            <input type="checkbox" className="h-4 w-4 accent-blue-600" checked={form.wouldRecommend} onChange={(e) => setForm({ ...form, wouldRecommend: e.target.checked })} />
+            <input type="checkbox" className="h-4 w-4 accent-brand" checked={form.wouldRecommend} onChange={(e) => setForm({ ...form, wouldRecommend: e.target.checked })} />
             {t('reviews.recommend')}
           </label>
           <div>

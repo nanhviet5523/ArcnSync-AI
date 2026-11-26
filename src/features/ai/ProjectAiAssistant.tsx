@@ -230,7 +230,7 @@ export function ProjectAiAssistant() {
                 : <ul className="space-y-1">{conversations.map((conversation) => (
                   <li key={conversation.id}>
                     <button type="button" onClick={() => void loadThread(conversation.id)}
-                      className={`w-full rounded-xl px-3 py-2.5 text-left transition ${selectedId === conversation.id ? 'bg-blue-50 text-blue-900' : 'text-slate-700 hover:bg-slate-50'}`}>
+                      className={`w-full rounded-xl px-3 py-2.5 text-left transition ${selectedId === conversation.id ? 'bg-blue-50 text-dark' : 'text-slate-700 hover:bg-slate-50'}`}>
                       <span className="block truncate text-sm font-medium">{conversation.title || 'New conversation'}</span>
                       <span className="mt-1 block text-[11px] text-slate-500">{new Date(conversation.updatedAt).toLocaleString()}</span>
                     </button>
@@ -289,14 +289,14 @@ function MessageBubble({ message }: { message: AiMessage }) {
   const user = message.role === 'USER';
   return (
     <article className={`flex gap-2.5 ${user ? 'flex-row-reverse' : ''}`}>
-      <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-full ${user ? 'bg-blue-600 text-white' : 'bg-violet-100 text-violet-700'}`}>
+      <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-full ${user ? 'bg-info text-white' : 'bg-violet-100 text-violet-700'}`}>
         {user ? <UserRound className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
       </span>
-      <div className={`max-w-[min(88%,720px)] rounded-2xl px-4 py-3 ${user ? 'bg-blue-600 text-white' : 'bg-slate-50 text-slate-800'}`}>
+      <div className={`max-w-[min(88%,720px)] rounded-2xl px-4 py-3 ${user ? 'bg-info text-white' : 'bg-slate-50 text-slate-800'}`}>
         {message.content && <p className="whitespace-pre-wrap text-sm leading-6">{message.content}</p>}
         {message.products.length > 0 && <div className="mt-3 grid gap-2 sm:grid-cols-2">{message.products.map((product) => (
           <div key={product.id} className="rounded-xl border border-slate-200 bg-white p-3 text-slate-800">
-            <div className="flex gap-2"><Package className="mt-0.5 h-4 w-4 shrink-0 text-blue-700" /><div className="min-w-0"><p className="truncate text-sm font-semibold">{product.name}</p>
+            <div className="flex gap-2"><Package className="mt-0.5 h-4 w-4 shrink-0 text-brand-text" /><div className="min-w-0"><p className="truncate text-sm font-semibold">{product.name}</p>
               <p className="mt-1 text-xs text-slate-600">{product.categoryName || 'Product'}{product.supplierName ? ` · ${product.supplierName}` : ''}</p>
               <p className="mt-1 text-xs font-semibold">{Number(product.price).toLocaleString('en-US')} VND / {product.unit}</p>
             </div></div>

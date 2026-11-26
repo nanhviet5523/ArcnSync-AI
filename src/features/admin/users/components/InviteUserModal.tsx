@@ -213,7 +213,7 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({ open, onClose,
         placeholder={opts.placeholder}
         onChange={(e) => set(key, e.target.value)}
         className={`mt-1.5 ${inputBase} ${
-          fieldErrors[key] ? 'border-red-400 focus:ring-red-500' : 'border-slate-200 focus:ring-blue-600'
+          fieldErrors[key] ? 'border-red-400 focus:ring-red-500' : 'border-slate-200 focus:ring-brand'
         }`}
       />
       {fieldErrors[key] && <p role="alert" className="mt-1 text-xs font-medium text-red-600">{fieldErrors[key]}</p>}
@@ -250,7 +250,7 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({ open, onClose,
             <select
               value={values.role}
               onChange={(e) => set('role', e.target.value)}
-              className={`mt-1.5 bg-white ${inputBase} border-slate-200 focus:ring-blue-600`}
+              className={`mt-1.5 bg-white ${inputBase} border-slate-200 focus:ring-brand`}
             >
               {ROLE_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>{o.label}</option>
@@ -279,7 +279,7 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({ open, onClose,
                   value={values.bio}
                   onChange={(e) => set('bio', e.target.value)}
                   rows={3}
-                  className={`mt-1.5 ${inputBase} border-slate-200 focus:ring-blue-600`}
+                  className={`mt-1.5 ${inputBase} border-slate-200 focus:ring-brand`}
                 />
               </label>
             </fieldset>
@@ -318,7 +318,7 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({ open, onClose,
             <button
               type="submit"
               disabled={loading}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-60"
             >
               {loading && <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />}
               {loading ? 'Sending...' : 'Send invitation'}

@@ -4,7 +4,7 @@ import { t } from '@/i18n';
 
 /** width defaults to full; pass a width class (e.g. w-48) through className to override */
 const control = (invalid?: boolean, className = '') =>
-  `block ${/(^|\s)(sm:|md:)?w-/.test(className) ? '' : 'w-full'} rounded-lg border bg-white px-3 text-sm text-slate-900 placeholder:text-slate-500 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 disabled:bg-slate-50 disabled:text-slate-500 ${invalid ? 'border-rose-400' : 'border-slate-300'}`;
+  `block ${/(^|\s)(sm:|md:)?w-/.test(className) ? '' : 'w-full'} rounded-lg border bg-white px-3 text-sm text-slate-900 placeholder:text-slate-500 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 disabled:bg-slate-50 disabled:text-slate-500 ${invalid ? 'border-danger focus:border-danger focus:ring-danger/20' : ''}`;
 
 /** Label + control + hint/error. The child receives id and aria-describedby. */
 export function Field({ label, hint, error, optional, children, className = '' }: {

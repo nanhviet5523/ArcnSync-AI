@@ -237,12 +237,12 @@ export function ScheduleModal({ survey, onClose, onSaved }: { survey: SiteSurvey
           <legend className="mb-2 text-[13px] font-medium text-slate-700">{t('siteSurvey.schedule.offered')} <span className="font-normal text-slate-500">· {t('siteSurvey.booking.timeZone')}</span></legend>
           {survey.proposedSlots.map((slot, i) => (
             <label key={i} className={`flex items-center gap-3 rounded-lg border px-3 py-2.5 text-sm ${isPast(slot) ? 'border-slate-100 text-slate-400' : 'cursor-pointer border-slate-200 text-slate-800 hover:bg-slate-50'}`}>
-              <input type="radio" name="slot" className="accent-blue-600" disabled={isPast(slot)} checked={choice === i} onChange={() => setChoice(i)} />
+              <input type="radio" name="slot" className="accent-brand" disabled={isPast(slot)} checked={choice === i} onChange={() => setChoice(i)} />
               <span>{slotLabel(slot)}{isPast(slot) && <span className="ml-1.5 text-xs">({t('siteSurvey.schedule.past')})</span>}</span>
             </label>
           ))}
           <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-slate-200 px-3 py-2.5 text-sm text-slate-800 hover:bg-slate-50">
-            <input type="radio" name="slot" className="accent-blue-600" checked={choice === 'other'} onChange={() => setChoice('other')} />
+            <input type="radio" name="slot" className="accent-brand" checked={choice === 'other'} onChange={() => setChoice('other')} />
             {t('siteSurvey.schedule.other')}
           </label>
         </fieldset>

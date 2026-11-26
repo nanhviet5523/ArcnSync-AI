@@ -18,4 +18,5 @@ export const startFor = (user: User) => ({ to: START[user.role].to, label: t(STA
 /** Call-to-action links (react-router Links styled as large buttons). */
 const ctaBase = 'inline-flex h-12 items-center justify-center gap-2 rounded-xl px-6 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand';
 export const ctaPrimary = `${ctaBase} bg-brand text-white shadow-card hover:bg-brand-hover`;
+export const ctaPrimaryOnDark = `${ctaBase} bg-brand-on-dark text-ink shadow-card hover:brightness-95`;
 export const ctaSecondary = `${ctaBase} border border-line-strong bg-surface text-slate-800 hover:bg-slate-100`;

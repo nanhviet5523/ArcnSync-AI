@@ -34,7 +34,7 @@ export const AdminCard: React.FC<React.PropsWithChildren<{ title?: string; class
 );
 
 export const AdminButton: React.FC<React.ButtonHTMLAttributes<HTMLButtonElement> & { secondary?: boolean }> = ({ secondary, className = '', ...props }) => (
-  <button {...props} className={`inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${secondary ? 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50' : 'bg-blue-600 text-white hover:bg-blue-700'} ${className}`} />
+  <button {...props} className={`inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${secondary ? 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50' : 'bg-brand text-white hover:bg-brand-hover'} ${className}`} />
 );
 
 export const AdminTable: React.FC<React.PropsWithChildren<{ headings: string[] }>> = ({ headings, children }) => (

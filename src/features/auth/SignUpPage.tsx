@@ -14,7 +14,7 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({ onNavigateToLogin }) => 
       <div
         className="hidden md:flex flex-1 relative bg-cover bg-center p-12 lg:p-16 flex-col justify-end text-white"
         style={{
-          backgroundImage: `linear-gradient(to top, rgba(11, 19, 43, 0.9), rgba(0, 0, 0, 0.15)), url(${bannerImg})`,
+          backgroundImage: `linear-gradient(to top, rgba(43, 36, 24, 0.75), rgba(43, 36, 24, 0.15)), url(${bannerImg})`,
         }}
       >
         {/* Badge */}
@@ -27,7 +27,7 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({ onNavigateToLogin }) => 
         <h2 className="text-3xl lg:text-4xl font-extrabold leading-tight mb-4 max-w-lg">
           From your idea to your dream space.
         </h2>
-        <p className="text-sm lg:text-base text-slate-300 max-w-md leading-relaxed">
+        <p className="text-sm lg:text-base text-surface max-w-md leading-relaxed">
           Create your project, get free AI directions and talk to our design team.
         </p>
       </div>

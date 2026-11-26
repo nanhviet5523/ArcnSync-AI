@@ -37,7 +37,7 @@ export const StatusChangeDialog: React.FC<StatusChangeDialogProps> = ({ target, 
 
   const meta = STATUS_ACTION_META[target.action];
   const confirmClass =
-    meta.tone === 'danger' ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700';
+    meta.tone === 'danger' ? 'bg-red-600 hover:bg-red-700' : 'bg-brand hover:bg-brand-hover';
 
   const handleConfirm = async () => {
     setError('');
@@ -73,7 +73,7 @@ export const StatusChangeDialog: React.FC<StatusChangeDialogProps> = ({ target, 
           </p>
           <p
             className={`mt-3 rounded-lg px-3 py-2 text-sm ${
-              meta.tone === 'danger' ? 'bg-red-50 text-red-700' : 'bg-blue-50 text-blue-700'
+              meta.tone === 'danger' ? 'bg-red-50 text-red-700' : 'bg-blue-50 text-brand-text'
             }`}
           >
             {meta.warning}

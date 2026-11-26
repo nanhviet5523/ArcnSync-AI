@@ -31,7 +31,7 @@ export const CallMeeting: React.FC = () => {
   // Members in Call Data
   const participants = [
     { id: '1', name: 'Minh Anh', role: 'Homeowner', roleColor: 'bg-sky-50 text-sky-600', avatar: 'MA', isMuted: false },
-    { id: '2', name: 'Nguyen Linh', role: 'Designer', roleColor: 'bg-blue-50 text-blue-600', avatar: 'NL', isMuted: false },
+    { id: '2', name: 'Nguyen Linh', role: 'Designer', roleColor: 'bg-blue-50 text-brand-text', avatar: 'NL', isMuted: false },
     { id: '3', name: 'Tran Nam', role: 'Staff', roleColor: 'bg-purple-50 text-purple-600', avatar: 'TN', isMuted: true },
   ];
 
@@ -41,7 +41,7 @@ export const CallMeeting: React.FC = () => {
       id: 'm1',
       sender: 'Nguyen Linh',
       avatar: 'NL',
-      avatarBg: 'bg-blue-600',
+      avatarBg: 'bg-brand',
       text: 'Here is v3 of the living room. Sofa is now 2.8 m.',
       hasFile: false,
     },
@@ -88,7 +88,7 @@ export const CallMeeting: React.FC = () => {
       {/* Top Header Bar */}
       <header className="h-14 px-6 border-b border-slate-800/80 bg-[#0a1124] flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-3">
-          <div className="w-7 h-7 bg-blue-600 rounded-lg flex items-center justify-center font-bold text-xs text-white">
+          <div className="w-7 h-7 bg-brand rounded-lg flex items-center justify-center font-bold text-xs text-white">
             <Box size={16} />
           </div>
           <div>
@@ -160,7 +160,7 @@ export const CallMeeting: React.FC = () => {
 
             {/* Nguyen Linh (Active Speaker Highlight) */}
             <div className="bg-[#0b1329] border-2 border-sky-500/80 rounded-2xl relative flex items-center justify-center overflow-hidden shadow-lg shadow-sky-500/10">
-              <div className="w-11 h-11 rounded-full bg-blue-600 text-white font-bold text-xs flex items-center justify-center shadow-md">
+              <div className="w-11 h-11 rounded-full bg-brand text-white font-bold text-xs flex items-center justify-center shadow-md">
                 NL
               </div>
               <div className="absolute bottom-2.5 left-3 text-[11px] font-semibold text-slate-300">
@@ -210,7 +210,7 @@ export const CallMeeting: React.FC = () => {
               onClick={() => setIsSharing(!isSharing)}
               className={`p-3 rounded-xl border transition cursor-pointer ${
                 isSharing
-                  ? 'bg-blue-600 border-blue-500 text-white'
+                  ? 'bg-brand border-blue-500 text-white'
                   : 'bg-slate-800/80 border-slate-700/60 text-slate-200 hover:bg-slate-700/80'
               }`}
             >
@@ -297,7 +297,7 @@ export const CallMeeting: React.FC = () => {
                   {participants.map((p) => (
                     <div key={p.id} className="flex items-center justify-between">
                       <div className="flex items-center gap-2.5">
-                        <div className="w-7 h-7 rounded-full bg-blue-600 text-white font-bold text-[10px] flex items-center justify-center flex-shrink-0">
+                        <div className="w-7 h-7 rounded-full bg-brand text-white font-bold text-[10px] flex items-center justify-center flex-shrink-0">
                           {p.avatar}
                         </div>
                         <span className="text-xs font-bold text-slate-200">

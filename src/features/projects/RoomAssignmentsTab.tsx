@@ -224,7 +224,7 @@ export const RoomAssignmentsTab: React.FC<RoomAssignmentsTabProps> = ({ projectI
                           onChange={(e) => setDraft((d) => ({ ...d, [room.roomId]: e.target.value }))}
                           disabled={saving}
                           aria-label={t('projectDetail.roomAssign.reassign', { room: room.roomName })}
-                          className="w-full min-w-[220px] rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                          className="w-full min-w-[220px] rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand"
                         >
                           <option value="">{t('projectDetail.roomAssign.notAssigned')}</option>
                           {options.map((o) => (
@@ -251,7 +251,7 @@ export const RoomAssignmentsTab: React.FC<RoomAssignmentsTabProps> = ({ projectI
                 type="button"
                 onClick={handleSave}
                 disabled={saving || changes.length === 0}
-                className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-xs font-bold text-white shadow-md transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex items-center gap-2 rounded-xl bg-brand px-5 py-2.5 text-xs font-bold text-white shadow-md transition hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {saving && <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white" />}
                 {saving ? t('projectDetail.roomAssign.saving') : t('projectDetail.roomAssign.save')}

@@ -25,11 +25,11 @@ const publicLinks = [
 ];
 
 const BADGE_STYLE: Record<UserRole, string> = {
-  admin: 'bg-amber-100/90 text-amber-900',
-  designer: 'bg-cyan-100/70 text-cyan-900',
-  staff: 'bg-teal-50 text-teal-700',
-  supplier: 'bg-purple-50 text-purple-700',
-  homeowner: 'bg-slate-100 text-slate-700',
+  admin: 'bg-sand-100 text-ink',
+  designer: 'bg-sand-100 text-ink',
+  staff: 'bg-sand-100 text-ink',
+  supplier: 'bg-sand-100 text-ink',
+  homeowner: 'bg-sand-100 text-ink',
 };
 
 const FALLBACK_INITIALS: Record<UserRole, string> = { admin: 'AD', designer: 'NL', staff: 'TN', supplier: 'NV', homeowner: 'MA' };

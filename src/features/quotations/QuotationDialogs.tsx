@@ -147,7 +147,7 @@ export function RequestChangesDialog({ triedLines, onSubmit, onClose }: {
         {triedLines.length > 0 && (
           <div className="space-y-2">
             <label className="flex items-start gap-2 text-sm text-slate-700">
-              <input type="checkbox" className="mt-0.5 h-4 w-4 accent-blue-600" checked={include} onChange={(e) => setInclude(e.target.checked)} />
+              <input type="checkbox" className="mt-0.5 h-4 w-4 accent-brand" checked={include} onChange={(e) => setInclude(e.target.checked)} />
               {t('quotation.includeOptions', { n: triedLines.length })}
             </label>
             {include && (

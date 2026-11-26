@@ -41,7 +41,7 @@ export function ErrorState({ message, onRetry, onDismiss }: { message: string; o
 }
 
 export function Banner({ tone = 'blue', children, action }: { tone?: 'blue' | 'amber' | 'rose' | 'slate'; children: ReactNode; action?: ReactNode }) {
-  const cls = { blue: 'border-blue-100 bg-brand-soft text-blue-900', amber: 'border-amber-200 bg-amber-50 text-amber-900', rose: 'border-rose-200 bg-rose-50 text-rose-900', slate: 'border-slate-700 bg-slate-800 text-white' }[tone];
+  const cls = { blue: 'border-blue-100 bg-brand-soft text-dark', amber: 'border-amber-200 bg-amber-50 text-amber-900', rose: 'border-rose-200 bg-rose-50 text-rose-900', slate: 'border-slate-700 bg-slate-800 text-white' }[tone];
   return (
     <div className={`flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3 text-sm ${cls}`}>
       <div className="min-w-0">{children}</div>

@@ -19,7 +19,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigateToSignUp }) => {
       <div
         className="hidden md:flex flex-1 relative bg-cover bg-center p-12 lg:p-16 flex-col justify-end text-white"
         style={{
-          backgroundImage: `linear-gradient(to top, rgba(11, 19, 43, 0.9), rgba(0, 0, 0, 0.15)), url(${bannerImg})`,
+          backgroundImage: `linear-gradient(to top, rgba(43, 36, 24, 0.75), rgba(43, 36, 24, 0.15)), url(${bannerImg})`,
         }}
       >
         {/* AI Concept Badge */}
@@ -32,7 +32,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigateToSignUp }) => {
         <h2 className="text-3xl lg:text-4xl font-extrabold leading-tight mb-4 max-w-lg">
           Design smarter, together with AI.
         </h2>
-        <p className="text-sm lg:text-base text-slate-300 max-w-md leading-relaxed">
+        <p className="text-sm lg:text-base text-surface max-w-md leading-relaxed">
           One workspace for homeowners, our design team and supplier partners.
         </p>
       </div>
