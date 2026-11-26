@@ -35,8 +35,8 @@ export interface Apartment {
   floorNo: number | null;
   layoutCode: string | null;
   netArea: string | number;
-  bedroomCount: number;
-  bathroomCount: number;
+  bedroomCount: number | null;
+  bathroomCount: number | null;
   owner: ApartmentOwner;
   floors: ApartmentFloor[];
   createdAt: string;

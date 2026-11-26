@@ -114,8 +114,6 @@ export interface MeasurementFloor {
 /** PUT measurement replaces the whole result. A floor that keeps its level keeps its photos; a floor left out loses them. */
 export interface MeasurementPayload extends SurveyLocation {
   layoutCode?: string;
-  bedroomCount: number;
-  bathroomCount: number;
   note?: string;
   floors: MeasurementFloor[];
 }
@@ -227,7 +225,6 @@ export function surveyErrorText(e: unknown): string {
     const missing = (d.missingPhotoLevels as number[] | undefined) ?? [];
     if (d.totalArea) return t('siteSurvey.errors.totalTooLarge');
     if (d.floorCount === 0) return t('siteSurvey.errors.noFloors');
-    if (d.measurementRecorded === false) return t('siteSurvey.errors.noCounts');
     if (missing.length) return t('siteSurvey.errors.missingPhotos', { levels: missing.join(', ') });
   }
   const key = SURVEY_OVERRIDES[err.code ?? ''];

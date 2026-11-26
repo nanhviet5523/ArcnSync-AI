@@ -257,7 +257,7 @@ export function ProjectDetail() {
             { label: t('projectDetail.unit'), value: [a.buildingName, a.tower, a.unitNo].filter(Boolean).join(', ') },
             ...(a.netArea ? [
               { label: t('projectDetail.area'), value: t('projectDetail.areaValue', { area: formatNumber(a.netArea) }) },
-              { label: t('projectDetail.rooms'), value: t('projectDetail.roomsValue', { bed: a.bedroomCount ?? 0, bath: a.bathroomCount ?? 0 }) },
+              ...(a.bedroomCount != null || a.bathroomCount != null ? [{ label: t('projectDetail.rooms'), value: t('projectDetail.roomsValue', { bed: a.bedroomCount ?? '—', bath: a.bathroomCount ?? '—' }) }] : []),
             ] : []),
           ]} />
           <div className="mt-5">

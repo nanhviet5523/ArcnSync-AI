@@ -17,8 +17,8 @@ export interface Apartment {
   tower: string | null;
   unitNo: string;
   netArea: string;
-  bedroomCount: number;
-  bathroomCount: number;
+  bedroomCount: number | null;
+  bathroomCount: number | null;
   owner: Person;
   floors: ApartmentFloor[];
   /** Project detail only (GET /projects/:id). The project list leaves it out. */
