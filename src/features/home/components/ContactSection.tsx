@@ -3,7 +3,7 @@ import type { LucideIcon } from 'lucide-react';
 import { ArrowRight, Mail, MapPin, MessageCircle, Phone } from 'lucide-react';
 import { t, tList } from '@/i18n';
 import type { User } from '@/types/role';
-import { ctaPrimary, startFor } from '../landing';
+import { ctaPrimaryOnDark, startFor } from '../landing';
 
 /** Static contact details (values in home.contact.values); a link only where there is something to open. */
 const CONTACTS: { key: string; icon: LucideIcon; href?: (value: string) => string }[] = [
@@ -57,11 +57,11 @@ export function ContactSection({ user }: { user: User | null }) {
             </div>
           </div>
 
-          <div className={`flex flex-col gap-8 rounded-2xl bg-slate-900 p-6 text-white shadow-float sm:p-8 lg:col-span-3 ${start ? 'justify-center' : 'justify-between'}`}>
+          <div className={`flex flex-col gap-8 rounded-2xl bg-dark p-6 text-surface shadow-float sm:p-8 lg:col-span-3 ${start ? 'justify-center' : 'justify-between'}`}>
             {start ? (
               <>
                 <p className="text-xl font-bold leading-snug tracking-tight sm:text-2xl">{t('home.contact.signedIn')}</p>
-                <Link to={start.to} className={`${ctaPrimary} self-start`}>
+                <Link to={start.to} className={`${ctaPrimaryOnDark} self-start`}>
                   {start.label}
                   <ArrowRight aria-hidden className="h-4 w-4" />
                 </Link>
@@ -72,8 +72,8 @@ export function ContactSection({ user }: { user: User | null }) {
                   <h3 className="text-xl font-bold tracking-tight sm:text-2xl">{t('home.contact.cardTitle')}</h3>
                   <ol className="mt-6 space-y-4">
                     {tList('home.contact.cardSteps').map((step, i) => (
-                      <li key={step} className="flex items-center gap-3 text-sm text-slate-300">
-                        <span aria-hidden className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/10 text-xs font-bold text-amber-300">
+                      <li key={step} className="flex items-center gap-3 text-sm text-surface">
+                        <span aria-hidden className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-dark-hover text-xs font-bold text-brand-on-dark">
                           {i + 1}
                         </span>
                         {step}
@@ -82,13 +82,13 @@ export function ContactSection({ user }: { user: User | null }) {
                   </ol>
                 </div>
                 <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:gap-6">
-                  <Link to="/signup" className={ctaPrimary}>
+                  <Link to="/signup" className={ctaPrimaryOnDark}>
                     {t('home.contact.signUp')}
                     <ArrowRight aria-hidden className="h-4 w-4" />
                   </Link>
-                  <p className="text-sm text-slate-300">
+                  <p className="text-sm text-surface">
                     {t('home.contact.haveAccount')}{' '}
-                    <Link to="/login" className="rounded font-semibold text-white underline underline-offset-4 transition-colors hover:text-amber-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-300">
+                    <Link to="/login" className="rounded font-semibold text-surface underline underline-offset-4 transition-colors hover:text-brand-on-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-on-dark">
                       {t('home.cta.logIn')}
                     </Link>
                   </p>

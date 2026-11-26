@@ -234,7 +234,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ userId, onClose, o
           value={values[key]}
           placeholder={opts.placeholder}
           onChange={(e) => set(key, e.target.value)}
-          className={`mt-1.5 ${inputBase} ${fieldErrors[key] ? 'border-red-400 focus:ring-red-500' : 'border-slate-200 focus:ring-blue-600'}`}
+          className={`mt-1.5 ${inputBase} ${fieldErrors[key] ? 'border-red-400 focus:ring-red-500' : 'border-slate-200 focus:ring-brand'}`}
         />
         {fieldErrors[key] && <p role="alert" className="mt-1 text-xs font-medium text-red-600">{fieldErrors[key]}</p>}
       </label>
@@ -315,7 +315,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ userId, onClose, o
                     value={values.bio}
                     onChange={(e) => set('bio', e.target.value)}
                     rows={3}
-                    className={`mt-1.5 ${inputBase} border-slate-200 focus:ring-blue-600`}
+                    className={`mt-1.5 ${inputBase} border-slate-200 focus:ring-brand`}
                   />
                 </label>
               </fieldset>
@@ -354,7 +354,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ userId, onClose, o
               <button
                 type="submit"
                 disabled={saving}
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {saving && <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />}
                 {saving ? 'Saving...' : 'Save changes'}

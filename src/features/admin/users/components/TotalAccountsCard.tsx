@@ -23,7 +23,7 @@ export const TotalAccountsCard: React.FC<TotalAccountsCardProps> = ({ onClick })
       className="cursor-pointer rounded-2xl border border-slate-200 bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
     >
       <div className="flex items-center gap-3">
-        <span className="grid h-10 w-10 place-items-center rounded-xl bg-blue-50 text-blue-600">
+        <span className="grid h-10 w-10 place-items-center rounded-xl bg-blue-50 text-brand-text">
           <Users size={20} />
         </span>
         <span className="text-sm text-slate-500">Total accounts</span>

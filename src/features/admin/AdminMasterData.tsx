@@ -388,7 +388,7 @@ export const AdminMasterData: React.FC = () => {
           {false && <button
             type="button"
             onClick={handleSaveChanges}
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-sm font-semibold rounded-xl shadow-xs transition cursor-pointer self-start sm:self-auto"
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-brand hover:bg-brand-hover active:bg-dark-hover text-white text-sm font-semibold rounded-xl shadow-xs transition cursor-pointer self-start sm:self-auto"
           >Save changes</button>}
         </div>
 
@@ -448,7 +448,7 @@ export const AdminMasterData: React.FC = () => {
                     aria-checked={item.enabled}
                     onClick={() => toggleBuildingType(item.id)}
                     className={`relative h-6 w-11 rounded-full transition-colors cursor-pointer shrink-0 ${
-                      item.enabled ? 'bg-blue-600' : 'bg-slate-200'
+                      item.enabled ? 'bg-brand' : 'bg-slate-200'
                     }`}
                   >
                     <span
@@ -493,7 +493,7 @@ export const AdminMasterData: React.FC = () => {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-start justify-between gap-2"><div><h3 className="font-bold text-slate-900">{style.name}</h3><p className="text-xs font-semibold tracking-wide text-slate-400">{style.code}</p></div><span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${style.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-200 text-slate-600'}`}>{style.isActive ? 'Active' : 'Hidden'}</span></div>
                     <p className="mt-2 line-clamp-2 text-xs text-slate-500">{style.description}</p>
-                    <div className="mt-3 flex gap-3 text-xs font-semibold"><button type="button" onClick={() => void openEditStyle(style)} disabled={stylesSaving || styleDetailsLoadingId !== null} className="text-blue-700 hover:text-blue-900 disabled:opacity-50">{styleDetailsLoadingId === style.id ? 'Loading…' : 'Edit'}</button><button type="button" onClick={() => void toggleStyleActive(style)} disabled={stylesSaving || styleDetailsLoadingId !== null} className="text-slate-600 hover:text-slate-900 disabled:opacity-50">{style.isActive ? 'Hide' : 'Activate'}</button></div>
+                    <div className="mt-3 flex gap-3 text-xs font-semibold"><button type="button" onClick={() => void openEditStyle(style)} disabled={stylesSaving || styleDetailsLoadingId !== null} className="text-brand-text hover:text-dark disabled:opacity-50">{styleDetailsLoadingId === style.id ? 'Loading…' : 'Edit'}</button><button type="button" onClick={() => void toggleStyleActive(style)} disabled={stylesSaving || styleDetailsLoadingId !== null} className="text-slate-600 hover:text-slate-900 disabled:opacity-50">{style.isActive ? 'Hide' : 'Activate'}</button></div>
                   </div>
                 </article>
               ))}
@@ -528,7 +528,7 @@ export const AdminMasterData: React.FC = () => {
                   <tbody className="divide-y divide-slate-100 text-sm">
                     {apiCategories.map((cat) => (
                       <tr key={cat.id} className="hover:bg-slate-50/60 transition-colors">
-                        <td className="py-3 px-3 text-xs"><button type="button" onClick={() => void showAdminCategory(cat.id)} className="font-semibold text-blue-700">{cat.name}</button><span className="ml-2 text-slate-400">{cat.code}</span></td>
+                        <td className="py-3 px-3 text-xs"><button type="button" onClick={() => void showAdminCategory(cat.id)} className="font-semibold text-brand-text">{cat.name}</button><span className="ml-2 text-slate-400">{cat.code}</span></td>
                         <td className="py-3 px-3 text-xs text-slate-600">{cat.costCategory ?? '—'}</td>
                         <td className="py-3 px-3 text-xs text-right">{cat.isActive ? 'Active' : 'Hidden'}</td>
                       </tr>
@@ -576,7 +576,7 @@ export const AdminMasterData: React.FC = () => {
                       aria-checked={item.enabled}
                       onClick={() => toggleMaterialFinish(item.id)}
                       className={`relative h-6 w-11 rounded-full transition-colors cursor-pointer shrink-0 ${
-                        item.enabled ? 'bg-blue-600' : 'bg-slate-200'
+                        item.enabled ? 'bg-brand' : 'bg-slate-200'
                       }`}
                     >
                       <span
@@ -659,7 +659,7 @@ export const AdminMasterData: React.FC = () => {
             {/* Unsaved Changes Banner (Image 3) */}
             {hasUnsavedPackagesChanges && (
               <div className="p-4 rounded-2xl bg-blue-50/80 border border-blue-200 flex items-center justify-between shadow-2xs animate-in fade-in duration-200">
-                <span className="text-xs font-bold text-blue-700">
+                <span className="text-xs font-bold text-brand-text">
                   You have unsaved changes
                 </span>
                 <div className="flex items-center gap-2">
@@ -673,7 +673,7 @@ export const AdminMasterData: React.FC = () => {
                   <button
                     type="button"
                     onClick={handleSavePackages}
-                    className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-xl shadow-xs transition cursor-pointer"
+                    className="px-4 py-1.5 bg-brand hover:bg-brand-hover text-white font-semibold text-xs rounded-xl shadow-xs transition cursor-pointer"
                   >
                     Save changes
                   </button>
@@ -762,7 +762,7 @@ export const AdminMasterData: React.FC = () => {
                             {pkg.included.map((item) => (
                               <span
                                 key={item}
-                                className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700"
+                                className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-brand-text"
                               >
                                 {item}
                               </span>
@@ -967,7 +967,7 @@ export const AdminMasterData: React.FC = () => {
               
               </div>
 
-              <label className="flex items-center gap-2 text-sm font-medium text-slate-700"><input type="checkbox" checked={styleIsActive} onChange={(e) => setStyleIsActive(e.target.checked)} className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"/>Active and available for selection</label>
+              <label className="flex items-center gap-2 text-sm font-medium text-slate-700"><input type="checkbox" checked={styleIsActive} onChange={(e) => setStyleIsActive(e.target.checked)} className="h-4 w-4 rounded border-slate-300 text-brand-text focus:ring-blue-500"/>Active and available for selection</label>
 
               <div className="mt-2 flex items-center justify-end gap-3 pt-2">
                 <button
@@ -980,7 +980,7 @@ export const AdminMasterData: React.FC = () => {
                 <button
                   type="submit"
                   disabled={stylesSaving}
-                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold text-xs rounded-xl shadow-xs transition cursor-pointer"
+                  className="px-5 py-2 bg-brand hover:bg-brand-hover active:bg-dark-hover text-white font-semibold text-xs rounded-xl shadow-xs transition cursor-pointer"
                 >
                   {stylesSaving ? 'Saving…' : 'Save style'}
                 </button>
@@ -1059,7 +1059,7 @@ export const AdminMasterData: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold text-xs rounded-xl shadow-xs transition cursor-pointer"
+                  className="px-5 py-2 bg-brand hover:bg-brand-hover active:bg-dark-hover text-white font-semibold text-xs rounded-xl shadow-xs transition cursor-pointer"
                 >
                   Save rule
                 </button>

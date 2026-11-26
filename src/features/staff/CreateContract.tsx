@@ -267,7 +267,7 @@ export const CreateContract: React.FC<CreateContractProps> = ({ onAlreadyExists 
   };
 
   const labelClass = 'block text-[11px] font-bold text-slate-500 mb-1.5';
-  const inputClass = 'w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600';
+  const inputClass = 'w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand';
 
   return (
     <div className="min-h-screen bg-slate-50/60 font-sans flex flex-col justify-between">
@@ -486,7 +486,7 @@ export const CreateContract: React.FC<CreateContractProps> = ({ onAlreadyExists 
               type="button"
               disabled={submitting || loadingContract || !projectIdValid || !totalsMatch}
               onClick={() => void handleSubmit()}
-              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-xs font-bold text-white shadow-md transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-xl bg-brand px-5 py-2.5 text-xs font-bold text-white shadow-md transition hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Send size={14} />
               {editing ? (submitting ? t('editContract.saving') : t('editContract.save')) : (submitting ? 'Creating…' : 'Create contract')}

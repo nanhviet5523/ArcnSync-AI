@@ -33,7 +33,7 @@ const STATUS_BADGE: Record<ProjectStatus, string> = {
   DRAFT: 'bg-slate-100 text-slate-600',
   CONTRACT_PENDING: 'bg-amber-50 text-amber-700',
   REQUIREMENT_ANALYSIS: 'bg-sky-50 text-sky-600',
-  IN_DESIGN: 'bg-blue-50 text-blue-600',
+  IN_DESIGN: 'bg-blue-50 text-brand-text',
   PRODUCT_SELECTION: 'bg-indigo-50 text-indigo-600',
   QUOTING: 'bg-purple-50 text-purple-600',
   COMPLETED: 'bg-emerald-50 text-emerald-600',
@@ -41,7 +41,7 @@ const STATUS_BADGE: Record<ProjectStatus, string> = {
 };
 
 const ROLE_BADGE: Record<MyProjectRole, string> = {
-  LEAD: 'bg-blue-600 text-white',
+  LEAD: 'bg-brand text-white',
   MEMBER: 'bg-slate-100 text-slate-600',
 };
 
@@ -208,7 +208,7 @@ export const StaffProjects: React.FC = () => {
     {
       title: 'TOTAL PROJECTS',
       value: overallTotal === null ? '…' : String(overallTotal),
-      icon: <Layers className="w-5 h-5 text-blue-600" />,
+      icon: <Layers className="w-5 h-5 text-brand-text" />,
       bgColor: 'bg-blue-50',
     },
     {
@@ -283,7 +283,7 @@ export const StaffProjects: React.FC = () => {
                 resetForm();
                 setShowCreateModal(true);
               }}
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-sm transition cursor-pointer"
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-brand hover:bg-brand-hover text-white font-bold text-xs rounded-xl shadow-sm transition cursor-pointer"
             >
               <Plus size={14} />
               <span>New project</span>
@@ -357,7 +357,7 @@ export const StaffProjects: React.FC = () => {
                 value={qInput}
                 maxLength={100}
                 onChange={(e) => setQInput(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 bg-slate-50/80 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 placeholder:text-slate-400"
+                className="w-full pl-9 pr-4 py-2 bg-slate-50/80 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand placeholder:text-slate-400"
               />
             </div>
           </div>
@@ -434,7 +434,7 @@ export const StaffProjects: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => navigate(`/staff-project-detail?projectId=${encodeURIComponent(item.id)}`)}
-                          className="px-3 py-1 bg-blue-50 hover:bg-blue-100 text-blue-600 font-bold text-xs rounded-lg transition cursor-pointer"
+                          className="px-3 py-1 bg-blue-50 hover:bg-blue-100 text-brand-text font-bold text-xs rounded-lg transition cursor-pointer"
                         >
                           Open
                         </button>
@@ -503,7 +503,7 @@ export const StaffProjects: React.FC = () => {
                   onChange={(e) => setForm((f) => ({ ...f, customerEmail: e.target.value }))}
                   placeholder="name@example.com"
                   disabled={creating}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand"
                 />
               </div>
 
@@ -516,7 +516,7 @@ export const StaffProjects: React.FC = () => {
                   placeholder="Thiết kế căn hộ The Sun Avenue"
                   disabled={creating}
                   maxLength={255}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand"
                 />
               </div>
 
@@ -529,7 +529,7 @@ export const StaffProjects: React.FC = () => {
                     onChange={(e) => setForm((f) => ({ ...f, budgetMin: e.target.value }))}
                     placeholder="150000000"
                     disabled={creating}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand"
                   />
                 </div>
                 <div>
@@ -540,7 +540,7 @@ export const StaffProjects: React.FC = () => {
                     onChange={(e) => setForm((f) => ({ ...f, budgetMax: e.target.value }))}
                     placeholder="250000000"
                     disabled={creating}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand"
                   />
                 </div>
               </div>
@@ -553,7 +553,7 @@ export const StaffProjects: React.FC = () => {
                     value={form.householdSize}
                     onChange={(e) => setForm((f) => ({ ...f, householdSize: e.target.value }))}
                     disabled={creating}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand"
                   />
                 </div>
                 <div>
@@ -564,7 +564,7 @@ export const StaffProjects: React.FC = () => {
                     onChange={(e) => setForm((f) => ({ ...f, budgetTolerancePercent: e.target.value }))}
                     placeholder="10"
                     disabled={creating}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand"
                   />
                 </div>
               </div>
@@ -577,7 +577,7 @@ export const StaffProjects: React.FC = () => {
                   rows={2}
                   maxLength={5000}
                   disabled={creating}
-                  className="w-full resize-y rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                  className="w-full resize-y rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand"
                 />
               </div>
 
@@ -593,7 +593,7 @@ export const StaffProjects: React.FC = () => {
                 <button
                   type="submit"
                   disabled={creating}
-                  className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-xs font-bold text-white shadow-md transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="inline-flex items-center gap-2 rounded-xl bg-brand px-5 py-2.5 text-xs font-bold text-white shadow-md transition hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {creating && (
                     <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white" />

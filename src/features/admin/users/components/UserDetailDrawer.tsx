@@ -106,7 +106,7 @@ const ProfileSection: React.FC<{ user: AdminUserDetail; availability?: Availabil
         <Row label="Contact phone">{formatValue(profile.contactPhone)}</Row>
         <Row label="Website">
           {profile.website && !isEmptyValue(profile.website) ? (
-            <a href={profile.website} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+            <a href={profile.website} target="_blank" rel="noopener noreferrer" className="text-brand-text hover:underline">
               {profile.website}
             </a>
           ) : (
@@ -336,7 +336,7 @@ export const UserDetailDrawer: React.FC<UserDetailDrawerProps> = ({
                           className={`rounded-xl border px-3.5 py-2 text-sm font-semibold transition ${
                             meta.tone === 'danger'
                               ? 'border-red-200 text-red-600 hover:bg-red-50'
-                              : 'border-blue-200 text-blue-700 hover:bg-blue-50'
+                              : 'border-blue-200 text-brand-text hover:bg-blue-50'
                           }`}
                         >
                           {meta.label}

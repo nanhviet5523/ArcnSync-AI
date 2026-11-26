@@ -10,7 +10,7 @@
   --ink2: #463B24;  /* strong secondary text */
   --pri: #5B6B3A;   /* primary */
   --prih: #4A5830;  /* primary hover */
-  --pris: #E6EAD6;  /* primary soft */
+  --pris: #E3E8D2;  /* primary soft */
   --sec: #8A6A3F;   /* secondary */
   --secs: #F0E5D3;  /* secondary soft */
   --acc: #C08A3E;   /* accent */
@@ -18,10 +18,22 @@
   --acct: #8A5F1F;  /* accent text */
   --bg: #F3EEE2;    /* page background */
   --card: #FBF8EF;  /* cards, panels */
-  --mut: #E8E1CF;   /* tabs, table headers */
+  --mut: #EBE4D0;   /* muted surfaces */
   --bd: #DAD2BC;    /* borders */
   --t2: #655B47;    /* subtext 1 */
-  --t3: #978C75;    /* subtext 2 */
+  --t3: #655B47;    /* deprecated alias: readable secondary text */
+  --control: #8F866E;
+  --dark: #2B2418;
+  --dark-hover: #3A3021;
+  --sand-200: #E4DCC6;
+  --sand-100: #EBE4D0;
+  --sand-50: #F7F3E6;
+  --brand-text: #4A5830;
+  --brand-on-dark: #A2AE86;
+  --info: #2F5D7C;
+  --success: #3F7D4E;
+  --warning: #B7791F;
+  --danger: #B3261E;
 }
 
 @theme {
@@ -38,7 +50,8 @@
   --color-canvas: var(--bg);
   --color-surface: var(--card);
   --color-line: var(--bd);
-  --color-line-strong: #C6BC9F;
+  --color-line-strong: var(--control);
+  --color-control: var(--control);
   --color-stage: var(--mut);
   --color-muted: var(--mut);
 
@@ -46,6 +59,18 @@
   --color-brand: var(--pri);
   --color-brand-hover: var(--prih);
   --color-brand-soft: var(--pris);
+  --color-brand-text: var(--brand-text);
+  --color-brand-on-dark: var(--brand-on-dark);
+  --color-dark: var(--dark);
+  --color-dark-hover: var(--dark-hover);
+  --color-sand-50: var(--sand-50);
+  --color-sand-100: var(--sand-100);
+  --color-sand-200: var(--sand-200);
+  --color-wood: var(--sec);
+  --color-info: var(--info);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
 
   /* secondary + accent */
   --color-secondary: var(--sec);
@@ -58,7 +83,7 @@
   --color-ink: var(--ink);
   --color-ink-2: var(--ink2);
   --color-subtext: var(--t2);
-  --color-subtext-2: var(--t3);
+  --color-subtext-2: var(--t2);
 
   /* avatar */
   --color-navy: var(--ink);
@@ -69,30 +94,30 @@
   --color-white: var(--card);
 
   /* slate -> warm neutrals + ink */
-  --color-slate-50:  var(--bg);
+  --color-slate-50:  var(--sand-50);
   --color-slate-100: var(--mut);
   --color-slate-200: var(--bd);
-  --color-slate-300: #C6BC9F;
-  --color-slate-400: var(--t3);
+  --color-slate-300: var(--control);
+  --color-slate-400: var(--t2);
   --color-slate-500: var(--t2);
   --color-slate-600: #574D39;
   --color-slate-700: var(--ink2);
-  --color-slate-800: #382F1E;
+  --color-slate-800: var(--dark-hover);
   --color-slate-900: var(--ink);
-  --color-slate-950: #1C170F;
+  --color-slate-950: var(--dark);
 
   /* blue -> olive primary */
   --color-blue-50:  var(--pris);
-  --color-blue-100: #D6DCBE;
-  --color-blue-200: #BCC79C;
-  --color-blue-300: #9EAD76;
-  --color-blue-400: #7F9154;
-  --color-blue-500: #6B7C45;
-  --color-blue-600: var(--pri);
-  --color-blue-700: var(--prih);
-  --color-blue-800: #3B4627;
-  --color-blue-900: #2D361E;
-  --color-blue-950: #1E2414;
+  --color-blue-100: var(--sand-200);
+  --color-blue-200: var(--sand-200);
+  --color-blue-300: var(--brand-on-dark);
+  --color-blue-400: var(--pri);
+  --color-blue-500: var(--brand-text);
+  --color-blue-600: var(--brand-text);
+  --color-blue-700: var(--brand-text);
+  --color-blue-800: var(--dark-hover);
+  --color-blue-900: var(--dark);
+  --color-blue-950: var(--dark);
 
   /* amber -> wood accent */
   --color-amber-50:  var(--accs);
@@ -109,20 +134,41 @@
 
   /* purple / violet -> secondary wood */
   --color-purple-50:  var(--secs);
-  --color-purple-100: #E8D7BC;
-  --color-purple-200: #D7BF98;
-  --color-purple-500: #9E7E52;
+  --color-purple-100: var(--sand-200);
+  --color-purple-200: var(--sand-200);
+  --color-purple-500: var(--sec);
   --color-purple-600: var(--sec);
-  --color-purple-700: #6E5432;
+  --color-purple-700: var(--dark-hover);
   --color-violet-50:  var(--secs);
-  --color-violet-100: #E8D7BC;
+  --color-violet-100: var(--sand-200);
   --color-violet-600: var(--sec);
-  --color-violet-700: #6E5432;
+  --color-violet-700: var(--dark-hover);
+
+  /* Semantic status colors stay separate from brand. */
+  --color-emerald-600: var(--success);
+  --color-emerald-700: var(--success);
+  --color-green-700: var(--success);
+  --color-red-600: var(--danger);
+  --color-red-700: var(--danger);
+  --color-rose-600: var(--danger);
+  --color-rose-700: var(--danger);
+  --color-amber-500: var(--warning);
+  --color-amber-600: var(--warning);
 }
 
 body {
   background: var(--color-canvas);
   font-family: var(--font-sans);
+}
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+select:-webkit-autofill {
+  -webkit-text-fill-color: var(--ink);
+  box-shadow: 0 0 0 1000px var(--mut) inset;
+  transition: background-color 99999s ease-out;
 }
 
 /* Workspace comment mode: the pointer becomes a pin over the drawing (2D and 3D). */

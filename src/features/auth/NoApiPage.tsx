@@ -31,7 +31,7 @@ export const NoApiPage: React.FC = () => {
         <button
           type="button"
           onClick={() => navigate('/login')}
-          className="w-full rounded-xl bg-[#0B132B] py-3.5 text-sm font-bold text-white shadow-md transition duration-200 hover:bg-slate-900"
+          className="w-full rounded-xl bg-brand py-3.5 text-sm font-bold text-white shadow-md transition duration-200 hover:bg-brand-hover"
         >
           Back to login
         </button>

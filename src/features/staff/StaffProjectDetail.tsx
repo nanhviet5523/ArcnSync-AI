@@ -71,8 +71,8 @@ export const StaffProjectDetail: React.FC = () => {
 
   const members = [
     { role: 'Homeowner', person: project?.homeowner ?? 'Homeowner', type: 'External', typeBg: 'bg-slate-100 text-slate-600', access: 'View · Comment · Approve', hasAction: false, actionText: '' },
-    { role: 'Lead Designer', person: assignedDesigner?.fullName ?? project?.designer ?? 'Unassigned', type: 'Company', typeBg: 'bg-blue-50 text-blue-600', access: 'Edit design · Versions', hasAction: true, actionText: 'Change' },
-    { role: 'Staff coordinator', person: project?.staff ?? 'Tran Nam', type: 'Company', typeBg: 'bg-blue-50 text-blue-600', access: 'Contract · Billing', hasAction: false, actionText: '' },
+    { role: 'Lead Designer', person: assignedDesigner?.fullName ?? project?.designer ?? 'Unassigned', type: 'Company', typeBg: 'bg-blue-50 text-brand-text', access: 'Edit design · Versions', hasAction: true, actionText: 'Change' },
+    { role: 'Staff coordinator', person: project?.staff ?? 'Tran Nam', type: 'Company', typeBg: 'bg-blue-50 text-brand-text', access: 'Contract · Billing', hasAction: false, actionText: '' },
     { role: 'Supplier partner', person: 'Noi That Viet', type: 'Partner', typeBg: 'bg-purple-50 text-purple-600', access: 'Catalog · Quotes', hasAction: true, actionText: 'Remove' },
   ];
   const [extraMembers, setExtraMembers] = useState<Array<{role:string;person:string;type:string;typeBg:string;access:string;hasAction:boolean;actionText:string}>>([]);
@@ -110,7 +110,7 @@ export const StaffProjectDetail: React.FC = () => {
         role: selectedRole,
         person: selectedPerson,
         type: 'Company',
-        typeBg: 'bg-blue-50 text-blue-600',
+        typeBg: 'bg-blue-50 text-brand-text',
         access: selectedAccess,
         hasAction: true,
         actionText: 'Change',
@@ -160,7 +160,7 @@ export const StaffProjectDetail: React.FC = () => {
             </button>
             <button
               type="button"
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-md transition cursor-pointer"
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-brand hover:bg-brand-hover text-white font-bold text-xs rounded-xl shadow-md transition cursor-pointer"
             >
               <Bell size={14} />
               <span>Notify team</span>
@@ -246,13 +246,13 @@ export const StaffProjectDetail: React.FC = () => {
                       onChange={(e) => setDesignerIdInput(e.target.value)}
                       placeholder="Designer ID (UUID)"
                       disabled={assigning}
-                      className="flex-1 px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                      className="flex-1 px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand"
                     />
                     <div className="flex gap-2">
                       <button
                         type="submit"
                         disabled={assigning}
-                        className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60"
+                        className="inline-flex items-center gap-2 px-4 py-2.5 bg-brand hover:bg-brand-hover text-white font-bold text-xs rounded-xl shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         {assigning && (
                           <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white" />
@@ -294,7 +294,7 @@ export const StaffProjectDetail: React.FC = () => {
                     <select
                       value={selectedRole}
                       onChange={(e) => setSelectedRole(e.target.value)}
-                      className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                      className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand"
                     >
                       <option value="Designer">Designer</option>
                       <option value="Lead Designer">Lead Designer</option>
@@ -310,7 +310,7 @@ export const StaffProjectDetail: React.FC = () => {
                     <select
                       value={selectedPerson}
                       onChange={(e) => setSelectedPerson(e.target.value)}
-                      className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                      className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand"
                     >
                       <option value="">Select employee...</option>
                       <option value="Le Trang">Le Trang</option>
@@ -326,7 +326,7 @@ export const StaffProjectDetail: React.FC = () => {
                     <select
                       value={selectedAccess}
                       onChange={(e) => setSelectedAccess(e.target.value)}
-                      className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                      className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand"
                     >
                       <option value="Edit design">Edit design</option>
                       <option value="View only">View only</option>
@@ -338,7 +338,7 @@ export const StaffProjectDetail: React.FC = () => {
                 <div className="flex items-center gap-3">
                   <button
                     type="submit"
-                    className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-sm transition"
+                    className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-brand hover:bg-brand-hover text-white font-bold text-xs rounded-xl shadow-sm transition"
                   >
                     <Plus size={14} />
                     <span>Add to project</span>
@@ -419,7 +419,7 @@ export const StaffProjectDetail: React.FC = () => {
                           updated[idx].isAdded = true;
                           setSuppliers(updated);
                         }}
-                        className="px-3 py-1 bg-blue-50 hover:bg-blue-100 text-blue-600 font-bold text-xs rounded-lg transition"
+                        className="px-3 py-1 bg-blue-50 hover:bg-blue-100 text-brand-text font-bold text-xs rounded-lg transition"
                       >
                         Add
                       </button>

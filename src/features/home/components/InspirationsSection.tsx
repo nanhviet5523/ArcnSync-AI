@@ -46,7 +46,7 @@ export function InspirationsSection() {
                 <div className="flex flex-1 flex-col justify-between p-6">
                   <div>
                     <div className="mb-3.5 flex items-center gap-2">
-                      <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">{t(`home.inspiration.${card.key}.style`)}</span>
+                      <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-brand-text">{t(`home.inspiration.${card.key}.style`)}</span>
                       <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">{card.area}</span>
                     </div>
                     <h3 className="mb-1 text-lg font-bold text-slate-900">{title}</h3>

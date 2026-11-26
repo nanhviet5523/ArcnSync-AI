@@ -22,7 +22,7 @@ export const RolePreviewPage: React.FC<RolePreviewPageProps> = ({ role }) => {
       <Header role={role} />
       <main className="w-full max-w-[1440px] mx-auto px-6 lg:px-12 py-10 flex-1">
         <div className="mb-8">
-          <p className="text-sm font-semibold text-blue-600">{config.badge} workspace</p>
+          <p className="text-sm font-semibold text-brand-text">{config.badge} workspace</p>
           <h1 className="text-3xl font-extrabold text-slate-900 mt-1">{title}</h1>
         </div>
         <section className="bg-white rounded-2xl border border-slate-100 shadow-sm p-8 lg:p-12">
@@ -31,7 +31,7 @@ export const RolePreviewPage: React.FC<RolePreviewPageProps> = ({ role }) => {
             You are signed in as the demo {config.badge} account. This project does not have this role's full page UI yet; this preview lets you check the role-specific header and shared pages.
           </p>
           <div className="flex flex-wrap gap-3 mt-7">
-            <button onClick={() => navigate('/messages')} className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white">
+            <button onClick={() => navigate('/messages')} className="inline-flex items-center gap-2 rounded-xl bg-brand px-4 py-3 text-sm font-semibold text-white">
               Open shared Messages <ArrowRight size={16} />
             </button>
             <button onClick={() => navigate('/settings')} className="rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700">

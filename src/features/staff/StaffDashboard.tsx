@@ -14,7 +14,7 @@ export const StaffDashboard: React.FC = () => {
     {
       title: 'NEW REQUESTS',
       value: String(workspace.requests.filter((request) => request.status === 'AI brief ready').length),
-      icon: <FileText className="w-5 h-5 text-blue-600" />,
+      icon: <FileText className="w-5 h-5 text-brand-text" />,
       bgColor: 'bg-blue-50',
     },
     {
@@ -39,7 +39,7 @@ export const StaffDashboard: React.FC = () => {
 
   const requests = workspace.requests.map((request) => {
     const project = workspace.projects.find((item) => item.id === request.projectId);
-    const statusBg = request.status === 'Signed' ? 'bg-emerald-50 text-emerald-700' : request.status === 'AI brief ready' ? 'bg-blue-50 text-blue-600' : request.status === 'Designer assigned' ? 'bg-violet-50 text-violet-700' : 'bg-amber-50 text-amber-700';
+    const statusBg = request.status === 'Signed' ? 'bg-emerald-50 text-emerald-700' : request.status === 'AI brief ready' ? 'bg-blue-50 text-brand-text' : request.status === 'Designer assigned' ? 'bg-violet-50 text-violet-700' : 'bg-amber-50 text-amber-700';
     return project ? { projectId: project.id, homeowner: project.homeowner, project: project.name, type: project.buildingType, budget: `${Math.round(project.budgetMin / 1e6)}–${Math.round(project.budgetMax / 1e6)}M`, status: request.status, statusBg, designer: project.designer, action: 'Open', actionStyle: 'border border-slate-200 text-slate-700 hover:bg-slate-50', isCreateContract: false } : null;
   }).filter((item): item is NonNullable<typeof item> => item !== null).slice(0, 5);
   // Sample data for today's consultations.
@@ -91,7 +91,7 @@ export const StaffDashboard: React.FC = () => {
           <button
             type="button"
             onClick={() => navigate('/create-contract')}
-            className="inline-flex items-center gap-2 px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-xl shadow-md transition cursor-pointer"
+            className="inline-flex items-center gap-2 px-5 py-3 bg-brand hover:bg-brand-hover text-white font-bold text-sm rounded-xl shadow-md transition cursor-pointer"
           >
             <Plus size={18} />
             <span>New contract</span>
@@ -131,7 +131,7 @@ export const StaffDashboard: React.FC = () => {
               <button
                 type="button"
                 onClick={() => navigate('/staff-requests')}
-                className="text-xs font-bold text-blue-600 hover:underline inline-flex items-center gap-1"
+                className="text-xs font-bold text-brand-text hover:underline inline-flex items-center gap-1"
               >
                 View all →
               </button>
@@ -196,7 +196,7 @@ export const StaffDashboard: React.FC = () => {
                     className="flex items-center justify-between p-3.5 rounded-xl bg-slate-50/70 border border-slate-100"
                   >
                     <div className="flex items-center gap-3">
-                      <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-md">
+                      <span className="text-xs font-bold text-brand-text bg-blue-50 px-2 py-1 rounded-md">
                         {item.time}
                       </span>
                       <div>
@@ -207,7 +207,7 @@ export const StaffDashboard: React.FC = () => {
                     {item.hasJoinBtn && (
                       <button
                         type="button"
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg transition"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-brand hover:bg-brand-hover text-white font-bold text-xs rounded-lg transition"
                       >
                         <Video size={13} />
                         <span>Join</span>

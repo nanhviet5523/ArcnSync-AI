@@ -63,7 +63,7 @@ export function InquiriesPage() {
             {INQUIRY_TOPICS.map((x) => <option key={x} value={x}>{t(`inquiries.topic.${x}`)}</option>)}
           </Select>
           <label className="flex h-9 items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700">
-            <input type="checkbox" className="h-4 w-4 accent-blue-600" checked={mine} onChange={(e) => setMine(e.target.checked)} />
+            <input type="checkbox" className="h-4 w-4 accent-brand" checked={mine} onChange={(e) => setMine(e.target.checked)} />
             {t('inquiries.mine')}
           </label>
         </FilterBar>

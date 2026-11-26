@@ -94,7 +94,7 @@ const Shell: React.FC<{ role?: UserRole; backTo?: string; children: React.ReactN
   <div className="min-h-screen bg-slate-50/60 font-sans flex flex-col justify-between">
     <Header role={role} />
     <main className="w-full max-w-[1100px] mx-auto px-6 lg:px-12 py-10 flex-1">
-      {backTo && <Link to={backTo} className="mb-5 inline-flex items-center gap-2 text-sm font-semibold text-blue-700 hover:text-blue-900"><ArrowLeft size={16} /> Back to project</Link>}
+      {backTo && <Link to={backTo} className="mb-5 inline-flex items-center gap-2 text-sm font-semibold text-brand-text hover:text-dark"><ArrowLeft size={16} /> Back to project</Link>}
       {children}
     </main>
     <Footer />
@@ -645,7 +645,7 @@ export const ContractDetail: React.FC = () => {
                 type="button"
                 disabled={!canSendSigning || actionBusy || uploading || sendingSigning}
                 onClick={() => setConfirmSigning(true)}
-                className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-blue-700 disabled:opacity-50"
+                className="inline-flex items-center gap-2 rounded-xl bg-brand px-4 py-2.5 text-xs font-bold text-white transition hover:bg-brand-hover disabled:opacity-50"
               >
                 {sendingSigning ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
                 {sendingSigning ? t('contractSigning.sending') : t('contractSigning.send')}
@@ -662,7 +662,7 @@ export const ContractDetail: React.FC = () => {
                   type="button"
                   disabled={actionBusy}
                   onClick={() => void handleView(contract.id)}
-                  className="text-xs font-semibold text-blue-600 hover:underline"
+                  className="text-xs font-semibold text-brand-text hover:underline"
                 >
                   {t('contractFile.view')}
                 </button>
@@ -712,7 +712,7 @@ export const ContractDetail: React.FC = () => {
                 type="button"
                 disabled={actionBusy || otpRequesting || cooldownLeft > 0}
                 onClick={() => void handleSendOtp(contract.id)}
-                className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-blue-700 disabled:opacity-50"
+                className="inline-flex items-center gap-2 rounded-xl bg-brand px-4 py-2.5 text-xs font-bold text-white transition hover:bg-brand-hover disabled:opacity-50"
               >
                 {otpRequesting ? <Loader2 size={14} className="animate-spin" /> : <ShieldCheck size={14} />}
                 {otpButtonLabel ?? t('signatureOtp.request')}
@@ -738,14 +738,14 @@ export const ContractDetail: React.FC = () => {
                   disabled={otpExpired}
                   autoComplete="one-time-code"
                   placeholder="123456"
-                  className="w-32 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold tracking-widest text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                  className="w-32 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold tracking-widest text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand"
                 />
               </div>
               <button
                 type="button"
                 disabled={actionBusy || otpExpired || otpValue.trim().length !== 6}
                 onClick={() => void handleSign(contract.id)}
-                className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex items-center gap-2 rounded-xl bg-brand px-4 py-2.5 text-xs font-bold text-white transition hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <ShieldCheck size={14} /> Confirm signature
               </button>
@@ -753,7 +753,7 @@ export const ContractDetail: React.FC = () => {
                 type="button"
                 disabled={actionBusy || otpRequesting || cooldownLeft > 0}
                 onClick={() => void handleSendOtp(contract.id)}
-                className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:underline disabled:cursor-not-allowed disabled:opacity-50 disabled:no-underline"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-text hover:underline disabled:cursor-not-allowed disabled:opacity-50 disabled:no-underline"
               >
                 {otpRequesting && <Loader2 size={12} className="animate-spin" />}
                 {otpButtonLabel ?? t('signatureOtp.resend')}
@@ -809,7 +809,7 @@ export const ContractDetail: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => navigate(`/homeowner/payments?projectId=${encodeURIComponent(projectId)}&milestoneId=${encodeURIComponent(m.id)}`)}
-                          className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-blue-700"
+                          className="rounded-lg bg-brand px-3 py-1.5 text-xs font-bold text-white hover:bg-brand-hover"
                         >
                           Pay now
                         </button>

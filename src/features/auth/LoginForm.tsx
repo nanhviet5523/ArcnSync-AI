@@ -82,10 +82,10 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSignUpClick }) => {
   };
 
   const inputClass = (hasError: boolean) =>
-    `w-full px-4 py-3.5 text-sm rounded-xl border focus:outline-none focus:ring-2 focus:border-transparent transition placeholder:text-slate-400 ${
+    `w-full px-4 py-3.5 text-sm rounded-xl border border-control bg-sand-100 text-ink focus-visible:ring-2 focus-visible:border-brand focus-visible:ring-brand-soft transition placeholder:text-subtext ${
       hasError
         ? 'border-red-400 focus:ring-red-500'
-        : 'border-slate-200 focus:ring-blue-600'
+        : ''
     }`;
 
   return (
@@ -190,7 +190,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSignUpClick }) => {
               checked={rememberMe}
               disabled={loading}
               onChange={(e) => setRememberMe(e.target.checked)}
-              className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+              className="w-4 h-4 rounded border-slate-300 text-brand-text focus:ring-blue-500 cursor-pointer"
             />
             <span>Remember me</span>
           </label>
@@ -198,7 +198,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSignUpClick }) => {
           <button
             type="button"
             onClick={() => navigate('/forgot-password')}
-            className="text-sm font-bold text-blue-600 hover:text-blue-700 transition"
+            className="text-sm font-bold text-brand-text hover:text-brand-text transition"
           >
             Forgot password?
           </button>
@@ -208,7 +208,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSignUpClick }) => {
         <button
           type="submit"
           disabled={loading}
-          className="w-full py-3.5 bg-[#0B132B] hover:bg-slate-900 text-white font-bold text-sm rounded-xl shadow-md transition duration-200 mt-2 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          className="w-full py-3.5 bg-brand hover:bg-brand-hover text-white font-bold text-sm rounded-xl shadow-md transition duration-200 mt-2 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           {loading && (
             <span
@@ -269,14 +269,14 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSignUpClick }) => {
         <button
           type="button"
           onClick={onSignUpClick}
-          className="font-bold text-blue-600 hover:underline"
+          className="font-bold text-brand-text hover:underline"
         >
           Sign Up
         </button>
       </p>
 
       {/* Account Access Notice */}
-      <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 text-xs lg:text-sm text-slate-500 leading-relaxed mb-4">
+      <div className="bg-sand-100 border border-sand-200 rounded-2xl p-4 text-xs lg:text-sm text-slate-500 leading-relaxed mb-4">
         Access follows the role assigned to your account. All users sign in through this page.
       </div>
 
