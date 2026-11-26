@@ -11,7 +11,7 @@ const OP_KIND: Record<LayoutOp, DiffKind> = { ADD: 'added', DELETE: 'removed', M
 /** "Added", "Removed", "Moved" with the Compare colour dot. */
 export function OpTag({ op }: { op: LayoutOp }) {
   return (
-    <span className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-slate-600">
+    <span className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-ink-2">
       <span aria-hidden className="inline-block h-2 w-2 rounded-full" style={{ background: DIFF_COLORS[OP_KIND[op]] }} />
       {t(`drafts.op.${op}`)}
     </span>
@@ -72,8 +72,8 @@ export function MemberDxfUploadDialog({ floors, multiFloor, initialFloorId, onCl
       <Button variant="primary" loading={busy} disabled={!file} onClick={submit}>{t('drafts.upload')}</Button>
     </>}>
       <div className="space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line bg-slate-50 px-3 py-2.5">
-          <p className="min-w-0 flex-1 text-[13px] text-slate-700">{t('drafts.uploadHint')}</p>
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line bg-canvas px-3 py-2.5">
+          <p className="min-w-0 flex-1 text-[13px] text-ink-2">{t('drafts.uploadHint')}</p>
           <Button size="sm" onClick={() => onDownload(floorId)} disabled={busy}><Download aria-hidden className="h-3.5 w-3.5" />{t('drafts.downloadDxf')}</Button>
         </div>
         {floors.length > 1 && (
@@ -88,15 +88,15 @@ export function MemberDxfUploadDialog({ floors, multiFloor, initialFloorId, onCl
         <Field label={t('drafts.dxfFile')} error={fileError}>
           {(f) => (
             <input {...f} type="file" accept=".dxf" disabled={busy} onChange={(e) => pick(e.target.files?.[0] ?? null)}
-              className="block w-full text-[13px] text-slate-700 file:mr-3 file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-[13px] file:font-medium file:text-slate-800 hover:file:bg-slate-200" />
+              className="block w-full text-[13px] text-ink-2 file:mr-3 file:rounded-md file:border-0 file:bg-muted file:px-3 file:py-1.5 file:text-[13px] file:font-medium file:text-ink hover:file:bg-line" />
           )}
         </Field>
         {busy && (
           <div role="status" aria-live="polite">
-            <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
+            <div className="h-1.5 overflow-hidden rounded-full bg-muted">
               <div className="h-full rounded-full bg-brand transition-[width]" style={{ width: `${pct}%` }} />
             </div>
-            <p className="mt-1 text-xs text-slate-500">{pct < 100 ? t('drafts.uploading', { pct }) : t('drafts.reading')}</p>
+            <p className="mt-1 text-xs text-subtext">{pct < 100 ? t('drafts.uploading', { pct }) : t('drafts.reading')}</p>
           </div>
         )}
         {error && (
@@ -112,11 +112,11 @@ export function MemberDxfUploadDialog({ floors, multiFloor, initialFloorId, onCl
 /** What an upload changed nothing about: item, room and why, in plain words. */
 export function IgnoredList({ items, ownerOfRoom }: { items: readonly IgnoredLayoutChange[]; ownerOfRoom: (roomName: string | null) => string | null }) {
   return (
-    <ul className="divide-y divide-amber-200/70">
+    <ul className="divide-y divide-accent/25">
       {items.map((i, n) => (
         <li key={`${i.handle ?? ''}-${n}`} className="py-1.5 text-[13px]">
           <span className="font-medium">{i.block_name ?? t('drafts.unnamedItem')}</span>
-          <span className="text-amber-800"> · {ignoredReasonText(i.reason, i.room_name, i.reason === 'OUTSIDE_ASSIGNED_ROOMS' ? ownerOfRoom(i.room_name) : null)}</span>
+          <span className="text-accent-text"> · {ignoredReasonText(i.reason, i.room_name, i.reason === 'OUTSIDE_ASSIGNED_ROOMS' ? ownerOfRoom(i.room_name) : null)}</span>
         </li>
       ))}
     </ul>
@@ -139,16 +139,16 @@ export function UploadResultModal({ title, accepted, ignored, nameOf, ownerOfRoo
       <div className="space-y-4">
         {accepted.length ? (
           <section>
-            <h3 className="text-[13px] font-semibold text-slate-900">{t('drafts.accepted', { n: accepted.length, rooms: rooms.join(', ') })}</h3>
+            <h3 className="text-[13px] font-semibold text-ink">{t('drafts.accepted', { n: accepted.length, rooms: rooms.join(', ') })}</h3>
             {rooms.map((room) => (
               <div key={room} className="mt-2 rounded-lg border border-line">
-                <p className="border-b border-line bg-slate-50 px-2.5 py-1.5 text-xs font-semibold text-slate-700">{room}</p>
+                <p className="border-b border-line bg-canvas px-2.5 py-1.5 text-xs font-semibold text-ink-2">{room}</p>
                 <ul className="divide-y divide-line">
                   {accepted.filter((a) => a.room_name === room).map((a, i) => (
                     <li key={`${a.op}-${a.handle ?? i}`}>
                       <button type="button" onClick={() => onPick(a)}
-                        className="flex w-full items-center justify-between gap-3 px-2.5 py-2 text-left hover:bg-slate-50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand">
-                        <span className="min-w-0 truncate text-[13px] text-slate-900">{nameOf(a)}</span>
+                        className="flex w-full items-center justify-between gap-3 px-2.5 py-2 text-left hover:bg-canvas focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand">
+                        <span className="min-w-0 truncate text-[13px] text-ink">{nameOf(a)}</span>
                         <OpTag op={a.op} />
                       </button>
                     </li>
@@ -157,7 +157,7 @@ export function UploadResultModal({ title, accepted, ignored, nameOf, ownerOfRoo
               </div>
             ))}
           </section>
-        ) : <p className="text-[13px] text-slate-600">{t('drafts.acceptedNone')}</p>}
+        ) : <p className="text-[13px] text-ink-2">{t('drafts.acceptedNone')}</p>}
         {!!ignored.length && (
           <Banner tone="amber">
             <p className="font-medium">{t('drafts.ignored', { n: ignored.length })}</p>

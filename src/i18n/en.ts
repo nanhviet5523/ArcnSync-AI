@@ -1293,6 +1293,12 @@ export const en = {
     blocked: { one: "Couldn't load the 3D model for {n} item (no access or server error). Showing a box instead.", other: "Couldn't load the 3D model for {n} items (no access or server error). Showing boxes instead." },
     missing: { one: '{n} chosen item has no model file yet, so the category placeholder is shown.', other: '{n} chosen items have no model file yet, so the category placeholder is shown.' },
     fit: 'Fit to view',
+    wholeHouseHint: 'Show every floor stacked at its real height',
+    cutAbove: 'Show up to',
+    allFloors: 'All floors',
+    viewAll: 'View all',
+    viewAllHint: 'Clear the room and frame the whole model',
+    ceilingOffInHouse: 'Ceiling view works one floor at a time. Turn off Whole house to use it.',
   },
   reasons: {
     awaitingDesigner: 'The customer can approve or ask for changes once the designer saves the products for the first time',

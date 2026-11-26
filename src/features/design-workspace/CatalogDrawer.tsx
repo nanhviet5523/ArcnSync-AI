@@ -70,15 +70,15 @@ export function CatalogDrawer({ element, editable, onPick, onClose }: Props) {
 
   return (
     <div className={`fixed inset-0 ${Z.sheet} flex justify-end`}>
-      <div className="absolute inset-0 bg-slate-900/30" onClick={onClose} />
+      <div className="absolute inset-0 bg-ink/30" onClick={onClose} />
       <aside ref={box} role="dialog" aria-modal="true" aria-label={t('ws.catalogTitle', { category: element.category.name })}
         className="relative flex h-full w-full max-w-[760px] flex-col bg-surface shadow-float">
         <header className="flex shrink-0 items-center justify-between gap-3 border-b border-line px-5 py-3.5">
           <div className="min-w-0">
-            <h2 className="truncate text-[15px] font-semibold text-slate-900">{t('ws.catalogTitle', { category: element.category.name })}</h2>
-            <p className="text-xs text-slate-500">{t('ws.catalogHint')}</p>
+            <h2 className="truncate text-[15px] font-semibold text-ink">{t('ws.catalogTitle', { category: element.category.name })}</h2>
+            <p className="text-xs text-subtext">{t('ws.catalogHint')}</p>
           </div>
-          <button type="button" onClick={onClose} aria-label={t('common.close')} className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-brand">
+          <button type="button" onClick={onClose} aria-label={t('common.close')} className="rounded-md p-1.5 text-subtext hover:bg-muted hover:text-ink focus-visible:outline-2 focus-visible:outline-brand">
             <X className="h-5 w-5" />
           </button>
         </header>
@@ -86,7 +86,7 @@ export function CatalogDrawer({ element, editable, onPick, onClose }: Props) {
         <div className="grid shrink-0 grid-cols-2 gap-2 border-b border-line px-5 py-3 sm:grid-cols-[minmax(0,1.6fr)_repeat(3,minmax(0,1fr))]">
           <label className="relative col-span-2 sm:col-span-1">
             <span className="sr-only">{t('ws.search')}</span>
-            <Search aria-hidden className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Search aria-hidden className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-subtext-2" />
             <Input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('ws.searchProducts')} className="pl-8" />
           </label>
           <Input type="number" min={0} step={100000} value={min} onChange={(e) => setMin(e.target.value)} placeholder={t('ws.minPrice')} aria-label={t('ws.minPrice')} />
@@ -107,13 +107,13 @@ export function CatalogDrawer({ element, editable, onPick, onClose }: Props) {
                   const current = p.id === element.product?.id;
                   const size = productSize(p);
                   return (
-                    <li key={p.id} className={`flex flex-col rounded-card border p-2.5 text-[13px] ${current ? 'border-brand ring-2 ring-brand/15' : 'border-line'}`}>
+                    <li key={p.id} className={`flex flex-col rounded-lg border p-2.5 text-[13px] ${current ? 'border-brand ring-2 ring-brand/15' : 'border-line'}`}>
                       <Thumb path={p.thumbnail_url} className="aspect-[4/3] w-full" />
-                      <p className="mt-2 line-clamp-2 font-medium leading-snug text-slate-900">{p.name}</p>
-                      <p className="truncate text-xs text-slate-500">{p.supplier_name}</p>
-                      {size && <p className="truncate text-xs tabular-nums text-slate-500">{size}</p>}
+                      <p className="mt-2 line-clamp-2 font-medium leading-snug text-ink">{p.name}</p>
+                      <p className="truncate text-xs text-subtext">{p.supplier_name}</p>
+                      {size && <p className="truncate text-xs tabular-nums text-subtext">{size}</p>}
                       <div className="mt-auto flex items-center justify-between gap-2 pt-2">
-                        <span className="font-semibold tabular-nums text-slate-900">{formatVnd(p.unit_price)}</span>
+                        <span className="font-semibold tabular-nums text-ink">{formatVnd(p.unit_price)}</span>
                         {current ? <span className="text-xs font-medium text-brand">{t('items.inUse')}</span>
                           : editable && <Button size="sm" onClick={() => { onPick(p); onClose(); }}>{t('ws.swap')}</Button>}
                       </div>

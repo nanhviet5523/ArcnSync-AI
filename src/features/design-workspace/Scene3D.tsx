@@ -44,6 +44,10 @@ interface Props {
   room?: { key: string; center: Pt; boundary: Pt[] | null } | null;
   /** Outlines of rooms the viewer cannot edit: their floors are greyed out. */
   dimmed?: Pt[][];
+  /** Whole house: every floor stacked by floor_height_mm. Room tint, dimmed rooms and ceiling stay on `floorId`. */
+  allFloors?: boolean;
+  /** Whole house only: floors above this level are not drawn, to look into the one below. null = all. */
+  cutAbove?: number | null;
   onExportError?: () => void;
   ref?: Ref<Scene3DHandle>;
 }
@@ -64,6 +68,10 @@ interface Ctx {
 }
 
 const WALL = new THREE.Color('#eeeae2');
+/** Palette of globals.css: --pri tints the selected room and boxes the picked item, --t2 greys out rooms the viewer can't edit. */
+const ROOM_TINT = '#5B6B3A';
+const DIM_TINT = '#655B47';
+const PICK_BOX = 0x5b6b3a;
 const own = (m: THREE.Object3D) => { m.userData.own = true; return m; };
 const box = (w: number, h: number, d: number, color: string | THREE.Color, opts: THREE.MeshStandardMaterialParameters = {}) =>
   own(new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshStandardMaterial({ color, ...opts })));
@@ -166,6 +174,19 @@ function cutSegment([a, b]: [Pt, Pt], openings: Opening[]) {
 type SceneWalls = VersionFloor['scene_json']['walls'];
 
 const EYE_HEIGHT = 1.6;
+/** Floor surface; the slab between storeys uses the same colour. */
+const SLAB = '#c9b79c';
+
+/** Height of one storey in metres: floor_height_mm, or the walls when it is missing. */
+const storey = (f: VersionFloor) => (f.floor_height_mm > 0 ? f.floor_height_mm / 1000 : f.scene_json.wall_height);
+const byLevel = (floors: VersionFloor[]) => [...floors].sort((a, b) => a.level - b.level);
+/** y of each floor's base in the whole-house view: the storeys below it, added up. DXF X/Y are shared, so floors line up. */
+function floorBases(floors: VersionFloor[]) {
+  const out = new Map<string, number>();
+  let y = 0;
+  for (const f of byLevel(floors)) { out.set(f.id, y); y += storey(f); }
+  return out;
+}
 const NIGHT_BG = '#15171c';
 /** Day keeps the few soft lights it always had. */
 const DAY_LAMPS = 8;
@@ -189,9 +210,11 @@ const castsShadow = (o: THREE.Object3D) => {
   o.receiveShadow = true;
 };
 
-function applyLamps(c: Ctx, night: boolean) {
+function applyLamps(c: Ctx, night: boolean, firstFloor?: string) {
   const lamps: THREE.PointLight[] = [];
-  c.content.traverse((o) => { if (o.userData.lamp) lamps.push(o as THREE.PointLight); });
+  // the floor being looked at gets the lamps first: there is a cap on how many are on
+  const groups = [...c.content.children].sort((a, b) => Number(b.userData.floorId === firstFloor) - Number(a.userData.floorId === firstFloor));
+  groups.forEach((g) => g.traverse((o) => { if (o.userData.lamp) lamps.push(o as THREE.PointLight); }));
   lamps.forEach((l, i) => {
     l.visible = i < (night ? NIGHT_LAMPS : DAY_LAMPS);
     l.color.set(night ? '#ffb46b' : '#fff1d6'); // about 2700K at night
@@ -260,7 +283,8 @@ function loadModel(models: Ctx['models'], e: DesignElement, report: (id: string,
   });
 }
 
-function buildFloor(f: VersionFloor, els: DesignElement[], models: Ctx['models'], alive: () => boolean, report: (id: string, issue: ModelIssue) => void) {
+/** storeySlab: thickness of the slab under an upper floor of the whole house, cut to its walls; none = the usual ground slab. */
+function buildFloor(f: VersionFloor, els: DesignElement[], models: Ctx['models'], alive: () => boolean, report: (id: string, issue: ModelIssue) => void, storeySlab?: number) {
   const g = new THREE.Group();
   const s = f.scene_json;
   const wallMat = new THREE.MeshStandardMaterial({ color: WALL });
@@ -298,11 +322,18 @@ function buildFloor(f: VersionFloor, els: DesignElement[], models: Ctx['models']
     m.rotation.y = o.rotation;
     g.add(m);
   }
-  const bb = new THREE.Box3().setFromObject(g);
-  const size = bb.getSize(new THREE.Vector3()), c = bb.getCenter(new THREE.Vector3());
-  const slab = box(size.x + 1, 0.05, size.z + 1, '#c9b79c');
-  slab.position.set(c.x, -0.025, c.z);
-  g.add(slab);
+  const fb = storeySlab != null ? wallBounds(f) : null;
+  if (fb && storeySlab != null) {
+    const slab = box(fb.w, storeySlab, fb.d, SLAB);
+    slab.position.set(fb.cx, -storeySlab / 2, -fb.cy);
+    g.add(slab);
+  } else {
+    const bb = new THREE.Box3().setFromObject(g);
+    const size = bb.getSize(new THREE.Vector3()), c = bb.getCenter(new THREE.Vector3());
+    const slab = box(size.x + 1, 0.05, size.z + 1, SLAB);
+    slab.position.set(c.x, -0.025, c.z);
+    g.add(slab);
+  }
 
   for (const e of els) {
     const w = e.width_mm / 1000, d = Math.max(e.depth_mm / 1000, 0.03);
@@ -352,20 +383,29 @@ function buildFloor(f: VersionFloor, els: DesignElement[], models: Ctx['models']
   return g;
 }
 
-export function Scene3D({ floors, elements, floorId, selectedId, onPick, fileName, navMode, lights, ceiling, room, dimmed, onExportError, ref }: Props) {
+export function Scene3D({ floors, elements, floorId, selectedId, onPick, fileName, navMode, lights, ceiling: ceilingWanted, room, dimmed, allFloors = false, cutAbove = null, onExportError, ref }: Props) {
+  // Eye level inside one floor makes no sense with the others stacked around it: the ceiling view is off in the whole house.
+  const ceiling = ceilingWanted && !allFloors;
   const mountRef = useRef<HTMLDivElement>(null);
   const ctx = useRef<Ctx | null>(null);
   const pickRef = useRef(onPick);
   const fitKey = useRef('');
   const [issues, setIssues] = useState<Record<string, ModelIssue>>({});
-  const blocked = elements.filter((e) => issues[e.id] === 'blocked').length;
-  const missing = elements.filter((e) => issues[e.id] === 'missing').length;
   const elsRef = useRef(elements);
-  const cur = floors.find((f) => f.id === floorId) ?? [...floors].sort((a, b) => a.level - b.level)[0];
+  const cur = floors.find((f) => f.id === floorId) ?? byLevel(floors)[0];
+  // whole house: only the floors still drawn below the cut count
+  const drawn = allFloors ? new Set(floors.filter((f) => cutAbove == null || f.level <= cutAbove).map((f) => f.id)) : null;
+  const shown = drawn ? elements.filter((e) => drawn.has(e.floor_id)) : elements;
+  const blocked = shown.filter((e) => issues[e.id] === 'blocked').length;
+  const missing = shown.filter((e) => issues[e.id] === 'missing').length;
   const curRef = useRef(cur);
   const ceilingRef = useRef(ceiling);
   const roomRef = useRef(room);
-  useEffect(() => { pickRef.current = onPick; elsRef.current = elements; curRef.current = cur; ceilingRef.current = ceiling; roomRef.current = room; });
+  /** y of the selected floor's base: 0 unless the whole house is shown. */
+  const baseY = allFloors && cur ? floorBases(floors).get(cur.id) ?? 0 : 0;
+  const baseRef = useRef(baseY);
+  const allRef = useRef(allFloors);
+  useEffect(() => { pickRef.current = onPick; elsRef.current = elements; curRef.current = cur; ceilingRef.current = ceiling; roomRef.current = room; baseRef.current = baseY; allRef.current = allFloors; });
 
   /** Standing in the selected room (or the largest one), back near a wall, looking across it. */
   const viewInside = () => {
@@ -390,7 +430,9 @@ export function Scene3D({ floors, elements, floorId, selectedId, onPick, fileNam
     const bb = new THREE.Box3().setFromObject(c.content);
     if (bb.isEmpty()) return;
     const size = bb.getSize(new THREE.Vector3()), center = bb.getCenter(new THREE.Vector3());
-    const dist = Math.max(size.x, size.z) * 1.1;
+    // the whole house is tall too: keep its top floor in the frame
+    // ...and a narrow canvas (1024px with both side panels) needs it further away to fit sideways
+    const dist = (allRef.current ? Math.max(size.x, size.z, size.y * 1.3) / Math.min(1, c.camera.aspect) : Math.max(size.x, size.z)) * 1.1;
     // same limits as 2D: "fit" distance, closer by MAX_ZOOM, further by 1 / MIN_ZOOM
     const fitDistance = dist * Math.hypot(0.35, 1.2, 0.85);
     c.controls.minDistance = fitDistance / MAX_ZOOM;
@@ -494,22 +536,39 @@ export function Scene3D({ floors, elements, floorId, selectedId, onPick, fileNam
       : { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN };
   }, [navMode]);
 
+  // What is drawn: one floor, or the whole house up to cutAbove. Picking another floor in the whole house draws nothing new.
+  const buildKey = allFloors ? `all:${cutAbove ?? ''}` : cur?.id ?? '';
   useEffect(() => {
     const c = ctx.current!;
     let alive = true;
+    // dispose before clear: switching floors, the whole house or the cut level must not leak geometry
     disposeOwn(c.content);
     c.content.clear();
     c.roomMark = null;
-    if (cur) {
-      const g = buildFloor(cur, elements.filter((e) => e.floor_id === cur.id), c.models, () => alive, (id, issue) => alive && setIssues((m) => (m[id] === issue ? m : { ...m, [id]: issue })));
+    const report = (id: string, issue: ModelIssue) => alive && setIssues((m) => (m[id] === issue ? m : { ...m, [id]: issue }));
+    const add = (f: VersionFloor, y: number, slab?: number) => {
+      const g = buildFloor(f, elements.filter((e) => e.floor_id === f.id), c.models, () => alive, report, slab);
+      g.position.y = y;
+      g.userData.floorId = f.id;
       c.content.add(g);
-      if (fitKey.current !== cur.id) { homeView(); fitKey.current = cur.id; }
-    }
+    };
+    if (allFloors) {
+      let y = 0, below: VersionFloor | null = null;
+      for (const f of byLevel(floors)) {
+        // the slab fills the gap between the walls below and this floor
+        if (cutAbove == null || f.level <= cutAbove) add(f, y, below ? Math.max(0.08, storey(below) - below.scene_json.wall_height) : undefined);
+        y += storey(f);
+        below = f;
+      }
+    } else if (cur) add(cur, 0);
+    // frame once per floor or once for the whole house; cutting floors away keeps the camera
+    const fit = allFloors ? 'all' : cur?.id ?? '';
+    if (c.content.children.length && fitKey.current !== fit) { homeView(); fitKey.current = fit; }
     return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cur, elements]);
+  }, [buildKey, floors, elements]);
 
-  useEffect(() => { applyLamps(ctx.current!, lights); }, [lights, cur, elements]);
+  useEffect(() => { applyLamps(ctx.current!, lights, cur?.id); }, [lights, cur, elements, buildKey]);
 
   // Ceiling slab; fixtures with no height of their own hang from it.
   useEffect(() => {
@@ -519,14 +578,19 @@ export function Scene3D({ floors, elements, floorId, selectedId, onPick, fileNam
     const bounds = cur && wallBounds(cur);
     if (!cur) return;
     const top = ceilingHeight(cur.scene_json.wall_height, cur.floor_height_mm);
-    const y = ceiling ? top : cur.scene_json.wall_height;
-    c.content.traverse((o) => { if (o.userData.ceilingDrop != null) o.position.y = y - o.userData.ceilingDrop; });
+    // each floor's fixtures hang from its own walls; only the selected floor can have the ceiling lowered
+    for (const g of c.content.children) {
+      const f = floors.find((x) => x.id === g.userData.floorId);
+      if (!f) continue;
+      const y = ceiling && f.id === cur.id ? top : f.scene_json.wall_height;
+      g.traverse((o) => { if (o.userData.ceilingDrop != null) o.position.y = y - o.userData.ceilingDrop; });
+    }
     if (!ceiling || !bounds) return;
     // The underside gets almost no daylight from the scene's lights, so it carries its own glow; at night the lamps light it.
     const slab = box(bounds.w, 0.06, bounds.d, '#f6f3ec', { emissive: '#f6f3ec', emissiveIntensity: lights ? 0.04 : 0.55 });
     slab.position.set(bounds.cx, top + 0.03, -bounds.cy);
     c.ceiling.add(slab);
-  }, [ceiling, lights, cur, elements]);
+  }, [ceiling, lights, cur, elements, floors, buildKey]);
 
   // Only when the switch itself changes: a data reload must not move the camera.
   const lastCeiling = useRef(ceiling);
@@ -545,17 +609,18 @@ export function Scene3D({ floors, elements, floorId, selectedId, onPick, fileNam
     for (const b of JSON.parse(dimKey) as Pt[][]) {
       const geo = new THREE.ShapeGeometry(new THREE.Shape(b.map(([x, y]) => new THREE.Vector2(x, y))));
       geo.rotateX(-Math.PI / 2);
-      const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: '#64748b', transparent: true, opacity: 0.45, depthWrite: false, side: THREE.DoubleSide }));
+      const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: DIM_TINT, transparent: true, opacity: 0.45, depthWrite: false, side: THREE.DoubleSide }));
       mesh.position.y = 0.014;
       mesh.renderOrder = 1;
       group.add(mesh);
     }
+    group.position.y = baseY;
     c.scene.add(group);
     return () => {
       c.scene.remove(group);
       group.traverse((o) => { if (o instanceof THREE.Mesh) { o.geometry.dispose(); (o.material as THREE.Material).dispose(); } });
     };
-  }, [dimKey]);
+  }, [dimKey, baseY]);
 
   // Selected room: tint its floor and move the camera over it (only when the room changes).
   const roomKey = room?.key ?? null;
@@ -568,8 +633,8 @@ export function Scene3D({ floors, elements, floorId, selectedId, onPick, fileNam
       const shape = new THREE.Shape(room.boundary.map(([x, y]) => new THREE.Vector2(x, y)));
       const geo = new THREE.ShapeGeometry(shape);
       geo.rotateX(-Math.PI / 2);
-      const mark = own(new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: '#2563eb', transparent: true, opacity: 0.18, depthWrite: false, side: THREE.DoubleSide }))) as THREE.Mesh;
-      mark.position.y = 0.012;
+      const mark = own(new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: ROOM_TINT, transparent: true, opacity: 0.22, depthWrite: false, side: THREE.DoubleSide }))) as THREE.Mesh;
+      mark.position.y = baseY + 0.012;
       mark.renderOrder = 2;
       c.content.add(mark);
       c.roomMark = mark;
@@ -580,13 +645,13 @@ export function Scene3D({ floors, elements, floorId, selectedId, onPick, fileNam
     const pts = room.boundary ?? [room.center];
     const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
     const span = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys), 3);
-    const target = new THREE.Vector3(room.center[0], 0.8, -room.center[1]);
+    const target = new THREE.Vector3(room.center[0], baseY + 0.8, -room.center[1]);
     const dist = span * 1.25;
     c.controls.target.copy(target);
     c.camera.position.set(target.x + dist * 0.35, target.y + dist * 1.1, target.z + dist * 0.8);
     c.controls.update();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [roomKey, elements, floorId]);
+  }, [roomKey, elements, floorId, buildKey, baseY]);
 
   useEffect(() => {
     const c = ctx.current!;
@@ -594,12 +659,12 @@ export function Scene3D({ floors, elements, floorId, selectedId, onPick, fileNam
     let target: THREE.Object3D | undefined;
     c.content.traverse((o) => { if (o.userData.elementId === selectedId) target = o; });
     if (target) {
-      c.helper = new THREE.BoxHelper(target, 0x2563eb);
+      c.helper = new THREE.BoxHelper(target, PICK_BOX);
       (c.helper.material as THREE.LineBasicMaterial).depthTest = false;
       c.helper.renderOrder = 999;
       c.scene.add(c.helper);
     }
-  }, [selectedId, elements, floorId]);
+  }, [selectedId, elements, floorId, buildKey]);
 
   const download = (blob: Blob, name: string) => {
     const a = document.createElement('a');
@@ -614,8 +679,9 @@ export function Scene3D({ floors, elements, floorId, selectedId, onPick, fileNam
     focusAt(x, y) {
       const c = ctx.current;
       if (!c) return;
-      c.controls.target.set(x, 0.8, -y);
-      c.camera.position.set(x + 1.2, 3.4, -y + 2.4);
+      const b = baseRef.current;
+      c.controls.target.set(x, b + 0.8, -y);
+      c.camera.position.set(x + 1.2, b + 3.4, -y + 2.4);
       c.controls.update();
     },
     exportGlb() {
@@ -637,9 +703,9 @@ export function Scene3D({ floors, elements, floorId, selectedId, onPick, fileNam
     <div className="relative h-full w-full">
       <div ref={mountRef} className="h-full w-full touch-none overscroll-contain" />
       {(blocked > 0 || missing > 0) && (
-        <div className="pointer-events-none absolute left-3 top-3 max-w-xs space-y-1 text-xs">
+        <div className="pointer-events-none absolute left-3 top-14 max-w-xs space-y-1 text-xs">
           {blocked > 0 && <p className="rounded-lg bg-rose-50 px-2.5 py-1.5 text-rose-700 shadow-card">{t('scene.blocked', { n: blocked })}</p>}
-          {missing > 0 && <p className="rounded-lg bg-amber-50 px-2.5 py-1.5 text-amber-800 shadow-card">{t('scene.missing', { n: missing })}</p>}
+          {missing > 0 && <p className="rounded-lg bg-accent-soft px-2.5 py-1.5 text-accent-text shadow-card">{t('scene.missing', { n: missing })}</p>}
         </div>
       )}
     </div>

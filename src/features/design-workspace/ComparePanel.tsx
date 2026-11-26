@@ -83,7 +83,7 @@ export function ComparePanel({ merge, role, fromId, toId, floorId, layers, view,
   const floorOf = (v: DesignVersion) => v.floors.find((f) => f.id === floorId) ?? v.floors[0];
   const dot = (kind: DiffKind) => <span key={kind} aria-hidden className="inline-block h-2 w-2 rounded-full" style={{ background: DIFF_COLORS[kind] }} />;
   const legend = diff && (
-    <div className="absolute left-3 top-10 z-10 flex items-center gap-3 rounded-md bg-surface px-2 py-1 text-[11px] font-medium tabular-nums text-slate-700 shadow-card">
+    <div className="absolute left-3 top-10 z-10 flex items-center gap-3 rounded-md bg-surface px-2 py-1 text-[11px] font-medium tabular-nums text-ink-2 shadow-card">
       <span className="inline-flex items-center gap-1">{dot('added')}{t('compare.kind.added')} {diff.added.length}</span>
       <span className="inline-flex items-center gap-1">{dot('removed')}{t('compare.kind.removed')} {diff.removed.length}</span>
       <span className="inline-flex items-center gap-1">{dot('moved')}{dot('replaced')}{dot('changed')}{t('compare.legendChanged')} {diff.moved.length + diff.replaced.length + diff.overrides_changed.length}</span>
@@ -93,7 +93,7 @@ export function ComparePanel({ merge, role, fromId, toId, floorId, layers, view,
     const f = floorOf(v);
     return (
       <div className="relative min-h-0 min-w-0">
-        <span className="absolute left-3 top-3 z-10 rounded-md bg-surface px-2 py-0.5 text-xs font-semibold text-slate-800 shadow-card">{versionLabel(v.label, role)}</span>
+        <span className="absolute left-3 top-3 z-10 rounded-md bg-surface px-2 py-0.5 text-xs font-semibold text-ink shadow-card">{versionLabel(v.label, role)}</span>
         {handle && legend}
         {f && <Plan2D ref={handle} floor={f} elements={v.elements.filter((e) => e.floor_id === f.id)} layers={layers} highlight={h} view={view} onViewChange={onViewChange}
           selectedId={merge?.selectedId} onSelect={merge ? (e) => { if (e && h[e.id]) merge.onPick(e.id); } : undefined} />}

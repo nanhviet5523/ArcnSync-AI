@@ -38,8 +38,8 @@ export function CommentHint({ x, y, bounds, onSwitch2D }: { x: number; y: number
   const top = Math.max(GAP, Math.min(y + GAP + height > bounds.height ? y - GAP - height : y + GAP, bounds.height - height - GAP));
   return (
     <div role="status" aria-live="polite" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}
-      className={`absolute ${Z.canvasOverlay} rounded-card border border-line bg-surface px-3 py-2.5 shadow-float`} style={{ left, top, width }}>
-      <p className="text-[13px] leading-5 text-slate-700">{t('ws.hint3dSpot')}</p>
+      className={`absolute ${Z.canvasOverlay} rounded-xl border border-line bg-surface px-3 py-2.5 shadow-float`} style={{ left, top, width }}>
+      <p className="text-[13px] leading-5 text-ink-2">{t('ws.hint3dSpot')}</p>
       <Button size="sm" className="mt-2" onClick={onSwitch2D}>{t('ws.switchTo2d')}</Button>
     </div>
   );
@@ -71,14 +71,14 @@ export function QuickComment({ title, placeholder, x, y, bounds, onSend, onCance
 
   return (
     <div role="dialog" aria-label={title} onKeyDown={onKey} onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}
-      className={`absolute ${Z.canvasOverlay} rounded-card border border-line bg-surface p-3 shadow-float`} style={{ left, top, width: WIDTH }}>
-      <p className="mb-2 truncate text-[13px] font-semibold text-slate-900">{title}</p>
+      className={`absolute ${Z.canvasOverlay} rounded-xl border border-line bg-surface p-3 shadow-float`} style={{ left, top, width: WIDTH }}>
+      <p className="mb-2 truncate text-[13px] font-semibold text-ink">{title}</p>
       {extra && <div className="mb-2">{extra}</div>}
       <textarea ref={area} rows={3} value={text} disabled={busy} onChange={(e) => { setText(e.target.value); onTextChange?.(!!e.target.value.trim()); }}
         aria-label={title} placeholder={placeholder}
-        className="block w-full resize-none rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition placeholder:text-slate-500 focus:border-brand focus:ring-2 focus:ring-brand/20 disabled:bg-slate-50" />
+        className="block w-full resize-none rounded-lg border border-line-strong bg-surface px-3 py-2 text-sm text-ink outline-none transition placeholder:text-subtext focus:border-brand focus:ring-2 focus:ring-brand/20 disabled:bg-canvas" />
       <div className="mt-2 flex items-center justify-between gap-2">
-        <span className="text-xs text-slate-500">{t('ws.quickHint')}</span>
+        <span className="text-xs text-subtext">{t('ws.quickHint')}</span>
         <div className="flex gap-1.5">
           <Button size="sm" variant="ghost" onClick={onCancel}>{t('common.cancel')}</Button>
           <Button size="sm" variant="primary" loading={busy} disabled={!text.trim()} onClick={send}>{t('comments.send')}</Button>

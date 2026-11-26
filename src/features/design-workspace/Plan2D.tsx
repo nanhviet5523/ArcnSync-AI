@@ -46,6 +46,8 @@ interface Props {
 
 const PAPER = '#ffffff';
 const INK = '#2b3445';
+/** Selection and pins: --pri of globals.css. */
+const PRI = '#5B6B3A';
 
 const LAYER_OF: Record<DesignElement['element_type'], keyof Layers> = {
   FURNITURE: 'furniture', APPLIANCE: 'furniture', FINISH_MATERIAL: 'furniture', OTHER: 'furniture', DECOR: 'wallItems', LIGHTING: 'lights',
@@ -157,14 +159,14 @@ export function Plan2D({ floor, elements, layers, selectedId, onSelect, pins = [
   const pin = (p: Pin) => (
     p.num === null ? (
       <g key={p.id} transform={`translate(${p.x} ${-p.y})`} className="pointer-events-none">
-        <circle r={unit * 1.6} fill="#2563eb" fillOpacity={0.15} stroke="#2563eb" strokeWidth={unit * 0.25} strokeDasharray={`${unit * 0.6} ${unit * 0.4}`} />
-        <circle r={unit * 0.45} fill="#2563eb" />
+        <circle r={unit * 1.6} fill={PRI} fillOpacity={0.15} stroke={PRI} strokeWidth={unit * 0.25} strokeDasharray={`${unit * 0.6} ${unit * 0.4}`} />
+        <circle r={unit * 0.45} fill={PRI} />
       </g>
     ) : (
       <g key={p.id} transform={`translate(${p.x} ${-p.y})`} className="cursor-pointer"
         onClick={(ev) => { ev.stopPropagation(); onPinClick?.(p.id); }}>
-        {p.active && <circle r={unit * 2.6} fill="none" stroke="#2563eb" strokeWidth={unit * 0.35} opacity={0.5} />}
-        <circle r={unit * (p.active ? 2 : 1.6)} fill={p.resolved ? '#16a34a' : p.active ? '#2563eb' : '#e11d48'} stroke="#fff" strokeWidth={unit * 0.3} />
+        {p.active && <circle r={unit * 2.6} fill="none" stroke={PRI} strokeWidth={unit * 0.35} opacity={0.5} />}
+        <circle r={unit * (p.active ? 2 : 1.6)} fill={p.resolved ? '#16a34a' : p.active ? PRI : '#e11d48'} stroke="#fff" strokeWidth={unit * 0.3} />
         <text fontSize={unit * (p.active ? 2.2 : 1.8)} textAnchor="middle" dominantBaseline="central" fill="#fff" fontWeight={700}>{p.num}</text>
       </g>
     )
@@ -176,8 +178,8 @@ export function Plan2D({ floor, elements, layers, selectedId, onSelect, pins = [
     const sel = e.id === selectedId;
     const off = e.overrides?.on === false || hl === 'removed';
     const unknown = isUnknownItem(e);
-    const stroke = sel ? '#2563eb' : hl ? DIFF_COLORS[hl] : unknown ? '#94a3b8' : '#6b7280';
-    const fill = sel ? '#2563eb22' : hl ? `${DIFF_COLORS[hl]}33` : unknown ? '#e2e8f0' : e.element_type === 'FURNITURE' ? '#efe7d8' : '#ffffff';
+    const stroke = sel ? PRI : hl ? DIFF_COLORS[hl] : unknown ? '#94a3b8' : '#6b7280';
+    const fill = sel ? `${PRI}22` : hl ? `${DIFF_COLORS[hl]}33` : unknown ? '#e2e8f0' : e.element_type === 'FURNITURE' ? '#efe7d8' : '#ffffff';
     const common = { stroke, fill, vectorEffect: 'non-scaling-stroke' as const, strokeWidth: sel ? 2.5 : hl ? 2 : 1 };
     return (
       <g key={e.id} transform={`translate(${e.position.x} ${-e.position.y}) rotate(${-e.position.rotation_deg})`}
@@ -202,7 +204,7 @@ export function Plan2D({ floor, elements, layers, selectedId, onSelect, pins = [
         {...(interactive ? { onPointerDown: onDown, onPointerMove: onMove, onClick: onBgClick } : { 'aria-hidden': true })}>
         {/* paper under the floor so the drawing stands out from the warm grey stage */}
         {s.walls.map((w, i) => <path key={`p${i}`} fill={PAPER} d={ring(w.outer)} />)}
-        {room && <path d={ring(room)} fill="#2563eb" fillOpacity={0.08} stroke="#2563eb" strokeWidth={2} vectorEffect="non-scaling-stroke" className="pointer-events-none" />}
+        {room && <path d={ring(room)} fill={PRI} fillOpacity={0.08} stroke={PRI} strokeWidth={2} vectorEffect="non-scaling-stroke" className="pointer-events-none" />}
         {s.walls.map((w, i) => (
           <path key={i} fillRule="evenodd" fill={INK} d={ring(w.outer) + w.holes.map(ring).join('')} />
         ))}
