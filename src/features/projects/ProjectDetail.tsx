@@ -182,7 +182,6 @@ export function ProjectDetail() {
             </span>
           </span>
         )}
-        primary={primary}
         secondary={<>
           <Button onClick={() => navigate(`/projects/${encodeURIComponent(project.id)}/ai`)}><Sparkles aria-hidden className="h-4 w-4" />AI assistant</Button>
           {secondary}
@@ -203,17 +202,18 @@ export function ProjectDetail() {
         <ProjectStepper status={project.status} />
       </Card>
 
-      {next && (
-        // The one thing to do now: brand wash, a signpost that pings twice when the page opens, then rests.
-        <div className="step-in mb-5 flex items-center gap-4 overflow-hidden rounded-card border border-brand/20 bg-linear-to-r from-brand-soft via-brand-soft/50 to-surface px-4 py-4 shadow-card sm:px-5">
+      {/* The next step and its primary action stay together; the callout remains visible for an action even when next is empty. */}
+      {(next || primary) && (
+        <div className="step-in mb-5 flex flex-wrap items-center gap-4 overflow-hidden rounded-card border border-brand/20 bg-linear-to-r from-brand-soft via-brand-soft/50 to-surface px-4 py-4 shadow-card sm:px-5">
           <span className="relative grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-brand text-white shadow-card">
             <span aria-hidden className="absolute inset-0 animate-ping rounded-xl bg-brand/35 [animation-iteration-count:2] motion-reduce:hidden" />
             <Signpost aria-hidden className="relative h-5 w-5" />
           </span>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <p className="text-[11px] font-bold uppercase tracking-widest text-brand">{t('nextStep.title')}</p>
-            <p className="mt-0.5 text-[15px] font-semibold leading-snug text-ink">{next}</p>
+            {next && <p className="mt-0.5 text-[15px] font-semibold leading-snug text-ink">{next}</p>}
           </div>
+          {primary}
         </div>
       )}
 

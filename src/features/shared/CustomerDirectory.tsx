@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Search, Users } from 'lucide-react';
+import { PageHeader } from '@/components/ui';
 import { Footer, Header } from '@/components/layout';
 import { ApiError, getCurrentUser } from '@/services/authService';
 import { getCustomers, type CustomerAccount } from '@/services/userService';
@@ -49,8 +50,8 @@ export const CustomerDirectory: React.FC = () => {
 
   return <div className="flex min-h-screen flex-col bg-sand-50 font-sans">
     <Header role={role}/>
-    <main className="mx-auto w-full max-w-6xl flex-1 px-5 py-10 lg:px-8">
-      <div className="mb-8 flex items-center gap-4"><span className="grid h-12 w-12 place-items-center rounded-2xl bg-sand-100 text-ink"><Users size={22}/></span><div><p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-text">Accounts</p><h1 className="mt-1 text-3xl font-extrabold tracking-tight text-ink">Customers</h1><p className="mt-1 text-sm text-slate-500">Search for a registered, active customer by email.</p></div></div>
+    <main className="mx-auto w-full max-w-[1440px] flex-1 px-6 py-10 lg:px-12">
+      <PageHeader title="Customers" description="Search for a registered, active customer by email." />
       <section className="rounded-2xl border border-control bg-surface p-5 shadow-sm sm:p-7">
         <form onSubmit={searchCustomers} className="mb-5 flex flex-col gap-3 sm:flex-row">
           <label className="relative block flex-1"><Search size={17} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-subtext"/><input type="email" required value={email} onChange={(event) => setEmail(event.target.value)} placeholder="Enter customer email" className="w-full rounded-xl border border-control bg-sand-100 py-3 pl-10 pr-4 text-sm outline-none focus-visible:border-brand focus-visible:ring-2 focus-visible:ring-brand-soft"/></label>

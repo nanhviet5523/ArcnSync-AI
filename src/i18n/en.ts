@@ -75,6 +75,9 @@ export const en = {
     contractMilestone: '#{seq} {name}',
     contractUnavailable: 'Transaction history unavailable.',
   },
+  header: {
+    noNotifications: 'You have no notifications yet.',
+  },
   role: { homeowner: 'Homeowner', staff: 'Staff', designer: 'Designer', supplier: 'Supplier', admin: 'Admin' },
   status: {
     project: {
@@ -105,6 +108,8 @@ export const en = {
     lead: 'Lead',
     member: 'Member',
     designTeam: 'Design team',
+    searchDesigners: 'Search designers by name or email',
+    noSearchResults: 'No designers match your search.',
     members: 'Members',
     chooseLead: 'Choose a lead',
     activeProjects: { one: '{n} active project', other: '{n} active projects' },
@@ -292,6 +297,56 @@ export const en = {
     cancelledHint: 'This project was cancelled, so none of its steps are in progress.',
     unknownStatus: 'Progress for this project status is not shown yet.',
   },
+  staffUx: {
+    today: {
+      title: "Today's project work",
+      description: 'Project work at a glance, based on the project data currently available.',
+      queue: 'Needs action',
+      inProgress: 'In progress',
+      unavailable: 'The project list could not be loaded. Try again below.',
+      assign: 'Assign designer',
+      done: 'No projects need follow-up.',
+    },
+    attention: {
+      noDesigner: 'No designer assigned',
+      contract: 'Contract pending',
+      survey: 'Waiting for site survey',
+      analysis: 'Requirement analysis',
+      design: 'Design in progress',
+    },
+    quick: {
+      label: 'Quick project filters',
+      all: 'All projects',
+      unassigned: 'No designer',
+      survey: 'Survey / analysis',
+      contract: 'Contract pending',
+      design: 'In design',
+      quotation: 'Quotation and handover',
+      completed: 'Completed',
+    },
+    filters: {
+      allDesigners: 'All designers',
+      allCustomers: 'All customers',
+      results: '{shown} projects in this view · {total} total',
+      loaded: '{count} loaded for filtering',
+    },
+    sort: {
+      label: 'Sort projects',
+      attention: 'Needs attention',
+      updated: 'Recently updated',
+      name: 'Project name',
+      budget: 'Highest budget',
+    },
+    designer: {
+      search: 'Search designers by name or email',
+      noMatch: 'No designers match this search.',
+      highestWorkload: 'Highest current workload',
+      leadChange: 'Lead designer changes from {from} to {to}.',
+    },
+    notifications: {
+      empty: 'No notifications',
+    },
+  },
   projects: {
     title: { staff: 'Projects', admin: 'Projects', designer: 'Assigned projects', homeowner: 'My projects' },
     description: {
@@ -303,6 +358,10 @@ export const en = {
     newProject: 'New project',
     searchPlaceholder: 'Search project, code or homeowner',
     allStatuses: 'All statuses',
+    allDesigners: 'All designers',
+    allCustomers: 'All homeowners',
+    quickFilters: 'Quick project filters',
+    queue: { all: 'All projects', needsAction: 'Needs action', inProgress: 'In progress' },
     col: { project: 'Project', home: 'Home', homeowner: 'Homeowner', designer: 'Designer', status: 'Status', updated: 'Updated' },
     floors: { one: '{n} floor', other: '{n} floors' },
     notAssigned: 'Not assigned',

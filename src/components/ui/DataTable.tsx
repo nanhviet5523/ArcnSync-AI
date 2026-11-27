@@ -26,13 +26,22 @@ interface Props<T> {
   onRowClick?: (row: T) => void;
   pageSize?: number;
   initialSort?: { key: string; dir: 'asc' | 'desc' };
+  /** Optional controlled sort and page state for URL-backed lists. */
+  sortState?: { key: string; dir: 'asc' | 'desc' } | null;
+  onSortChange?: (sort: { key: string; dir: 'asc' | 'desc' } | null) => void;
+  pageState?: number;
+  onPageChange?: (page: number) => void;
   /** rows on the current page, e.g. to load extra data for them */
   onPageRows?: (rows: T[]) => void;
 }
 
-export function DataTable<T>({ columns, rows, rowKey, loading, error, onRetry, empty, onRowClick, pageSize = 10, initialSort, onPageRows }: Props<T>) {
-  const [sort, setSort] = useState(initialSort ?? null);
-  const [page, setPage] = useState(0);
+export function DataTable<T>({ columns, rows, rowKey, loading, error, onRetry, empty, onRowClick, pageSize = 10, initialSort, sortState, onSortChange, pageState, onPageChange, onPageRows }: Props<T>) {
+  const [internalSort, setInternalSort] = useState(initialSort ?? null);
+  const [internalPage, setInternalPage] = useState(0);
+  const sort = sortState === undefined ? internalSort : sortState;
+  const page = pageState ?? internalPage;
+  const changeSort = (next: { key: string; dir: 'asc' | 'desc' } | null) => onSortChange ? onSortChange(next) : setInternalSort(next);
+  const changePage = (next: number) => onPageChange ? onPageChange(next) : setInternalPage(next);
 
   const sorted = useMemo(() => {
     if (!rows) return [];
@@ -64,7 +73,7 @@ export function DataTable<T>({ columns, rows, rowKey, loading, error, onRetry, e
   }
   if (!rows.length) return typeof empty === 'string' ? <EmptyState title={empty} /> : <>{empty}</>;
 
-  const toggle = (key: string) => setSort((s) => (s?.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }));
+  const toggle = (key: string) => changeSort(sort?.key === key ? { key, dir: sort.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' });
   const clickable = onRowClick ? 'cursor-pointer' : '';
 
   return (
@@ -115,8 +124,8 @@ export function DataTable<T>({ columns, rows, rowKey, loading, error, onRetry, e
         <div className="flex items-center justify-between gap-2 border-t border-slate-100 px-4 py-2.5 text-[13px] text-slate-500">
           <span>{t('common.page', { page: current + 1, pages })}</span>
           <div className="flex gap-1">
-            <Button size="sm" variant="ghost" aria-label={t('common.prev')} disabled={current === 0} onClick={() => setPage(current - 1)}>‹</Button>
-            <Button size="sm" variant="ghost" aria-label={t('common.next')} disabled={current >= pages - 1} onClick={() => setPage(current + 1)}>›</Button>
+            <Button size="sm" variant="ghost" aria-label={t('common.prev')} disabled={current === 0} onClick={() => changePage(current - 1)}>‹</Button>
+            <Button size="sm" variant="ghost" aria-label={t('common.next')} disabled={current >= pages - 1} onClick={() => changePage(current + 1)}>›</Button>
           </div>
         </div>
       )}

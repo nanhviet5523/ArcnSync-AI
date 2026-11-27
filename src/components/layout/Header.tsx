@@ -56,7 +56,7 @@ export function UserMenus({ role, showBadge = true }: { role: UserRole; showBadg
   const menuRef = useOutside(accountOpen, () => setAccountOpen(false));
   const notifRef = useOutside(notifOpen, () => setNotifOpen(false));
 
-  const [notifications, setNotifications] = useState([
+  const [notifications, setNotifications] = useState(role === 'staff' ? [] : [
     { id: 'n1', title: 'Image generation is slower than usual', time: '2 hours ago', unread: true },
     { id: 'n2', title: 'Viglacera Tiles has not accepted the invitation yet', time: 'Yesterday', unread: true },
     { id: 'n3', title: 'Pham Duc role changed to Designer', time: 'Yesterday', unread: false },
@@ -99,7 +99,7 @@ export function UserMenus({ role, showBadge = true }: { role: UserRole; showBadg
               )}
             </div>
             <div className="mt-1 divide-y divide-slate-100">
-              {notifications.map((item) => (
+              {notifications.length === 0 ? <p className="py-5 text-center text-sm text-slate-500">{t('header.noNotifications')}</p> : notifications.map((item) => (
                 <div key={item.id} className="flex items-start justify-between gap-3 py-3 first:pt-2 last:pb-1">
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-bold leading-snug text-slate-800">{item.title}</p>
