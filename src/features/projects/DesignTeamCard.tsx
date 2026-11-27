@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
-import { Avatar, Button, ErrorState, Field, Modal, Select, Skeleton, avatarLabels } from '@/components/ui';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Avatar, Button, ErrorState, Field, Input, Modal, Select, Skeleton, avatarLabels } from '@/components/ui';
 import { t } from '@/i18n';
 import { can, teamOptions } from '@/features/design-workspace/logic';
 import { TeamRow } from '@/features/design-workspace/TeamCard';
@@ -31,6 +31,7 @@ export function DesignTeamCard({ project, role, designers, onSaved, onToast }: P
   const [memberIds, setMemberIds] = useState<string[]>([]);
   const [confirm, setConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [query, setQuery] = useState('');
 
   const load = useCallback(async () => {
     setLoadError('');
@@ -54,7 +55,11 @@ export function DesignTeamCard({ project, role, designers, onSaved, onToast }: P
   const avatars = avatarLabels(options.map((d) => ({ id: d.id, name: d.fullName })));
   // someone new must be taking projects; whoever is on the team now stays selectable
   const selectable = options.filter((d) => d.isAvailable || onTeam.has(d.id));
-  const memberOptions = selectable.filter((d) => d.id !== leadId);
+  const matching = useMemo(() => {
+    const q = query.trim().toLocaleLowerCase();
+    return selectable.filter((d) => d.id === leadId || !q || `${d.fullName} ${d.email}`.toLocaleLowerCase().includes(q));
+  }, [query, selectable, leadId]);
+  const memberOptions = matching.filter((d) => d.id !== leadId);
 
   const chosen = new Set([leadId, ...memberIds].filter(Boolean));
   const leaving = people.filter((p) => !chosen.has(p.userId));
@@ -126,10 +131,15 @@ export function DesignTeamCard({ project, role, designers, onSaved, onToast }: P
         {(f) => (
           <Select {...f} value={leadId} onChange={(e) => changeLead(e.target.value)}>
             <option value="" disabled>{selectable.length ? t('team.chooseLead') : t('projectDetail.noDesigners')}</option>
-            {selectable.map((d) => <option key={d.id} value={d.id}>{d.fullName} · {workload(d)}</option>)}
+            {matching.map((d) => <option key={d.id} value={d.id}>{d.fullName} · {workload(d)}</option>)}
           </Select>
         )}
       </Field>
+
+      <label className="mt-3 block">
+        <span className="sr-only">{t('team.searchDesigners')}</span>
+        <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t('team.searchDesigners')} />
+      </label>
 
       <fieldset className="mt-4">
         <legend className="mb-2 text-[13px] font-medium text-slate-700">{t('team.members')}</legend>
@@ -152,7 +162,7 @@ export function DesignTeamCard({ project, role, designers, onSaved, onToast }: P
               );
             })}
           </ul>
-        ) : <p className="text-sm text-slate-500">{t('team.noMemberOptions')}</p>}
+        ) : <p className="text-sm text-slate-500">{query.trim() ? t('team.noSearchResults') : t('team.noMemberOptions')}</p>}
         {savedLead && leadId !== savedLead && memberIds.includes(savedLead) && <p className="mt-2 text-xs text-slate-500">{t('team.formerLeadStays')}</p>}
       </fieldset>
 

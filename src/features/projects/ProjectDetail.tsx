@@ -189,7 +189,6 @@ export function ProjectDetail() {
         title={project.title}
         chip={waitingDeposit ? <StatusChip label={t('projectDetail.waitingDeposit')} tone="yellow" /> : <StatusChip kind="project" value={project.status} />}
         description={<>{project.code}<span className="mx-2 text-slate-300">|</span>{t('projectDetail.created', { date: formatDate(project.createdAt) })}</>}
-        primary={primary}
         secondary={<>
           <Button onClick={() => navigate(`/projects/${encodeURIComponent(project.id)}/ai`)}><Sparkles aria-hidden className="h-4 w-4" />AI assistant</Button>
           {secondary}
@@ -213,11 +212,16 @@ export function ProjectDetail() {
         </Card>
       )}
 
-      {next && (
+      {(next || primary) && (
         <div className="mb-5">
           <Banner tone="blue">
-            <p className="text-[13px] font-medium text-brand-text">{t('nextStep.title')}</p>
-            <p className="mt-0.5 text-[15px] font-semibold text-ink">{next}</p>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[13px] font-medium text-brand-text">{t('nextStep.title')}</p>
+                {next && <p className="mt-0.5 text-[15px] font-semibold text-ink">{next}</p>}
+              </div>
+              {primary}
+            </div>
           </Banner>
         </div>
       )}

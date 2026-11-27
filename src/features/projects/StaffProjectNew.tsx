@@ -68,7 +68,7 @@ export function StaffProjectNew() {
     }
   };
   const req = (v: string) => (v.trim() ? '' : t('common.required'));
-  const emailError = (v: string) => req(v) || (/^[^s@]+@[^s@]+.[^s@]+$/.test(v.trim()) ? '' : t('newProject.emailInvalid'));
+  const emailError = (v: string) => req(v) || (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim()) ? '' : t('newProject.emailInvalid'));
   const positive = (v: string) => (!v.trim() ? t('common.required') : Number(v) > 0 ? '' : t('common.positive'));
   const only = (e: Errors) => Object.fromEntries(Object.entries(e).filter(([, v]) => v));
 
@@ -149,7 +149,7 @@ export function StaffProjectNew() {
 
         {step === 1 && customer && (
           <form onSubmit={create} noValidate className="space-y-5">
-            <Card title={steps[2]}>
+            <Card title={steps[1]}>
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field label={t('newProject.projectName')} error={errors.title} className="sm:col-span-2">
                   {(f) => <Input {...f} maxLength={255} value={project.title} invalid={!!errors.title} onChange={setP('title')} placeholder={t('newProject.projectNamePlaceholder')} />}
