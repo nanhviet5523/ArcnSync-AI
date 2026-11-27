@@ -33,6 +33,8 @@ interface Props {
   /** One floor at a time. */
   floorId: string;
   selectedId: string | null;
+  /** Items outlined in amber: an AI option's line under the pointer, items picked with Shift+click. */
+  highlightIds?: readonly string[];
   onPick: (e: DesignElement | null, at: ClickPoint) => void;
   fileName: string;
   navMode: NavMode;
@@ -63,6 +65,7 @@ interface Ctx {
   hemi: THREE.HemisphereLight;
   sun: THREE.DirectionalLight;
   helper: THREE.BoxHelper | null;
+  marks: THREE.BoxHelper[];
   roomMark: THREE.Mesh | null;
   models: Map<string, Promise<GLTF>>;
 }
@@ -72,6 +75,7 @@ const WALL = new THREE.Color('#eeeae2');
 const ROOM_TINT = '#5B6B3A';
 const DIM_TINT = '#655B47';
 const PICK_BOX = 0x5b6b3a;
+const MARK_BOX = 0xd97706;
 const own = (m: THREE.Object3D) => { m.userData.own = true; return m; };
 const box = (w: number, h: number, d: number, color: string | THREE.Color, opts: THREE.MeshStandardMaterialParameters = {}) =>
   own(new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshStandardMaterial({ color, ...opts })));
@@ -383,7 +387,7 @@ function buildFloor(f: VersionFloor, els: DesignElement[], models: Ctx['models']
   return g;
 }
 
-export function Scene3D({ floors, elements, floorId, selectedId, onPick, fileName, navMode, lights, ceiling: ceilingWanted, room, dimmed, allFloors = false, cutAbove = null, onExportError, ref }: Props) {
+export function Scene3D({ floors, elements, floorId, selectedId, highlightIds, onPick, fileName, navMode, lights, ceiling: ceilingWanted, room, dimmed, allFloors = false, cutAbove = null, onExportError, ref }: Props) {
   // Eye level inside one floor makes no sense with the others stacked around it: the ceiling view is off in the whole house.
   const ceiling = ceilingWanted && !allFloors;
   const mountRef = useRef<HTMLDivElement>(null);
@@ -467,7 +471,7 @@ export function Scene3D({ floors, elements, floorId, selectedId, onPick, fileNam
     controls.enableDamping = true;
     controls.dampingFactor = 0.12;
     controls.zoomSpeed = 0.6;
-    ctx.current = { renderer, scene, camera, controls, content, ceiling: ceilingGroup, hemi, sun, helper: null, roomMark: null, models: new Map() };
+    ctx.current = { renderer, scene, camera, controls, content, ceiling: ceilingGroup, hemi, sun, helper: null, marks: [], roomMark: null, models: new Map() };
     fitKey.current = '';
 
     // Capture on the wrapper, ahead of OrbitControls on the canvas: same sensitivity as 2D, one step per frame.
@@ -496,7 +500,7 @@ export function Scene3D({ floors, elements, floorId, selectedId, onPick, fileNam
       let o: THREE.Object3D | null = ray.intersectObject(content, true).find((h) => h.object !== ctx.current?.roomMark)?.object ?? null;
       while (o && !o.userData.elementId) o = o.parent;
       const id = o?.userData.elementId as string | undefined;
-      pickRef.current(id ? elsRef.current.find((x) => x.id === id) ?? null : null, { clientX: e.clientX, clientY: e.clientY });
+      pickRef.current(id ? elsRef.current.find((x) => x.id === id) ?? null : null, { clientX: e.clientX, clientY: e.clientY, shiftKey: e.shiftKey });
     };
     renderer.domElement.addEventListener('pointerdown', onDown);
     renderer.domElement.addEventListener('pointerup', onUp);
@@ -506,7 +510,7 @@ export function Scene3D({ floors, elements, floorId, selectedId, onPick, fileNam
       renderer.setSize(el.clientWidth, el.clientHeight);
     });
     ro.observe(el);
-    renderer.setAnimationLoop(() => { controls.update(); ctx.current?.helper?.update(); renderer.render(scene, camera); });
+    renderer.setAnimationLoop(() => { controls.update(); ctx.current?.helper?.update(); ctx.current?.marks.forEach((m) => m.update()); renderer.render(scene, camera); });
 
     return () => {
       el.removeEventListener('wheel', onWheel, { capture: true });
@@ -665,6 +669,25 @@ export function Scene3D({ floors, elements, floorId, selectedId, onPick, fileNam
       c.scene.add(c.helper);
     }
   }, [selectedId, elements, floorId, buildKey]);
+
+  // models load after the item is placed: the boxes follow them every frame, like the selection box
+  const markKey = [...(highlightIds ?? [])].sort().join(',');
+  useEffect(() => {
+    const c = ctx.current!;
+    const ids = new Set(markKey ? markKey.split(',') : []);
+    c.content.traverse((o) => {
+      if (!ids.has(o.userData.elementId)) return;
+      const m = new THREE.BoxHelper(o, MARK_BOX);
+      (m.material as THREE.LineBasicMaterial).depthTest = false;
+      m.renderOrder = 998;
+      c.scene.add(m);
+      c.marks.push(m);
+    });
+    return () => {
+      for (const m of c.marks) { c.scene.remove(m); m.dispose(); }
+      c.marks = [];
+    };
+  }, [markKey, elements, floorId, buildKey]);
 
   const download = (blob: Blob, name: string) => {
     const a = document.createElement('a');

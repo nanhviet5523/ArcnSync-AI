@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import type { KeyboardEvent } from 'react';
 import { Link, useBlocker, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { Box, Image as ImageIcon, Info, PanelLeftOpen, Upload, X } from 'lucide-react';
+import { Box, Image as ImageIcon, Info, PanelLeftOpen, Sparkles, Upload, X } from 'lucide-react';
 import { Avatar, Banner, Button, ErrorState, Field, Input, Modal, Skeleton, StatusChip, Textarea, Z, avatarLabels } from '@/components/ui';
 import { downloadFile, revokeBlobUrls } from '@/services/authService';
 import { errorText, formatDate, formatDateTime, formatMoney, isNetworkError, milestoneUnpaidText, t } from '@/i18n';
@@ -33,8 +33,13 @@ import { RoomOwnerMenu } from './RoomOwnerMenu';
 import { ChangeSummary, MemberDraftBar, RoomDraftsBlock } from './RoomDraftBars';
 import { IgnoredList, MemberDxfUploadDialog, UploadResultModal } from './MemberDxfUpload';
 import { useRoomWork } from './useRoomWork';
+import { AiComboPanel } from './AiComboPanel';
+import type { ComboPreview, ComboStart } from './AiComboPanel';
+import type { AiAcceptance, AiRecommendation, AiRecommendationCandidate } from '@/features/ai/recommendationApi';
+import { ELEMENTS_MAX, REC_ERRORS, VARIANT_KEYS, applyAcceptance, dropInvalidRecommendations, isRecommendable, previewPatches, togglePick, unchosenCount, withRecommendations } from '@/features/ai/recommendationLogic';
+import type { AiSources } from '@/features/ai/recommendationLogic';
 import { CountBadge } from './wsUi';
-import { floatIconBtn } from './wsClasses';
+import { floatIconBtn, iconBtn } from './wsClasses';
 import { applyLayout, draftChangeCount, draftPatches, droppedItemNames, foldOwnDrafts, hasLayoutChanges, isAddedItem, layoutLines, layoutTarget, localChangesInRoom, skippedRoomNames, mergePatches, mergeSummary, olderVersionDraftSource, previewHighlight, signedVnd, withPatches } from './roomDrafts';
 import type { ChangeLine, MemberDraftRow, Patches } from './roomDrafts';
 import { boxOf, elementRoom, floorRooms, roomAt } from './rooms';
@@ -204,7 +209,7 @@ type Dialog =
   | { kind: 'uploadResult'; title: string; accepted: AcceptedLayoutChange[]; ignored: IgnoredLayoutChange[] }
   | { kind: 'ignored'; room: string; designer: string; items: IgnoredLayoutChange[] };
 
-type RightTab = 'room' | 'item' | 'comments';
+type RightTab = 'room' | 'item' | 'comments' | 'ai';
 
 /** Underlined tabs for the right column. */
 function PanelTabs({ items, value, onChange }: { items: { id: RightTab; label: string; badge?: number }[]; value: RightTab; onChange: (v: RightTab) => void }) {
@@ -384,6 +389,16 @@ export function WorkspacePage() {
   const [proposal, setProposal] = useState<{ elementId: string; product: ProductOption } | null>(null);
   /** Lead: comments whose suggestion was applied to the draft, ticked in advance in the Save dialog. */
   const [appliedProposals, setAppliedProposals] = useState<string[]>([]);
+  /** Unsaved products that came from an AI combo: the Lead's Save sends their recommendationId. */
+  const [aiSources, setAiSources] = useState<AiSources>({});
+  /** Items of the AI option line under the pointer, tinted on the drawing. */
+  const [aiHover, setAiHover] = useState<string[]>([]);
+  /** Items picked with Shift+click on the 3D view, for "Suggest a combo for N items". */
+  const [aiPicks, setAiPicks] = useState<string[]>([]);
+  /** The AI tab's create dialog, opened from the tab, a room's sidebar button or the picks bar. null = closed. */
+  const [aiStart, setAiStart] = useState<ComboStart | null>(null);
+  /** "View on 3D": an AI option laid over the drawing on this page only, never saved. */
+  const [aiPreview, setAiPreview] = useState<(ComboPreview & { label: string; patches: Patches }) | null>(null);
   const versionId = params.get('v');
 
   // Another version: nothing pointed at on the old one survives. Done here, not when clicking, because the blocker may cancel the move.
@@ -456,7 +471,8 @@ export function WorkspacePage() {
         pendingFloor.current = null;
         setFloorId((f) => opened ?? (v.floors.some((x) => x.id === f) ? f : [...v.floors].sort((a, b) => a.level - b.level)[0]?.id ?? ''));
         setCanvas(CLEAR_CANVAS); setDraft({}); resetForVersion(); setMergeCompare(false); setRoomKey(null); setView2d(null); setCutAbove(null);
-        setProposal(null); setAppliedProposals([]);
+        setProposal(null); setAppliedProposals([]); setAiSources({}); setAiHover([]);
+        setAiPicks([]); setAiStart(null); setAiPreview(null);
       }
       setVersion(v);
       setError('');
@@ -666,6 +682,8 @@ export function WorkspacePage() {
     if (holdQuick()) return;
     // an item added by an uploaded DXF has no id on the server yet
     if (e && isAddedItem(e.id)) return;
+    // Shift+click on 3D adds the item to the AI combo picks (or takes it out); the selection stays as it is
+    if (at?.shiftKey && e && aiPickable(e)) { setAiPicks((p) => togglePick(p, e.id)); return; }
     if (e && e.floor_id !== floorId) changeFloor(e.floor_id);
     patchCanvas({ selEl: e?.id ?? null, selComment: null });
     if (commenting && e && at) { patchCanvas({ hint: null, quick: { target: { kind: 'element', element: e }, ...anchor(at) } }); return; }
@@ -788,6 +806,7 @@ export function WorkspacePage() {
     if (!option) { setDialog({ kind: 'notice', title: t('workspace.errorTitle'), body: t('comments.suggestionGone') }); return; }
     const chosen = option;
     setDraft((d) => ({ ...d, [el.id]: { ...d[el.id], product: chosen, choice: 'CHOSEN' } }));
+    forgetAiSource(el.id);
     if (isMember && el.room_id) work.setTick(el.room_id, x.root.id, true);
     else setAppliedProposals((ids) => (ids.includes(x.root.id) ? ids : [...ids, x.root.id]));
     patchCanvas({ selEl: el.id });
@@ -830,12 +849,14 @@ export function WorkspacePage() {
           overrides: p.overrides ?? undefined,
         };
       }).filter((e) => e.product_id || e.overrides);
+      // only /edits carries recommendationId; taken-over drafts above go through saveRoomDraft without it
+      const linked = withRecommendations(edits, aiSources);
       // a taken-over draft goes back to DRAFT, and only Ready drafts can be merged
       for (const r of own.rooms) {
         if (r.changed) await designApi.saveRoomDraft(version!.id, r.draft.room_id, r.input);
         if (r.count && (r.changed || r.draft.status !== 'READY')) await designApi.markRoomDraftReady(version!.id, r.draft.room_id);
       }
-      const v = await designApi.saveEdits(version!.id, { title: text.trim(), revision_type: saveMode === 'first' ? 'MINOR' : mergingLayout ? 'MAJOR' : revision, edits, choose_all_remaining: chooseAll > 0, addressed_comment_ids: addressed, room_draft_ids: [...work.readyDrafts, ...own.rooms.filter((r) => r.count).map((r) => r.draft)].map((d) => d.id) });
+      const v = await designApi.saveEdits(version!.id, { title: text.trim(), revision_type: saveMode === 'first' ? 'MINOR' : mergingLayout ? 'MAJOR' : revision, edits: linked, choose_all_remaining: chooseAll > 0, addressed_comment_ids: addressed, room_draft_ids: [...work.readyDrafts, ...own.rooms.filter((r) => r.count).map((r) => r.draft)].map((d) => d.id) });
       const skipped = skippedRoomNames(v.skipped_room_ids, version!.floors);
       const lostLayout = v.layout_merge?.skipped ?? [];
       const notices = [
@@ -845,6 +866,7 @@ export function WorkspacePage() {
       if (notices.length) setNotice(notices.join(' '));
       setDraft({});
       setAppliedProposals([]);
+      setAiSources({});
       setDialog(null);
       if (assignAfterSave) {
         // the version is saved either way: a failed assignment must not hide it
@@ -861,6 +883,12 @@ export function WorkspacePage() {
       }
       if (roomConflict(e)) return;
       if (isStale(e)) { setDialog(staleNotice(e)); return; }
+      // an AI link the backend refused: drop those links, keep the products, let the Lead save again
+      if ((e as { code?: string }).code === 'INVALID_RECOMMENDATION') {
+        setAiSources((s) => dropInvalidRecommendations(s, (e as { details?: unknown }).details));
+        setSaveError(t(REC_ERRORS.INVALID_RECOMMENDATION.key));
+        return;
+      }
       // a Member changed a draft while the Lead was merging: show the new drafts, keep the dialog open
       if ((e as { code?: string }).code === 'ROOM_DRAFT_CHANGED') { setSaveError(errorText(e)); loadRef.current(); return; }
       // The dialog stays open with everything typed; the backend names the refused ticks.
@@ -870,11 +898,55 @@ export function WorkspacePage() {
       setSaveError(err.code === 'REVISION_LIMIT_REACHED' && mergingLayout ? `${errorText(e)} ${t('drafts.discardMovedHint')}` : errorText(e));
     } finally { setBusy(false); }
   };
-  const patchSelected = (patch: Partial<DesignElement>) => selEl && setDraft((d) => ({ ...d, [selEl]: { ...d[selEl], ...patch } }));
+  const patchSelected = (patch: Partial<DesignElement>) => {
+    if (!selEl) return;
+    setDraft((d) => ({ ...d, [selEl]: { ...d[selEl], ...patch } }));
+    // a product picked by hand is no longer the AI's suggestion
+    if (patch.product) forgetAiSource(selEl);
+  };
+  function forgetAiSource(elementId: string) {
+    setAiSources((s) => {
+      if (!s[elementId]) return s;
+      const { [elementId]: _gone, ...rest } = s;
+      return rest;
+    });
+  }
+  /**
+   * An AI option was accepted: its products go into the editor like the designer's own picks (not saved yet). Picking
+   * another option of the same suggestion puts back the items the new one leaves out, if nobody changed them since.
+   */
+  const applyAiOption = (a: AiAcceptance) => {
+    if (!version) return;
+    work.setPreviewId(null);
+    setAiPreview(null);
+    const byId = new Map(version.elements.map((e) => [e.id, e]));
+    const r = applyAcceptance(a, (id) => { const el = byId.get(id); return !!el && allow('editItem', el.room_id).ok; });
+    const left = Object.entries(aiSources).filter(([id, s]) => s.recommendationId === a.recommendation.id && !r.patches[id]);
+    setDraft((d) => {
+      const out = { ...d };
+      for (const [id, s] of left) {
+        if (out[id]?.product?.id !== s.productId) continue;
+        const { product: _p, choice: _c, ...rest } = out[id];
+        if (Object.keys(rest).length) out[id] = rest; else delete out[id];
+      }
+      for (const [id, p] of Object.entries(r.patches)) out[id] = { ...out[id], ...p };
+      return out;
+    });
+    setAiSources((s) => ({ ...Object.fromEntries(Object.entries(s).filter(([id]) => !left.some(([x]) => x === id))), ...r.sources }));
+    const n = Object.keys(r.patches).length;
+    setNotice([
+      // Lead: unsaved edits of the version. Member: the room draft, kept with the draft bar's Save (PUT room-drafts, no recommendationId)
+      t(isMember ? 'aiCombo.appliedNoticeMember' : 'aiCombo.appliedNotice', { n }),
+      a.unavailableProductIds.length ? t('aiCombo.unavailableNotice', { n: a.unavailableProductIds.length }) : '',
+      r.skipped.length ? t('aiCombo.skippedNotice', { n: r.skipped.length }) : '',
+    ].filter(Boolean).join(' '));
+  };
 
   /** Cleared after the reload, so the canvas never falls back to the old draft in between. */
   const clearRoomLocal = (roomId: string) => {
-    setDraft((d) => Object.fromEntries(Object.entries(d).filter(([id]) => version?.elements.find((e) => e.id === id)?.room_id !== roomId)));
+    const outside = ([id]: [string, unknown]) => version?.elements.find((e) => e.id === id)?.room_id !== roomId;
+    setDraft((d) => Object.fromEntries(Object.entries(d).filter(outside)));
+    setAiSources((s) => Object.fromEntries(Object.entries(s).filter(outside)));
     work.clearRoomTicks(roomId);
   };
   /** Throws a room draft away on the server (owner or Lead). Any answer reloads: the drafts may have moved on. */
@@ -940,12 +1012,13 @@ export function WorkspacePage() {
   };
   const discardLeadWork = () => {
     const own = work.ownDrafts;
-    if (!own.length) { setDraft({}); return; }
+    if (!own.length) { setDraft({}); setAiSources({}); return; }
     // saved on the server, so this cannot be undone
     setDialog({
       kind: 'confirm', title: t('drafts.discardOwnTitle'), body: t('drafts.discardOwnBody'), label: t('items.discard'),
       run: () => {
         setDraft({});
+        setAiSources({});
         run(async () => { for (const d of own) await designApi.saveRoomDraft(version!.id, d.room_id, { selections: [], overrides: [], addressed_comment_ids: [] }); });
       },
     });
@@ -1052,12 +1125,58 @@ export function WorkspacePage() {
     ? 'lg:grid-cols-[minmax(0,1fr)_320px] xl:grid-cols-[minmax(0,1fr)_340px]'
     : 'lg:grid-cols-[220px_minmax(0,1fr)_320px] xl:grid-cols-[240px_minmax(0,1fr)_340px]';
 
+  /** AI combos: the design team, Staff and Admin read them at Products; only a designer on the current version makes or applies one. */
+  const aiTab = isRender && viewer.role !== 'homeowner';
+  const aiCreate = aiTab && viewer.role === 'designer' && project.status === 'PRODUCT_SELECTION' && !readOnly
+    && !!version && newestRender?.id === version.id && (leadEditing || memberDrafting);
+  /** Outlined on the drawing: the hovered line of an AI option (AI tab only) and the Shift+click picks. */
+  const aiMarks = aiCreate ? [...(rightTab === 'ai' ? aiHover : []), ...aiPicks] : rightTab === 'ai' ? aiHover : [];
+  const aiHighlight = Object.fromEntries(aiMarks.map((id) => [id, 'replaced' as const]));
+  const allRooms = (version?.floors ?? []).flatMap((f) => f.scene_json.rooms);
+  // the backend only suggests for furniture, decor and lighting with a category, and skips other items silently
+  const aiRecommendable = (e: DesignElement) => !isAddedItem(e.id) && isRecommendable(e);
+  const aiRoomsWithItems = new Set(elements.filter(aiRecommendable).flatMap((e) => (e.room_id ? [e.room_id] : [])));
+  const aiRooms = [...new Map(allRooms.flatMap((r) => (r.room_id && allow('editItem', r.room_id).ok
+    ? [[r.room_id, { id: r.room_id, name: r.name, disabled: !aiRoomsWithItems.has(r.room_id) }] as const] : []))).values()];
+  const aiPickable = (e: DesignElement) => aiCreate && aiRecommendable(e) && allow('editItem', e.room_id).ok;
+  // the room (or floor) on screen, plus Shift+click picks from elsewhere
+  const aiScope = room ? roomItems : floorEls;
+  const aiItems = [...aiScope, ...elements.filter((e) => aiPicks.includes(e.id) && !aiScope.includes(e))]
+    .filter(aiPickable)
+    .map((e) => ({ id: e.id, name: elementName(e, 'designer'), chosen: !!e.product }));
+  /** The item's unsaved product still is the one an AI option gave it. */
+  const isAiLinked = (id: string) => !!aiSources[id] && draft[id]?.product?.id === aiSources[id].productId;
+  const aiLinked = !!selElement && isAiLinked(selElement.id);
+  const openAiCreate = (s: ComboStart) => { setAiStart(s); setRightTab('ai'); setDrawer('right'); };
+  const previewAiOption = (rec: AiRecommendation, c: AiRecommendationCandidate | null) => {
+    if (!c) { setAiPreview(null); return; }
+    setAiPreview({ recId: rec.id, index: c.index, label: t(VARIANT_KEYS[c.label]), patches: previewPatches(c) });
+    // shown on 3D: the models come from GET /design-elements/:id/model-3d?productId=, nothing is written
+    if (tab !== '3d') { setTab('3d'); if (compareParam) setCompareParam(null); setMergeCompare(false); }
+  };
+  /** Sidebar: a room the viewer may choose products in (Lead: not one given to a Member; Member: their own), with what is left to choose. */
+  const aiRoomButton = (roomId: string, name: string) => {
+    if (!aiCreate || !aiRoomsWithItems.has(roomId) || !allow('editItem', roomId).ok) return null;
+    const n = unchosenCount(elements.filter((e) => e.room_id === roomId && !isAddedItem(e.id)));
+    const label = t('aiCombo.roomButtonLabel', { room: name, n });
+    return (
+      <button type="button" aria-label={label} title={label} onClick={() => openAiCreate({ roomId })}
+        className={`${iconBtn} relative shrink-0 text-brand`}>
+        <Sparkles aria-hidden className="h-4 w-4" />
+        {n > 0 && <span aria-hidden className="absolute -right-0.5 -top-0.5 min-w-4 rounded-full bg-accent px-1 text-center text-[10px] font-semibold leading-4 text-surface tabular-nums">{n}</span>}
+      </button>
+    );
+  };
+
   const tabs: { id: RightTab; label: string; badge?: number }[] = [
     { id: 'room', label: t('ws.tabRoom') },
     ...(isRender ? [{ id: 'item' as const, label: t('ws.tabItem') }] : []),
     { id: 'comments', label: t('workspace.comments'), badge: commentBadge },
+    ...(aiTab ? [{ id: 'ai' as const, label: t('aiCombo.tab') }] : []),
   ];
   const activeTab = tabs.some((x) => x.id === rightTab) ? rightTab : 'comments';
+  // leaving the AI tab (or the version losing it) ends the 3D preview of an AI option
+  if (aiPreview && activeTab !== 'ai') setAiPreview(null);
   const due = version && !awaiting ? reviewDue(stageMilestone(milestones, version.version_type), version) : null;
   const awaitingLine = readOnly ? null : awaitingNotice(viewer.role, version);
   const showDecision = viewer.role === 'homeowner' && (requestVisible || !!blockers.length || noRoundsLeft || !!due || !!awaitingLine);
@@ -1086,7 +1205,7 @@ export function WorkspacePage() {
               onRoom={(k) => { pickRoom(k); setDrawer(null); }} floorCounts={floorCounts} roomCounts={roomCounts}
               showFurniture={showFurniture} onShowFurniture={setShowFurniture} onCollapse={() => setLeftCollapsed(true)}
               roomMeta={viewer.role === 'designer' ? (r) => (!r.has_name && !r.room_id ? <span className="block truncate text-[11px] font-normal text-subtext">{t('team.unnamed')}</span> : null) : undefined}
-              roomAction={viewer.role === 'designer' ? (r) => (r.room_id ? ownerMenu(r.room_id, r.name) : null) : undefined} />
+              roomAction={viewer.role === 'designer' ? (r) => (r.room_id ? <>{aiRoomButton(r.room_id, r.name)}{ownerMenu(r.room_id, r.name)}</> : null) : undefined} />
           ) : <p className="p-4 text-sm text-subtext">{t('workspace.noVersions')}</p>}
         </aside>
 
@@ -1155,7 +1274,8 @@ export function WorkspacePage() {
                 ) : compareOn && compareTarget ? (
                   <ComparePanel planRef={planRef} role={viewer.role} fromId={compareTarget.id} toId={version.id} floorId={floorId} layers={layers} view={view2d} onViewChange={setView2d} />
                 ) : tab === '3d' ? (
-                  <LazyScene3D ref={sceneRef} floors={version.floors} elements={showFurniture ? elements : NO_ELEMENTS} floorId={floorId} selectedId={selEl} onPick={clickElement}
+                  <LazyScene3D ref={sceneRef} floors={version.floors} elements={showFurniture ? (aiPreview ? withPatches(elements, aiPreview.patches) : elements) : NO_ELEMENTS}
+                    floorId={floorId} selectedId={selEl} highlightIds={aiMarks} onPick={clickElement}
                     fileName={`${project.code} ${version.label}`} navMode={nav} lights={scene3d.lights} ceiling={scene3d.ceiling}
                     room={room ? { key: room.key, center: roomCenter()!, boundary: room.boundary } : null} dimmed={dimmed}
                     allFloors={houseOn} cutAbove={houseOn ? cutAbove : null}
@@ -1163,7 +1283,7 @@ export function WorkspacePage() {
                 ) : (
                   <Plan2D ref={planRef} floor={floor} elements={floorEls} layers={layers} selectedId={selEl} onSelect={clickElement} pins={pins}
                     onPinClick={(id) => { patchCanvas({ selComment: id }); setRightTab('comments'); setDrawer('right'); }} focus={focus}
-                    room={room?.boundary} dimmed={dimmed} highlight={{ ...previewHighlight(work.previewDraft), ...layoutView.highlight }} ghosts={layoutView.ghosts} view={view2d} onViewChange={setView2d}
+                    room={room?.boundary} dimmed={dimmed} highlight={{ ...previewHighlight(work.previewDraft), ...layoutView.highlight, ...aiHighlight }} ghosts={layoutView.ghosts} view={view2d} onViewChange={setView2d}
                     onEmptyClick={commenting ? clickSpot : undefined} />
                 )}
               </div>
@@ -1214,6 +1334,12 @@ export function WorkspacePage() {
                       : <span className="pr-2" />}
                   </div>
                 )}
+                {aiPreview && (
+                  <div role="status" className="pointer-events-auto flex min-w-0 shrink self-center xl:absolute xl:left-1/2 xl:top-0 xl:-translate-x-1/2 xl:self-auto items-center gap-2 whitespace-nowrap rounded-full bg-ink py-1 pl-3.5 pr-1 text-xs text-surface shadow-card">
+                    <span className="truncate">{t('aiCombo.previewBanner', { label: aiPreview.label })}</span>
+                    <button type="button" className="rounded-full bg-surface/15 px-2.5 py-1 font-medium hover:bg-surface/25 focus-visible:outline-2 focus-visible:outline-surface" onClick={() => setAiPreview(null)}>{t('aiCombo.cancelPreview')}</button>
+                  </div>
+                )}
                 {work.previewDraft && (
                   <div role="status" className="pointer-events-auto flex min-w-0 shrink self-center xl:absolute xl:left-1/2 xl:top-0 xl:-translate-x-1/2 xl:self-auto items-center gap-2 whitespace-nowrap rounded-full bg-ink py-1 pl-3.5 pr-1 text-xs text-surface shadow-card">
                     {t('drafts.previewing', { room: work.previewDraft.room_name, name: work.previewDraft.designer_name })}
@@ -1230,6 +1356,16 @@ export function WorkspacePage() {
                 </div>
               </div>
 
+              {aiCreate && aiPicks.length > 0 && (
+                <div className="pointer-events-none absolute inset-x-0 bottom-16 flex justify-center px-4">
+                  <div role="status" className="pointer-events-auto flex max-w-full items-center gap-2 rounded-full bg-ink py-1 pl-3.5 pr-1 text-xs text-surface shadow-card">
+                    <span className="hidden truncate sm:inline">{aiPicks.length >= ELEMENTS_MAX ? t('aiCombo.picksMax', { max: ELEMENTS_MAX }) : t('aiCombo.picksHint')}</span>
+                    <button type="button" className="whitespace-nowrap rounded-full bg-surface px-2.5 py-1 font-semibold text-ink hover:bg-surface/90 focus-visible:outline-2 focus-visible:outline-surface"
+                      onClick={() => openAiCreate({ elementIds: aiPicks })}>✨ {t('aiCombo.picksBar', { n: aiPicks.length })}</button>
+                    <button type="button" className="whitespace-nowrap rounded-full bg-surface/15 px-2.5 py-1 font-medium hover:bg-surface/25 focus-visible:outline-2 focus-visible:outline-surface" onClick={() => setAiPicks([])}>{t('aiCombo.clearPicks')}</button>
+                  </div>
+                </div>
+              )}
               {/* bottom floating toolbar */}
               <div className="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center">
                 <CanvasToolbar mode={tab} nav={nav} onNav={setNav}
@@ -1257,7 +1393,7 @@ export function WorkspacePage() {
               <PanelTabs items={tabs} value={activeTab} onChange={setRightTab} />
               <div className="min-h-0 flex-1 overflow-hidden">
                 {activeTab === 'room' && floor && (
-                  <RoomPanel room={room} floorName={floor.name} items={roomItems} selectedId={selEl} onSelect={clickElement} priced={isRender} role={viewer.role} owner={roomOwner && { id: roomOwner.designerId, name: roomOwner.designerName, label: avatars[roomOwner.designerId] }}
+                  <RoomPanel room={room} floorName={floor.name} items={roomItems} selectedId={selEl} onSelect={clickElement} priced={isRender} role={viewer.role} aiTagged={isAiLinked} owner={roomOwner && { id: roomOwner.designerId, name: roomOwner.designerName, label: avatars[roomOwner.designerId] }}
                     ownerAction={room?.room_id && allow('assignRooms').ok ? ownerMenu(room.room_id, room.name, 'link') : undefined}
                     onTakeOver={room && canTakeOver(room.room_id) ? () => takeOverRoom(room.room_id!) : undefined} />
                 )}
@@ -1268,7 +1404,7 @@ export function WorkspacePage() {
                     canComment={canComment} leadTools={leadEditing && !previewing} note={itemNote}
                     noteAvatar={itemOwner ? <Avatar id={itemOwner.designerId} name={itemOwner.designerName} label={avatars[itemOwner.designerId]} /> : undefined}
                     onTakeOver={selElement && canTakeOver(selElement.room_id) ? () => takeOverRoom(selElement.room_id!) : undefined}
-                    change={mergeChange ? <ChangeSummary line={mergeChange} /> : undefined}
+                    change={mergeChange ? <ChangeSummary line={mergeChange} /> : aiLinked ? <p className="text-xs text-ink-2">{t('aiCombo.fromAi')}</p> : undefined}
                     onSuggest={allow('suggestProduct').ok && canComment ? suggestProduct : undefined} />
                 )}
                 {activeTab === 'comments' && (
@@ -1294,6 +1430,22 @@ export function WorkspacePage() {
                     onAccept={async (id) => { await run(() => designApi.acceptComment(id, version.id)); }}
                     onNotYet={async (id, content) => { await run(() => designApi.reopenComment(id, content, version.id)); }}
                     apply={viewer.role === 'designer' ? { can: canApply, onApply: applyProposal } : undefined} />
+                )}
+                {/* kept mounted while hidden: the opened suggestion and the history survive a tab switch */}
+                {aiTab && (
+                  <div hidden={activeTab !== 'ai'} className="h-full">
+                    <AiComboPanel key={version.id} projectId={project.id} versionId={version.id} canCreate={aiCreate}
+                      rooms={aiRooms} defaultRoomId={room?.room_id ?? null} items={aiItems} itemsWhere={room?.name ?? floor?.name ?? t('aiCombo.itemsAll')}
+                      selectedId={selEl}
+                      roomName={(id) => allRooms.find((r) => r.room_id === id)?.name ?? t('aiCombo.roomFallback')}
+                      itemName={(id) => { const e = elements.find((x) => x.id === id); return e ? elementName(e, 'designer') : '—'; }}
+                      onHover={setAiHover} onApply={applyAiOption}
+                      start={aiStart} onStart={(s) => (s ? openAiCreate(s) : setAiStart(null))}
+                      preview={aiPreview} onPreview={previewAiOption}
+                      onReload={() => loadRef.current()}
+                      // no id named: drop ?v= and the page opens the newest version (already none: just read it again)
+                      onLatest={(id) => (id ? goVersion(id) : versionId ? setParams((p) => { p.delete('v'); return p; }) : loadRef.current())} />
+                  </div>
                 )}
               </div>
 
@@ -1380,6 +1532,7 @@ export function WorkspacePage() {
             hasDraft.current = false;
             quickHasText.current = false;
             setDraft({});
+            setAiSources({});
             resetForVersion();
             patchCanvas({ quick: null });
             blocker.proceed();

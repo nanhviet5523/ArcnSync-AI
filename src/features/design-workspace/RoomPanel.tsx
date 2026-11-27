@@ -23,11 +23,13 @@ interface Props {
   ownerAction?: ReactNode;
   /** Lead on a room assigned to someone else. */
   onTakeOver?: () => void;
+  /** The item's unsaved product came from an AI combo: a small "AI" tag. */
+  aiTagged?: (elementId: string) => boolean;
 }
 
 const m = (v: number) => v.toFixed(1).replace(/\.0$/, '');
 
-export function RoomPanel({ room, floorName, items, selectedId, onSelect, priced, role, owner, ownerAction, onTakeOver }: Props) {
+export function RoomPanel({ room, floorName, items, selectedId, onSelect, priced, role, owner, ownerAction, onTakeOver, aiTagged }: Props) {
   const size = room && roomSize(room);
   const subtotal = sumMoney(items.map(itemPrice));
   return (
@@ -67,7 +69,10 @@ export function RoomPanel({ room, floorName, items, selectedId, onSelect, priced
               <button type="button" onClick={() => onSelect(e)} aria-pressed={on}
                 className={`flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-[13px] transition-colors focus-visible:outline-2 focus-visible:outline-brand ${on ? 'bg-brand-soft' : 'hover:bg-canvas'}`}>
                 <span className="min-w-0 flex-1">
-                  <span className={`block truncate ${on ? 'font-semibold text-brand' : 'text-ink'}`}>{elementName(e, role)}</span>
+                  <span className={`flex min-w-0 items-center gap-1 ${on ? 'font-semibold text-brand' : 'text-ink'}`}>
+                    <span className="truncate">{elementName(e, role)}</span>
+                    {aiTagged?.(e.id) && <span title={t('aiCombo.fromAi')} className="shrink-0 rounded bg-brand-soft px-1 text-[10px] font-semibold leading-4 text-brand">{t('aiCombo.aiTag')}</span>}
+                  </span>
                   <span className={`block truncate text-xs ${e.product?.unavailable ? 'font-medium text-rose-700' : 'text-subtext'}`}>{e.product?.unavailable ? t('drafts.noLongerAvailable') : elementCategory(e, role)}</span>
                 </span>
                 {isUnknownItem(e) ? <StatusChip kind="choice" value="UNIDENTIFIED" size="sm" />

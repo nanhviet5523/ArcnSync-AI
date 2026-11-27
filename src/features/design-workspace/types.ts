@@ -213,6 +213,8 @@ export interface ElementEdit {
   element_id: string;
   product_id?: string;
   overrides?: Overrides;
+  /** Lead's /edits only: the AI suggestion this product came from. Never sent in a room draft. */
+  recommendation_id?: string;
 }
 
 export type RoomDraftStatus = 'DRAFT' | 'READY';

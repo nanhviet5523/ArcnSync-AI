@@ -10,7 +10,8 @@ import type { PinGroup, ViewBox } from './view';
 export type { ViewBox };
 /** Zoom buttons and shortcuts. k < 1 zooms in. */
 export interface Plan2DHandle { zoomBy(k: number): void }
-export interface ClickPoint { clientX: number; clientY: number }
+/** shiftKey: 3D only, adds the item to the AI combo picks instead of selecting it. */
+export interface ClickPoint { clientX: number; clientY: number; shiftKey?: boolean }
 
 export interface Layers { interior: boolean; furniture: boolean; wallItems: boolean; lights: boolean }
 /** num = null: ghim tạm của comment đang viết */

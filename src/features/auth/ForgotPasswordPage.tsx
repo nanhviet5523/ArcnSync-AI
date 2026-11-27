@@ -34,8 +34,8 @@ export const ForgotPasswordPage: React.FC = () => {
 
     setLoading(true);
     try {
-      const res = await forgotPassword(value);
-      setSuccess(res.message);
+      await forgotPassword(value);
+      setSuccess('If an account exists for this email, we sent a reset code to it.');
       try {
         window.sessionStorage.setItem(PENDING_RESET_EMAIL_KEY, value);
       } catch {

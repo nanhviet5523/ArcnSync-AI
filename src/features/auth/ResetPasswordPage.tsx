@@ -65,13 +65,13 @@ export const ResetPasswordPage: React.FC = () => {
 
     setLoading(true);
     try {
-      const res = await resetPassword({ email, otp: otp.trim(), newPassword });
+      await resetPassword({ email, otp: otp.trim(), newPassword });
       try {
         window.sessionStorage.removeItem(PENDING_RESET_EMAIL_KEY);
       } catch {
         // ignore
       }
-      setSuccess(res.message);
+      setSuccess('Password reset. Redirecting you to log in…');
       setTimeout(() => navigate('/login', { replace: true }), 1500);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');

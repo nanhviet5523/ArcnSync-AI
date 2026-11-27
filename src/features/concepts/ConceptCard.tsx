@@ -211,14 +211,17 @@ function ConceptViewer({ concept, index, approved, rights, limitReached, onClose
   const addImages = async (files: File[]) => {
     if (!files.length) return;
     const problem = validateConceptFiles(files, concept.images.length);
-    if (problem) { setError(problem); return; }
+    // Also toast: the inline error sits below the image strip and is often scrolled out of view in the modal.
+    if (problem) { setError(problem); toast.error(problem); return; }
     setError('');
     setProgress(0);
     try {
       await conceptApi.addImages(concept.id, files, setProgress);
       onImagesAdded(files.length);
     } catch (e) {
-      setError(conceptErrorText(e));
+      const message = conceptErrorText(e);
+      setError(message);
+      toast.error(message);
     } finally {
       setProgress(null);
     }
