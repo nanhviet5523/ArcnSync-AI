@@ -114,8 +114,6 @@ export interface MeasurementFloor {
 /** PUT measurement replaces the whole result. A floor that keeps its level keeps its photos; a floor left out loses them. */
 export interface MeasurementPayload extends SurveyLocation {
   layoutCode?: string;
-  bedroomCount: number;
-  bathroomCount: number;
   note?: string;
   floors: MeasurementFloor[];
 }
@@ -165,7 +163,10 @@ export const siteSurveyApi = {
   /** POST /site-surveys/:id/rejection: the homeowner sends the result back with a reason → REJECTED. */
   reject: (id: string, reason: string) => apiRequest<SiteSurvey>(`${survey(id)}/rejection`, json('POST', { reason })),
 
-  /** POST /site-survey-floors/:id/photos (multipart `files`): up to 10 per request, PNG/JPEG/WebP ≤ 10 MB, 30 per floor. */
+  /**
+   * POST /site-survey-floors/:id/photos (multipart `files`): up to 10 per request, PNG/JPEG/WebP ≤ 10 MB, 30 per floor.
+   * Returns EVERY photo of the floor after the upload, not only the new ones.
+   */
   async uploadPhotos(floorId: string, files: File[], onProgress?: (fraction: number) => void): Promise<SurveyPhoto[]> {
     const form = new FormData();
     files.forEach((file) => form.append('files', file));
@@ -224,7 +225,6 @@ export function surveyErrorText(e: unknown): string {
     const missing = (d.missingPhotoLevels as number[] | undefined) ?? [];
     if (d.totalArea) return t('siteSurvey.errors.totalTooLarge');
     if (d.floorCount === 0) return t('siteSurvey.errors.noFloors');
-    if (d.measurementRecorded === false) return t('siteSurvey.errors.noCounts');
     if (missing.length) return t('siteSurvey.errors.missingPhotos', { levels: missing.join(', ') });
   }
   const key = SURVEY_OVERRIDES[err.code ?? ''];

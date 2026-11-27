@@ -1,7 +1,7 @@
 import { t } from '@/i18n';
 import type { User, UserRole } from '@/types/role';
 
-/** The 7 steps shown on the landing page: the same backend-status steps as the project pages. */
+/** The 6 steps shown on the landing page: the same backend-status steps as the project pages. */
 export { PROJECT_STEPS } from '@/features/projects/steps';
 
 /** Where a signed-in visitor continues from the landing page: their own projects (or dashboard), never a login prompt. */

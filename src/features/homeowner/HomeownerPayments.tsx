@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, Building2, CheckCircle2, Clock3, CreditCard, FileText, RefreshCw, ShieldCheck, XCircle } from 'lucide-react';
 import { Logo } from '@/components/common';
+import { Footer } from '@/components/layout';
 import { projectApi } from '@/features/projects/projectApi';
 import type { Project } from '@/features/projects/projectApi';
 import { getProjectContract } from '@/features/projects/services/contractsApi';
@@ -65,10 +66,12 @@ export function HomeownerPayments() {
         window.sessionStorage.removeItem('archsync-payos-transaction-id');
         window.sessionStorage.removeItem('archsync-payos-milestone-id');
       }
+      // A paid DEPOSIT moves the project to IN_DESIGN on the server: reload it and the milestones to show that.
+      if (actual.status === 'SUCCESS') void loadContext();
     } catch (error) {
       setTransactionError(error instanceof Error ? error.message : 'Could not verify the transaction status.');
     } finally { setTransactionLoading(false); }
-  }, [transactionId]);
+  }, [transactionId, loadContext]);
 
   useEffect(() => { void loadContext(); }, [loadContext]);
   useEffect(() => { void verifyTransaction(); }, [verifyTransaction]);
@@ -110,7 +113,7 @@ export function HomeownerPayments() {
       : transactionStatus === 'PENDING' ? 'Payment is being confirmed' : 'Checking payment';
 
   return (
-    <div className="min-h-screen bg-sand-50 font-sans text-ink">
+    <div className="flex min-h-screen flex-col bg-sand-50 font-sans text-ink">
       <header className="border-b border-line/80 bg-surface">
         <div className="mx-auto flex h-[68px] max-w-7xl items-center justify-between gap-4 px-5 lg:px-8">
           <Logo size={34} to="/homeowner/projects" />
@@ -118,7 +121,7 @@ export function HomeownerPayments() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-5xl px-5 py-7 lg:px-8 lg:py-10">
+      <main className="mx-auto w-full max-w-5xl flex-1 px-5 py-7 lg:px-8 lg:py-10">
         {transactionId ? (
           <>
             <Link to={projectId ? `/homeowner/payments?projectId=${encodeURIComponent(projectId)}` : '/homeowner/projects'} className="inline-flex items-center gap-2 text-sm font-semibold text-ink"><ArrowLeft size={16} /> Back to payment schedule</Link>
@@ -183,6 +186,7 @@ export function HomeownerPayments() {
           </>
         )}
       </main>
+      <Footer />
     </div>
   );
 }

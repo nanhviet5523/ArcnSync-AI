@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { MessageCircle } from 'lucide-react';
+import { ChevronLeft, MessageCircle } from 'lucide-react';
 import { Avatar, Button, EmptyState, ErrorState, FilterBar, Skeleton, roleLabel } from '@/components/ui';
 import { t } from '@/i18n';
 import type { ChatContactItem } from '@/types/chat';
@@ -12,8 +12,10 @@ import { useOpenConversation } from '../hooks/useOpenConversation';
  * Clicking a row opens the conversation: straight there when the contact has one, else POST /conversations first.
  * `selectedUserId` marks the open one.
  */
-export function ChatContactList({ selectedUserId, className = '' }: {
+export function ChatContactList({ selectedUserId, onBack, className = '' }: {
   selectedUserId?: string;
+  /** Shows a back button (to the conversation list). */
+  onBack?: () => void;
   className?: string;
 }) {
   const [search, setSearch] = useState('');
@@ -25,8 +27,21 @@ export function ChatContactList({ selectedUserId, className = '' }: {
   const q = search.trim();
   return (
     <section aria-labelledby="chat-contacts-title" className={`flex min-h-0 flex-col rounded-card border border-line bg-surface shadow-card ${className}`}>
-      <header className="flex items-baseline justify-between gap-3 border-b border-line px-4 py-3">
-        <h2 id="chat-contacts-title" className="text-[15px] font-semibold text-ink">{t('chat.contacts.title')}</h2>
+      <header className="flex items-center justify-between gap-3 border-b border-line px-4 py-3">
+        <span className="flex min-w-0 items-center gap-1">
+          {onBack && (
+            <button
+              type="button"
+              onClick={onBack}
+              aria-label={t('chat.contacts.back')}
+              title={t('chat.contacts.back')}
+              className="-ml-1.5 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-brand"
+            >
+              <ChevronLeft aria-hidden className="h-5 w-5" />
+            </button>
+          )}
+          <h2 id="chat-contacts-title" className="text-[15px] font-semibold text-ink">{t('chat.contacts.title')}</h2>
+        </span>
         {!loading && !error && <span className="text-xs text-slate-500">{t('chat.contacts.count', { n: total })}</span>}
       </header>
 

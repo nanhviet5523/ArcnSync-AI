@@ -12,4 +12,6 @@ export const Z = {
   sheet: 'z-[90]',
   /** Always on top: a dialog can open from any drawer or sheet. */
   modal: 'z-[100]',
+  /** Toasts float over everything, dialogs included. */
+  toast: 'z-[110]',
 } as const;

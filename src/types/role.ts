@@ -21,6 +21,7 @@ export const ROLE_CONFIG: Record<UserRole, { defaultPath: string; badge: string;
     navItems: [
       { label: t('nav.myProjects'), path: '/homeowner/projects' },
       { label: t('nav.myProperties'), path: '/homeowner-apartments' },
+      { label: t('nav.paymentHistory'), path: '/payments/history' },
       { label: t('nav.messages'), path: '/messages' },
     ],
   },
@@ -31,6 +32,7 @@ export const ROLE_CONFIG: Record<UserRole, { defaultPath: string; badge: string;
       { label: t('nav.projects'), path: '/staff/projects' },
       { label: t('nav.apartments'), path: '/staff-apartments' },
       { label: t('nav.customers'), path: '/customers' },
+      { label: t('nav.paymentHistory'), path: '/payments/history' },
       { label: t('nav.inquiries'), path: '/staff/inquiries' },
       { label: t('nav.reviews'), path: '/reviews' },
       { label: t('nav.messages'), path: '/messages' },
@@ -68,6 +70,7 @@ export const ROLE_CONFIG: Record<UserRole, { defaultPath: string; badge: string;
       { label: 'Master Data', path: '/admin-master-data' },
       { label: 'AI knowledge', path: '/admin/ai-knowledge' },
       { label: 'Customers', path: '/customers' },
+      { label: t('nav.paymentHistory'), path: '/payments/history' },
       { label: t('nav.inquiries'), path: '/staff/inquiries' },
       { label: t('nav.reviews'), path: '/reviews' },
     ],

@@ -26,12 +26,19 @@ const ICON_TONE = {
   violet: 'bg-violet-50 text-violet-600',
   green: 'bg-emerald-50 text-emerald-600',
   slate: 'bg-slate-100 text-slate-600',
+  amber: 'bg-amber-100 text-amber-700',
+  brand: 'bg-brand-soft text-brand',
 } as const;
 
-export function StatCard({ label, value, hint, loading, icon, iconTone = 'blue', valueClassName = 'text-slate-900' }: {
+/**
+ * Number tile. With `onClick` it becomes a toggle (a quick filter): lifts on hover, ringed while `active`.
+ * `attention` tints it amber with a soft pulsing dot, for a count that needs someone to act.
+ */
+export function StatCard({ label, value, hint, loading, icon, iconTone = 'blue', valueClassName = 'text-slate-900', onClick, active, attention, title }: {
   label: string; value: ReactNode; hint?: string; loading?: boolean;
   /** Optional icon shown in a light square on the left. */
   icon?: ReactNode; iconTone?: keyof typeof ICON_TONE; valueClassName?: string;
+  onClick?: () => void; active?: boolean; attention?: boolean; title?: string;
 }) {
   const body = (
     <div className="min-w-0">
@@ -40,15 +47,36 @@ export function StatCard({ label, value, hint, loading, icon, iconTone = 'blue',
       {hint && <p className="mt-0.5 text-xs text-slate-500">{hint}</p>}
     </div>
   );
-  return (
-    <div className="rounded-card border border-line bg-surface px-4 py-3.5 shadow-card">
+  const content = (
+    <>
+      {attention && (
+        <span aria-hidden className="absolute right-3.5 top-3.5 flex h-2 w-2">
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-500/60 motion-reduce:hidden" />
+          <span className="relative inline-flex h-2 w-2 rounded-full bg-amber-500" />
+        </span>
+      )}
       {icon ? (
         <div className="flex items-center gap-3.5">
           <span aria-hidden className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${ICON_TONE[iconTone]}`}>{icon}</span>
           {body}
         </div>
       ) : body}
-    </div>
+    </>
+  );
+  const frame = `relative rounded-card border px-4 py-3.5 text-left shadow-card ${
+    attention ? 'border-amber-200 bg-linear-to-br from-amber-50 to-surface' : 'border-line bg-surface'
+  } ${active ? 'ring-2 ring-brand ring-offset-2 ring-offset-canvas' : ''}`;
+  if (!onClick) return <div className={frame}>{content}</div>;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={!!active}
+      title={title}
+      className={`${frame} w-full cursor-pointer transition duration-200 hover:-translate-y-0.5 hover:shadow-float focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand motion-reduce:transition-none motion-reduce:hover:translate-y-0`}
+    >
+      {content}
+    </button>
   );
 }
 

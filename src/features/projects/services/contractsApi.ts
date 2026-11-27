@@ -1,5 +1,6 @@
 import { t } from '@/i18n';
 import { ApiError, apiFetch, apiRequest } from '@/services/authService';
+import { parseContentDispositionFileName } from '@/services/contentDisposition';
 
 // ---------------------------------------------------------------------------
 // Types — mirror the backend DTOs (Swagger: POST /projects/{projectId}/contract)
@@ -448,9 +449,7 @@ export async function downloadContractFile(
 
   if (!response.ok) throw await fileError(response);
 
-  const disposition = response.headers.get('Content-Disposition') ?? '';
-  const match = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(disposition);
-  const fileName = match ? decodeURIComponent(match[1]) : fallbackFileName;
+  const fileName = parseContentDispositionFileName(response.headers.get('Content-Disposition')) ?? fallbackFileName;
 
   return { blob: await response.blob(), fileName };
 }

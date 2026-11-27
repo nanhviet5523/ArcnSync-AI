@@ -3,7 +3,7 @@ import { t } from '@/i18n';
 import type { ChatMessageSummary } from '@/types/chat';
 import { chatApi } from '../chatApi';
 import { classifyChatError } from '../chatErrors';
-import { appendMessage as appendTo, mergeFirstPage, olderCursor, prependOlder } from '../messageList';
+import { appendMessage as appendTo, mergeFirstPage, mergeLatestPage, olderCursor, prependOlder } from '../messageList';
 
 const PAGE_SIZE = 30;
 
@@ -41,6 +41,11 @@ export interface ConversationMessages {
   retry?: () => void;
   /** Add a message at the end (realtime message.created, a message just sent). Skipped when already there. */
   appendMessage: (message: ChatMessageSummary) => void;
+  /**
+   * Fetch the latest page again and merge it in, keeping what is shown (after a socket reconnect). Silent: a failure
+   * shows no error. Skipped while another page is loading.
+   */
+  resync: () => void;
 }
 
 /**
@@ -128,6 +133,27 @@ export function useConversationMessages(conversationId: string | undefined, onNo
     }
   };
 
+  const resync = async () => {
+    const convId = activeId.current;
+    const s = stateRef.current;
+    // A first load in flight already brings the latest page; an error state is left to its Retry.
+    if (!convId || s.convId !== convId || s.loading || s.error || firstCtl.current || olderCtl.current) return;
+    const controller = new AbortController();
+    firstCtl.current = controller;
+    try {
+      const page = await chatApi.getMessages(convId, { limit: PAGE_SIZE }, { signal: controller.signal });
+      if (controller.signal.aborted) return;
+      patch(convId, (prev) => {
+        const merged = mergeLatestPage(prev.messages, page.items);
+        return { ...prev, messages: merged.messages, hasMore: merged.contiguous ? prev.hasMore : page.hasMore };
+      });
+    } catch {
+      // Silent: the thread still shows what it had, and the next reconnect or a reload tries again.
+    } finally {
+      if (firstCtl.current === controller) firstCtl.current = null;
+    }
+  };
+
   useEffect(() => {
     activeId.current = conversationId;
     cursorResetDone.current = false;
@@ -156,5 +182,6 @@ export function useConversationMessages(conversationId: string | undefined, onNo
       ? () => { void (failedOp === 'older' ? loadOlder() : loadFirst(conversationId)); }
       : undefined,
     appendMessage: (message) => patch(message.conversationId, (s) => ({ ...s, messages: appendTo(s.messages, message) })),
+    resync: () => { void resync(); },
   };
 }

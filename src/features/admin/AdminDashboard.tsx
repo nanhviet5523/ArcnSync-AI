@@ -7,7 +7,7 @@ import { Stars } from '@/features/reviews/ReviewCard';
 import { dashboardApi } from './dashboardApi';
 import type { BackendRole, DashboardStats } from './dashboardApi';
 
-const STAGES = ['DRAFT', 'CONTRACT_PENDING', 'REQUIREMENT_ANALYSIS', 'IN_DESIGN', 'PRODUCT_SELECTION', 'QUOTING', 'COMPLETED', 'CANCELLED'] as const;
+const STAGES = ['DRAFT', 'CONTRACT_PENDING', 'IN_DESIGN', 'PRODUCT_SELECTION', 'QUOTING', 'COMPLETED', 'CANCELLED'] as const;
 const ROLES: BackendRole[] = ['CUSTOMER', 'DESIGNER', 'STAFF', 'SUPPLIER', 'ADMIN'];
 const INQUIRY_STATES = ['NEW', 'IN_PROGRESS', 'RESOLVED', 'SPAM'] as const;
 
@@ -190,7 +190,7 @@ function StageBars({ byStatus }: { byStatus: DashboardStats['projects']['byStatu
         return (
           <li key={k} className="grid grid-cols-[minmax(0,9rem)_1fr_2.5rem] items-center gap-3">
             <StatusChip kind="project" value={k} size="sm" />
-            <div aria-hidden className="h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-sand-500" style={{ width: `${(n / max) * 100}%` }} /></div>
+            <div aria-hidden className="h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-brand" style={{ width: `${(n / max) * 100}%` }} /></div>
             <span className="text-right text-sm font-semibold tabular-nums text-ink">{n}</span>
           </li>
         );

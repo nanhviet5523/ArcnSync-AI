@@ -3,7 +3,7 @@ import { StatusChip } from '@/components/ui';
 import { t, tList } from '@/i18n';
 import { PROJECT_STEPS } from '../landing';
 
-/** The preview sits on step 4 (IN_DESIGN, "2D design & concept"). */
+/** The preview sits on step 3 (IN_DESIGN, "2D design & concept"). */
 const CURRENT = PROJECT_STEPS.indexOf('IN_DESIGN');
 
 const p = (key: string) => t(`home.hero.preview.${key}`);

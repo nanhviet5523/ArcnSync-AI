@@ -6,6 +6,7 @@ import { formatValue, isEmptyValue } from '../format';
 import { STATUS_ACTION_META } from '../statusActions';
 import { AvailabilitySwitch } from './AvailabilitySwitch';
 import type { AdminUserDetail, StatusAction } from '../types';
+import { toast } from '@/components/ui';
 
 const formatDate = (value: string | null | undefined) => {
   if (isEmptyValue(value)) return formatValue(value);
@@ -160,13 +161,6 @@ export const UserDetailDrawer: React.FC<UserDetailDrawerProps> = ({
   const [error, setError] = useState('');
   const [reloadKey, setReloadKey] = useState(0);
   const [togglingAvailability, setTogglingAvailability] = useState(false);
-  const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
-
-  useEffect(() => {
-    if (!toast) return;
-    const timer = setTimeout(() => setToast(null), 3500);
-    return () => clearTimeout(timer);
-  }, [toast]);
 
   // Optimistic: flip the switch immediately, call the API, roll back on failure.
   const setAvailability = (id: string, isAvailable: boolean) =>
@@ -184,13 +178,10 @@ export const UserDetailDrawer: React.FC<UserDetailDrawerProps> = ({
     try {
       await updateDesignerAvailability(id, next);
       onAvailabilityChange?.(id, next);
-      setToast({ type: 'success', message: 'Designer availability updated successfully' });
+      toast.success('Designer availability updated successfully');
     } catch (err) {
       setAvailability(id, !next);
-      setToast({
-        type: 'error',
-        message: err instanceof Error ? err.message : 'Failed to update availability. Please try again.',
-      });
+      toast.error(err instanceof Error ? err.message : 'Failed to update availability. Please try again.');
     } finally {
       setTogglingAvailability(false);
     }
@@ -350,18 +341,6 @@ export const UserDetailDrawer: React.FC<UserDetailDrawerProps> = ({
           )}
         </div>
       </aside>
-      {toast && (
-        <div
-          role={toast.type === 'error' ? 'alert' : 'status'}
-          className={`fixed right-4 top-4 z-[80] max-w-sm rounded-xl border px-4 py-3 text-sm font-medium shadow-lg ${
-            toast.type === 'success'
-              ? 'border-emerald-100 bg-emerald-50 text-emerald-800'
-              : 'border-red-100 bg-red-50 text-red-700'
-          }`}
-        >
-          {toast.message}
-        </div>
-      )}
     </div>
   );
 };

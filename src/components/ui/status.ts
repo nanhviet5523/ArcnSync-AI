@@ -37,13 +37,14 @@ const STATUS: Record<string, Record<string, Tone>> = {
   quotation: { DRAFT: 'gray', SENT: 'yellow', ACCEPTED: 'green', CHANGES_REQUESTED: 'amber', EXPIRED: 'struck' },
   handover: { NOT_SUBMITTED: 'gray', SUBMITTED: 'yellow', CHANGES_REQUESTED: 'amber', APPROVED: 'green' },
   milestone: { PENDING: 'gray', INVOICED: 'yellow', PAID: 'green', OVERDUE: 'red', CANCELLED: 'struck' },
+  paymentTxn: { PENDING: 'yellow', SUCCESS: 'green', FAILED: 'red' },
   inquiry: { NEW: 'blue', IN_PROGRESS: 'yellow', RESOLVED: 'green', SPAM: 'struck' },
   budget: { BELOW: 'sky', WITHIN: 'green', WITHIN_TOLERANCE: 'amber', OVER: 'red' },
   siteSurvey: { REQUESTED: 'gray', SCHEDULED: 'blue', SUBMITTED: 'yellow', CONFIRMED: 'green', REJECTED: 'amber', CANCELLED: 'red' },
   // NOT_CHOSEN: a SUBMITTED concept once the homeowner chose another one (UI only)
   concept: { DRAFT: 'gray', SUBMITTED: 'yellow', APPROVED: 'green', NOT_CHOSEN: 'gray' },
 };
-export type StatusKind = 'project' | 'version' | 'comment' | 'choice' | 'stage' | 'flag' | 'projectRole' | 'roomDraft' | 'quotation' | 'handover' | 'milestone' | 'inquiry' | 'budget' | 'siteSurvey' | 'concept';
+export type StatusKind = 'project' | 'version' | 'comment' | 'choice' | 'stage' | 'flag' | 'projectRole' | 'roomDraft' | 'quotation' | 'handover' | 'milestone' | 'paymentTxn' | 'inquiry' | 'budget' | 'siteSurvey' | 'concept';
 
 export const statusInfo = (kind: StatusKind, value: string) => ({
   label: t(`status.${kind}.${value}`),

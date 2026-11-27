@@ -22,17 +22,17 @@ function PhotoThumb({ floorId, photo, onDelete }: { floorId: string; photo: Surv
   }, [floorId, photo.id]);
 
   return (
-    <li className="group relative aspect-square overflow-hidden rounded-lg border border-line bg-slate-100">
+    <li className="group relative aspect-square overflow-hidden rounded-lg border border-slate-200 bg-slate-100">
       {url ? (
         <a href={url} target="_blank" rel="noreferrer" aria-label={t('siteSurvey.openPhoto', { name: photo.fileName })}>
           <img src={url} alt={photo.fileName} className="h-full w-full object-cover" />
         </a>
       ) : failed ? (
-        <span className="grid h-full place-items-center px-1 text-center text-[11px] text-slate-500">{t('siteSurvey.photoFailed')}</span>
+        <span className="grid h-full place-items-center px-1 text-center text-xs text-slate-500">{t('siteSurvey.photoFailed')}</span>
       ) : <span aria-hidden className="block h-full w-full animate-pulse" />}
       {onDelete && (
         <button type="button" aria-label={t('siteSurvey.deletePhoto', { name: photo.fileName })} onClick={onDelete}
-          className="absolute right-1 top-1 grid h-6 w-6 place-items-center rounded-full bg-surface/90 text-xs font-bold text-rose-700 shadow hover:bg-surface">
+          className="absolute right-1 top-1 grid h-6 w-6 place-items-center rounded-full bg-white/90 text-xs font-bold text-rose-700 shadow hover:bg-white">
           ✕
         </button>
       )}
@@ -40,9 +40,10 @@ function PhotoThumb({ floorId, photo, onDelete }: { floorId: string; photo: Surv
   );
 }
 
-function FloorPhotos({ floor, editable, onChange, onMessage }: {
+function FloorPhotos({ floor, editable, onChange, onStale, onMessage }: {
   floor: SurveyFloor; editable: boolean;
   onChange: (photos: SurveyPhoto[]) => void;
+  onStale: () => Promise<void>;
   onMessage: (tone: 'success' | 'error', message: string) => void;
 }) {
   const input = useRef<HTMLInputElement>(null);
@@ -56,17 +57,16 @@ function FloorPhotos({ floor, editable, onChange, onMessage }: {
     const bad = files.find((f) => !PHOTO_TYPES.includes(f.type) || f.size > MAX_PHOTO_BYTES);
     if (bad) { onMessage('error', t('siteSurvey.photoBadFile', { name: bad.name })); return; }
     if (files.length > left) { onMessage('error', t('siteSurvey.photoTooMany', { left })); return; }
-    let photos = floor.photos;
     let added = 0;
     try {
       // the backend takes at most 10 files per request
       for (let i = 0; i < files.length; i += MAX_PHOTOS_PER_UPLOAD) {
         const chunk = files.slice(i, i + MAX_PHOTOS_PER_UPLOAD);
         setProgress(i / files.length);
-        const created = await siteSurveyApi.uploadPhotos(floor.id, chunk, (f) => setProgress((i + f * chunk.length) / files.length));
-        photos = [...photos, ...created];
-        added += created.length;
-        onChange(photos);
+        // the response is every photo of the floor (not just the new ones): it replaces the list
+        const all = await siteSurveyApi.uploadPhotos(floor.id, chunk, (f) => setProgress((i + f * chunk.length) / files.length));
+        added += chunk.length;
+        onChange(all);
       }
       onMessage('success', t('siteSurvey.done.photosAdded', { n: added }));
     } catch (e) {
@@ -86,7 +86,12 @@ function FloorPhotos({ floor, editable, onChange, onMessage }: {
       onChange(floor.photos.filter((p) => p.id !== photo.id));
       onMessage('success', t('siteSurvey.done.photoDeleted'));
     } catch (e) {
-      onMessage('error', surveyErrorText(e));
+      const code = (e as { code?: string }).code;
+      // the photo (or the floor, after a re-measure) is already gone: show what the server has now
+      if (code === 'SURVEY_PHOTO_NOT_FOUND' || code === 'SITE_SURVEY_FLOOR_NOT_FOUND') {
+        onMessage('error', t('siteSurvey.photoGone'));
+        await onStale();
+      } else onMessage('error', surveyErrorText(e));
     } finally {
       setDeleting(false);
       setPending(null);
@@ -94,9 +99,9 @@ function FloorPhotos({ floor, editable, onChange, onMessage }: {
   };
 
   return (
-    <div className="mt-3">
+    <div className="mt-4">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-        <h5 className="text-[13px] font-medium text-slate-700">
+        <h5 className="text-sm font-semibold text-slate-800">
           {t('siteSurvey.photos')} <span className="font-normal text-slate-500">· {t('siteSurvey.photoCount', { n: floor.photos.length })}</span>
         </h5>
         {editable && (
@@ -112,8 +117,8 @@ function FloorPhotos({ floor, editable, onChange, onMessage }: {
         <ul className="grid grid-cols-3 gap-2 sm:grid-cols-5">
           {floor.photos.map((p) => <PhotoThumb key={p.id} floorId={floor.id} photo={p} onDelete={editable ? () => setPending(p) : undefined} />)}
         </ul>
-      ) : <p className={`text-xs ${editable ? 'text-amber-700' : 'text-slate-500'}`}>{editable ? t('siteSurvey.photosNeeded') : t('siteSurvey.noPhotos')}</p>}
-      {editable && <p className="mt-1.5 text-[11px] text-slate-500">{t('siteSurvey.photoHint', { max: MAX_PHOTOS_PER_FLOOR })}</p>}
+      ) : <p className={`text-sm ${editable ? 'text-amber-700' : 'text-slate-500'}`}>{editable ? t('siteSurvey.photosNeeded') : t('siteSurvey.noPhotos')}</p>}
+      {editable && <p className="mt-1.5 text-xs text-slate-500">{t('siteSurvey.photoHint', { max: MAX_PHOTOS_PER_FLOOR })}</p>}
       {pending && (
         <Modal title={t('siteSurvey.deletePhotoTitle')} onClose={() => !deleting && setPending(null)}
           footer={<>
@@ -128,10 +133,12 @@ function FloorPhotos({ floor, editable, onChange, onMessage }: {
 }
 
 /** Measured home details and every floor with its rooms and photos. The Lead can add and delete photos while `photosEditable`. */
-export function SurveyResult({ survey, photosEditable, onFloorPhotos, onMessage }: {
+export function SurveyResult({ survey, photosEditable, onFloorPhotos, onStale, onMessage }: {
   survey: SiteSurvey;
   photosEditable: boolean;
   onFloorPhotos: (floorId: string, photos: SurveyPhoto[]) => void;
+  /** The shown photos no longer match the server (e.g. DELETE answered 404): reload the survey. */
+  onStale: () => Promise<void>;
   onMessage: (tone: 'success' | 'error', message: string) => void;
 }) {
   if (!survey.floors.length) return <p className="text-sm text-slate-500">{t('siteSurvey.noResult')}</p>;
@@ -146,14 +153,14 @@ export function SurveyResult({ survey, photosEditable, onFloorPhotos, onMessage 
       ]} />
       <div className="mt-4 space-y-3">
         {survey.floors.map((f) => (
-          <section key={f.id} className="rounded-xl border border-line p-4">
-            <h4 className="text-sm font-semibold text-ink">{f.name}</h4>
-            <p className="text-xs text-slate-500">{t('siteSurvey.floorMeta', { level: f.level, area: formatNumber(f.measuredArea), height: formatNumber(f.floorHeightMm) })}</p>
-            {f.note && <p className="mt-1 whitespace-pre-line text-sm text-slate-600">{f.note}</p>}
+          <section key={f.id} className="rounded-xl border border-slate-200 p-4 sm:p-5">
+            <h4 className="text-base font-semibold text-slate-900">{f.name}</h4>
+            <p className="mt-0.5 text-sm text-slate-600">{t('siteSurvey.floorMeta', { level: f.level, area: formatNumber(f.measuredArea), height: formatNumber(f.floorHeightMm) })}</p>
+            {f.note && <p className="mt-2 whitespace-pre-line text-[15px] leading-relaxed text-slate-700">{f.note}</p>}
             {f.rooms.length ? (
-              <table className="mt-3 w-full text-sm">
-                <thead className="text-left text-xs text-slate-500">
-                  <tr className="border-b border-line">
+              <table className="mt-3 w-full text-[15px]">
+                <thead className="text-left text-[13px] text-slate-500">
+                  <tr className="border-b border-slate-100">
                     <th className="py-1.5 font-medium">{t('siteSurvey.measure.roomName')}</th>
                     <th className="py-1.5 font-medium">{t('siteSurvey.measure.roomType')}</th>
                     <th className="py-1.5 text-right font-medium">{t('siteSurvey.measure.roomArea')}</th>
@@ -162,15 +169,15 @@ export function SurveyResult({ survey, photosEditable, onFloorPhotos, onMessage 
                 <tbody className="divide-y divide-slate-100">
                   {f.rooms.map((r) => (
                     <tr key={r.name}>
-                      <td className="py-2 text-ink">{r.name}{r.purpose && <span className="block text-xs text-slate-500">{r.purpose}</span>}</td>
+                      <td className="py-2 text-slate-800">{r.name}{r.purpose && <span className="block text-sm text-slate-500">{r.purpose}</span>}</td>
                       <td className="py-2 text-slate-600">{roomTypeLabel(r.roomType)}</td>
                       <td className="py-2 text-right tabular-nums text-slate-600">{r.area ? t('siteSurvey.roomArea', { area: formatNumber(r.area) }) : t('common.none')}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-            ) : <p className="mt-2 text-xs text-slate-500">{t('siteSurvey.noRooms')}</p>}
-            <FloorPhotos floor={f} editable={photosEditable} onChange={(photos) => onFloorPhotos(f.id, photos)} onMessage={onMessage} />
+            ) : <p className="mt-2 text-sm text-slate-500">{t('siteSurvey.noRooms')}</p>}
+            <FloorPhotos floor={f} editable={photosEditable} onChange={(photos) => onFloorPhotos(f.id, photos)} onStale={onStale} onMessage={onMessage} />
           </section>
         ))}
       </div>

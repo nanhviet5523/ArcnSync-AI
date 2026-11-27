@@ -22,30 +22,8 @@ export function isPreviewableImageMime(mimeType: string): boolean {
   return PREVIEWABLE_IMAGE_MIMES.has(mimeType.toLowerCase());
 }
 
-/**
- * Extract filename from Content-Disposition. Supports RFC 5987 `filename*=UTF-8''...` (sent by backend
- * ChatController.attachment) and plain `filename="..."`, returning null when missing or unreadable.
- */
-export function parseContentDispositionFileName(header: string | null): string | null {
-  if (!header) return null;
-
-  // Prefer RFC 5987 UTF-8 encoded filename*
-  const utf8Match = /filename\*\s*=\s*UTF-8''([^;]+)/i.exec(header);
-  if (utf8Match?.[1]) {
-    const raw = utf8Match[1].trim().replace(/^"|"$/g, '');
-    try {
-      const decoded = decodeURIComponent(raw);
-      if (decoded) return decoded;
-    } catch {
-      if (raw) return raw;
-    }
-  }
-
-  // Fallback to standard filename="..." or filename=...
-  const plainMatch = /filename\s*=\s*(?:"([^"]+)"|([^;\s]+))/i.exec(header);
-  const candidate = (plainMatch?.[1] ?? plainMatch?.[2] ?? '').trim();
-  return candidate || null;
-}
+/** Shared with the other downloads; re-exported here for the chat code and its tests. */
+export { parseContentDispositionFileName } from '../../services/contentDisposition.ts';
 
 /** Short human badge label for non-image files (PDF, DOCX, XLSX, DXF, ZIP, FILE). */
 export function attachmentBadgeLabel(name: string, mimeType: string): string {

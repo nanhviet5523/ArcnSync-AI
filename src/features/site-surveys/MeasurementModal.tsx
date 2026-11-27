@@ -137,8 +137,6 @@ export function MeasurementModal({ survey, onClose, onSaved }: { survey: SiteSur
       ...(!isHouse && opt(home.tower) ? { tower: opt(home.tower) } : {}),
       ...(home.floorNo.trim() ? { floorNo: Number(home.floorNo) } : {}),
       ...(!isHouse && opt(home.layoutCode) ? { layoutCode: opt(home.layoutCode) } : {}),
-      bedroomCount: floors.reduce((count, floor) => count + floor.rooms.filter((room) => room.roomType === 'BEDROOM').length, 0),
-      bathroomCount: floors.reduce((count, floor) => count + floor.rooms.filter((room) => room.roomType === 'BATHROOM').length, 0),
       ...(opt(home.note) ? { note: opt(home.note) } : {}),
       floors: floors.map((f) => ({
         level: Number(f.level),

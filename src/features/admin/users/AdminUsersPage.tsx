@@ -16,6 +16,7 @@ import { Badge, ROLE_BADGE, STATUS_BADGE } from './components/UserBadges';
 import { formatValue } from './format';
 import { getAdminUserById, getAdminUsers, updateDesignerAvailability } from './usersApi';
 import type { ApiUser, CreateUserResponse } from './types';
+import { toast } from '@/components/ui';
 
 const ROLE_OPTIONS = [
   { value: '', label: 'All roles' },
@@ -63,23 +64,10 @@ export const AdminUsersPage: React.FC = () => {
   const [availabilityPending, setAvailabilityPending] = useState<Record<string, boolean>>({});
   const [availabilityFailed, setAvailabilityFailed] = useState<Record<string, boolean>>({});
   const pendingRef = useRef(new Set<string>());
-  const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [drawerRefreshKey, setDrawerRefreshKey] = useState(0);
   // Admins must not change their own status.
   const currentUserId = getCurrentUser()?.id;
-  const [notice, setNotice] = useState('');
 
-  useEffect(() => {
-    if (!notice) return;
-    const timer = setTimeout(() => setNotice(''), 4000);
-    return () => clearTimeout(timer);
-  }, [notice]);
-
-  useEffect(() => {
-    if (!toast) return;
-    const timer = setTimeout(() => setToast(null), 3500);
-    return () => clearTimeout(timer);
-  }, [toast]);
 
   const loadAvailability = useCallback(async (id: string) => {
     setAvailabilityFailed((prev) => ({ ...prev, [id]: false }));
@@ -107,13 +95,10 @@ export const AdminUsersPage: React.FC = () => {
     setAvailability((prev) => ({ ...prev, [id]: next })); // optimistic
     try {
       await updateDesignerAvailability(id, next);
-      setToast({ type: 'success', message: 'Designer availability updated successfully' });
+      toast.success('Designer availability updated successfully');
     } catch (err) {
       setAvailability((prev) => ({ ...prev, [id]: !next })); // roll back
-      setToast({
-        type: 'error',
-        message: err instanceof Error ? err.message : 'Failed to update availability. Please try again.',
-      });
+      toast.error(err instanceof Error ? err.message : 'Failed to update availability. Please try again.');
     } finally {
       pendingRef.current.delete(id);
       setAvailabilityPending((prev) => ({ ...prev, [id]: false }));
@@ -122,25 +107,25 @@ export const AdminUsersPage: React.FC = () => {
 
   const handleStatusChanged = () => {
     setStatusTarget(null);
-    setNotice('User status updated successfully');
+    toast.success('User status updated successfully');
     setReloadKey((k) => k + 1); // refresh the table row
     setDrawerRefreshKey((k) => k + 1); // and the open drawer, if any
   };
 
   const handleResent = () => {
     setResendTarget(null);
-    setNotice('Invitation resent successfully');
+    toast.success('Invitation resent successfully');
   };
 
   const handleUpdated = () => {
     setEditUserId(null);
-    setNotice('User updated successfully');
+    toast.success('User updated successfully');
     setReloadKey((k) => k + 1); // keep the current page/filters, just refresh the rows
   };
 
   const handleCreated = (res: CreateUserResponse) => {
     setInviteOpen(false);
-    setNotice(res.message);
+    toast.success(res.message);
     // New accounts sort first, so jump to page 1 and refetch the list.
     setPage(1);
     setReloadKey((k) => k + 1);
@@ -195,23 +180,6 @@ export const AdminUsersPage: React.FC = () => {
         </AdminButton>
       }
     >
-      {toast && (
-        <div
-          role={toast.type === 'error' ? 'alert' : 'status'}
-          className={`fixed right-4 top-4 z-[80] max-w-sm rounded-xl border px-4 py-3 text-sm font-medium shadow-lg ${
-            toast.type === 'success'
-              ? 'border-emerald-100 bg-emerald-50 text-emerald-800'
-              : 'border-red-100 bg-red-50 text-red-700'
-          }`}
-        >
-          {toast.message}
-        </div>
-      )}
-      {notice && (
-        <div role="status" className="mb-4 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">
-          {notice}
-        </div>
-      )}
       <AdminCard>
         <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center">
           <label className="relative block flex-1">

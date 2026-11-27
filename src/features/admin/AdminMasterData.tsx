@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, Edit2, X, CheckCircle, Lock, ChevronDown, Image as ImageIcon, LoaderCircle } from 'lucide-react';
+import { Plus, Edit2, X, Lock, ChevronDown, Image as ImageIcon, LoaderCircle } from 'lucide-react';
 import { Header, Footer } from '@/components/layout';
+import { toast } from '@/components/ui';
 import { ApiError } from '@/services/authService';
 import { designStyleService, type DesignStyle } from '@/services/designStyleService';
 import { catalogService, type CatalogCategory } from '@/services/catalogService';
@@ -87,9 +88,6 @@ export const AdminMasterData: React.FC = () => {
   const [milestones, setMilestones] = useState<PaymentMilestones>({ signed: 0, concept: 0, handover: 0 });
   const [savedMilestones, setSavedMilestones] = useState<PaymentMilestones>({ signed: 0, concept: 0, handover: 0 });
 
-  // Save changes toast notification
-  const [savedNotification, setSavedNotification] = useState<string | null>(null);
-
   useEffect(() => {
     if (activeSubTab !== 'styles') return;
     let cancelled = false;
@@ -155,20 +153,14 @@ export const AdminMasterData: React.FC = () => {
     setSavedPackages(JSON.parse(JSON.stringify(packages)));
     setSavedExtraRoundFee(extraRoundFee);
     setSavedMilestones({ ...milestones });
-    setSavedNotification('Packages & fee configuration saved successfully!');
-    setTimeout(() => {
-      setSavedNotification(null);
-    }, 3500);
+    toast.success('Packages & fee configuration saved successfully!');
   };
 
   const handleSaveChanges = () => {
     if (activeSubTab === 'packages') {
       handleSavePackages();
     } else {
-      setSavedNotification('Master data settings updated successfully!');
-      setTimeout(() => {
-        setSavedNotification(null);
-      }, 3500);
+      toast.success('Master data settings updated successfully!');
     }
   };
 
@@ -249,8 +241,7 @@ export const AdminMasterData: React.FC = () => {
         ? prev.map((item) => item.id === saved.id ? saved : item)
         : [...prev, saved]);
       closeStyleModal();
-      setSavedNotification(editingStyle ? 'Design style updated successfully.' : 'Design style created successfully.');
-      window.setTimeout(() => setSavedNotification(null), 3500);
+      toast.success(editingStyle ? 'Design style updated successfully.' : 'Design style created successfully.');
     } catch (error) {
       if (error instanceof ApiError && error.status === 409) {
         setStylesError('This design style code already exists. Choose a different code.');
@@ -364,15 +355,6 @@ export const AdminMasterData: React.FC = () => {
       <Header role="admin" activeTab="master-data" />
 
       <main className="w-full max-w-[1440px] mx-auto px-6 lg:px-12 py-8 flex-1">
-        {/* Saved Toast Notification */}
-        {savedNotification && (
-          <div className="mb-6 p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 flex items-center gap-3 transition-all shadow-xs">
-            <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0" />
-            <span className="text-sm font-semibold">
-              {savedNotification}
-            </span>
-          </div>
-        )}
 
         {/* Page Title & Save Changes Action */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">

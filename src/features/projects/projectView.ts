@@ -121,8 +121,8 @@ export const designLabel = (label: string) => versionLabel(label, 'homeowner');
 export const isClosed = (s: Project['status']) => s === 'COMPLETED' || s === 'CANCELLED';
 
 /**
- * Progress along the 7 project steps; null for a cancelled project.
- * Designers read "Step 4/7 · Layout"; homeowners only the stage name ("Layout").
+ * Progress along the 6 project steps; null for a cancelled project.
+ * Designers read "Step 3/6 · Design"; homeowners only the stage name ("Layout").
  */
 export function stepProgress(p: Pick<Project, 'status'>, role: UserRole = 'designer') {
   const i = stepIndex(p.status);

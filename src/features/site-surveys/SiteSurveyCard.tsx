@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Banner, Button, Card, DetailList, ErrorState, Modal, Skeleton, StatusChip } from '@/components/ui';
+import { Banner, Button, Card, DetailList, ErrorState, Modal, Notice, Skeleton, StatusChip } from '@/components/ui';
+import type { NoticeTone } from '@/components/ui';
 import { formatDateTime, t } from '@/i18n';
 import type { Project } from '@/features/projects/projectApi';
 import { isBooked, isMeasurable, siteSurveyApi, surveyErrorText } from './siteSurveyApi';
@@ -19,6 +20,9 @@ import { SurveyResult } from './SurveyResult';
  */
 export type SurveyViewer = 'homeowner' | 'lead' | 'member' | 'staff';
 
+type SurveyNotice = { tone: NoticeTone; text: string; status?: string };
+/** Done messages that are not a plain success: a cancelled survey, a result sent back to the designer. */
+const DONE_TONE: Partial<Record<string, NoticeTone>> = { cancelled: 'cancelled', rejected: 'returned' };
 type Dialog = '' | 'book' | 'edit' | 'schedule' | 'cancel' | 'reject' | 'measure' | 'confirm';
 
 const APARTMENTS_PAGE: Record<string, string> = { homeowner: '/homeowner-apartments', staff: '/staff-apartments', admin: '/admin-apartments' };
@@ -38,7 +42,23 @@ export function SiteSurveyCard({ project, viewer, canCancel = viewer !== 'member
   const [loading, setLoading] = useState(false);
   const [dialog, setDialog] = useState<Dialog>('');
   const [busy, setBusy] = useState<'' | 'submit' | 'confirm'>('');
-  const [message, setMessage] = useState<{ tone: 'success' | 'error'; text: string } | null>(null);
+  // The result of the last action stays on the card, through a reload (F5), until the next action replaces it.
+  // Kept per project in this browser; `status` is the survey's status it was written for, so it hides itself if the
+  // survey has moved on since (e.g. the homeowner confirmed it).
+  const noticeKey = `arcnsync.surveyNotice.${project.id}`;
+  const [message, setMessageState] = useState<SurveyNotice | null>(() => {
+    try {
+      const raw = localStorage.getItem(noticeKey);
+      return raw ? (JSON.parse(raw) as SurveyNotice) : null;
+    } catch { return null; }
+  });
+  const setMessage = (next: SurveyNotice | null) => {
+    setMessageState(next);
+    try {
+      if (next) localStorage.setItem(noticeKey, JSON.stringify(next));
+      else localStorage.removeItem(noticeKey);
+    } catch { /* storage blocked: the notice still shows until the page is left */ }
+  };
   const [showResult, setShowResult] = useState(false);
 
   const load = useCallback(async () => {
@@ -49,18 +69,28 @@ export function SiteSurveyCard({ project, viewer, canCancel = viewer !== 'member
     finally { setLoading(false); }
   }, [project.id]);
   useEffect(() => { Promise.resolve().then(load); }, [load]);
+  /** Quiet re-sync with the server (no loading state): the shown photos were out of date. */
+  const refresh = async () => {
+    try { setSurveys(await siteSurveyApi.listByProject(project.id)); }
+    catch (e) { setMessage({ tone: 'error', text: surveyErrorText(e), status: surveys?.[0]?.status }); }
+  };
 
   // newest first: the first one is the current survey (possibly cancelled)
   const survey = surveys?.[0] ?? null;
   const status = survey?.status;
+  // who cancelled, when that person is on this project
+  const cancelledBy = survey?.cancelledById
+    ? [project.customer, project.staff, project.designer, ...(project.members ?? []).map((m) => ({ id: m.designerId, fullName: m.fullName }))]
+      .find((p) => p?.id === survey.cancelledById)?.fullName
+    : undefined;
   const audience = viewer === 'homeowner' ? 'homeowner' : viewer === 'lead' ? 'lead' : 'other';
-  const say = (tone: 'success' | 'error', text: string) => setMessage({ tone, text });
+  const say = (tone: NoticeTone, text: string, after: string | undefined = status) => setMessage({ tone, text, status: after });
   const replace = (next: SiteSurvey) => setSurveys((list) => (list?.some((s) => s.id === next.id) ? list.map((s) => (s.id === next.id ? next : s)) : [next, ...(list ?? [])]));
-  const done = (next: SiteSurvey, key: string) => { replace(next); setDialog(''); say('success', t(`siteSurvey.done.${key}`)); };
-  const setFloorPhotos = (floorId: string, photos: SurveyPhoto[]) => {
-    if (!survey) return;
-    replace({ ...survey, floors: survey.floors.map((f) => (f.id === floorId ? { ...f, photos } : f)) });
-  };
+  const done = (next: SiteSurvey, key: string) => { replace(next); setDialog(''); say(DONE_TONE[key] ?? 'success', t(`siteSurvey.done.${key}`), next.status); };
+  // from the latest state: uploads on two floors at once must not overwrite each other
+  const setFloorPhotos = (floorId: string, photos: SurveyPhoto[]) => setSurveys((list) => list?.map((s) => (
+    s.floors.some((f) => f.id === floorId) ? { ...s, floors: s.floors.map((f) => (f.id === floorId ? { ...f, photos } : f)) } : s
+  )) ?? list);
 
   const run = async (kind: 'submit' | 'confirm', call: () => Promise<SiteSurvey>, key: string) => {
     if (busy) return;
@@ -124,11 +154,10 @@ export function SiteSurveyCard({ project, viewer, canCancel = viewer !== 'member
       title={<span className="flex items-center gap-2">{t('siteSurvey.title')}{status && <StatusChip kind="siteSurvey" value={status} size="sm" />}</span>}
       description={t(viewer === 'homeowner' ? 'siteSurvey.introHomeowner' : 'siteSurvey.introTeam')}
       actions={<Button size="sm" variant="ghost" loading={loading && surveys !== null} onClick={() => void load()}>{t('siteSurvey.refresh')}</Button>}>
-      {message && (
-        <p role={message.tone === 'error' ? 'alert' : 'status'}
-          className={`mb-4 rounded-lg border px-3 py-2 text-sm ${message.tone === 'error' ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-emerald-100 bg-emerald-50 text-emerald-800'}`}>
-          {message.text}
-        </p>
+      {message && (!status || !message.status || message.status === status)
+        && !(message.tone === 'cancelled' && status === 'CANCELLED') && !(message.tone === 'returned' && status === 'REJECTED') && (
+        // static: no timer, no close button; replaced by the next action
+        <Notice tone={message.tone} className="mb-4">{message.text}</Notice>
       )}
 
       {surveys !== null && loadError && <div className="mb-4"><ErrorState message={loadError} onRetry={() => void load()} /></div>}
@@ -143,13 +172,29 @@ export function SiteSurveyCard({ project, viewer, canCancel = viewer !== 'member
         </div>
       ) : (
         <div className="space-y-4">
-          <p className="text-sm font-medium text-ink">{t(`siteSurvey.statusText.${survey.status}.${audience}`)}</p>
-
-          {status === 'REJECTED' && survey.rejectionReason && (
-            <Banner tone="amber"><span className="font-semibold">{t('siteSurvey.rejectionReason')}:</span> <span className="whitespace-pre-line">{survey.rejectionReason}</span></Banner>
-          )}
-          {status === 'CANCELLED' && survey.cancelReason && (
-            <p className="text-sm text-slate-600"><span className="text-slate-500">{t('siteSurvey.cancelReason')}:</span> {survey.cancelReason}</p>
+          {/* Cancelled or sent back: one notice with the reason set apart, so it is clear why. From the survey itself,
+              so everyone sees it, after a reload too. */}
+          {status === 'CANCELLED' || status === 'REJECTED' ? (
+            <Notice
+              tone={status === 'CANCELLED' ? 'cancelled' : 'returned'}
+              title={t(`siteSurvey.statusText.${survey.status}.${audience}`)}
+            >
+              {status === 'CANCELLED' && cancelledBy && <p className="text-[13px] text-ink-2">{t('siteSurvey.cancelledBy', { name: cancelledBy })}</p>}
+              <div className="mt-2 rounded-lg border border-[var(--tone-line)] bg-white/75 px-3 py-2">
+                {/* one line: REASON: "…" */}
+                {/* label and reason the same size, a step below the notice title (12px vs 14px) */}
+                <p className="text-xs italic leading-relaxed">
+                  <span className="mr-1 font-bold uppercase tracking-wide text-[var(--tone)]">
+                    {t(status === 'CANCELLED' ? 'siteSurvey.cancelReasonTitle' : 'siteSurvey.rejectionReason')}:
+                  </span>
+                  {(status === 'CANCELLED' ? survey.cancelReason : survey.rejectionReason)
+                    ? <span className="whitespace-pre-line font-semibold text-ink">“{status === 'CANCELLED' ? survey.cancelReason : survey.rejectionReason}”</span>
+                    : <span className="italic text-subtext">{t('siteSurvey.noReason')}</span>}
+                </p>
+              </div>
+            </Notice>
+          ) : (
+            <p className="text-sm font-medium text-ink">{t(`siteSurvey.statusText.${survey.status}.${audience}`)}</p>
           )}
 
           <DetailList items={[
@@ -182,7 +227,7 @@ export function SiteSurveyCard({ project, viewer, canCancel = viewer !== 'member
                   <Button size="sm" variant="ghost" aria-expanded={resultOpen} onClick={() => setShowResult((v) => !v)}>{t(resultOpen ? 'siteSurvey.hideResult' : 'siteSurvey.showResult')}</Button>
                 )}
               </div>
-              {resultOpen && <SurveyResult survey={survey} photosEditable={photosEditable} onFloorPhotos={setFloorPhotos} onMessage={say} />}
+              {resultOpen && <SurveyResult survey={survey} photosEditable={photosEditable} onFloorPhotos={setFloorPhotos} onStale={refresh} onMessage={say} />}
             </div>
           )}
 

@@ -30,7 +30,7 @@ export function MemberDraftBar({ rows, hasRooms, busy, onSave, onReady, onDiscar
   if (!rows.length) {
     return (
       <>
-        <p className="shrink-0 border-t border-line bg-surface px-4 py-3 text-[13px] text-slate-500">{t(!hasRooms ? 'drafts.noRooms' : swaps ? 'drafts.none' : 'drafts.noneLayout')}</p>
+        <p className="shrink-0 border-t border-line bg-surface px-4 py-3 text-[13px] text-subtext">{t(!hasRooms ? 'drafts.noRooms' : swaps ? 'drafts.none' : 'drafts.noneLayout')}</p>
         {uploadRow}
       </>
     );
@@ -57,7 +57,7 @@ export function MemberDraftBar({ rows, hasRooms, busy, onSave, onReady, onDiscar
             </div>
             {waiting ? (
               <div className="flex items-center justify-between gap-2">
-                <p className="text-xs text-slate-500">{t('drafts.waitingLead')}</p>
+                <p className="text-xs text-subtext">{t('drafts.waitingLead')}</p>
                 {discard}
               </div>
             ) : (
@@ -81,7 +81,7 @@ function ProductMini({ product }: { product: Product | null }) {
     <span className="flex min-w-0 flex-1 items-center gap-1.5">
       <Thumb path={product?.thumbnail_url ?? null} className="h-7 w-7" />
       <span className="min-w-0">
-        <span className="line-clamp-2 text-xs leading-4 text-slate-700">{product?.name ?? t('drafts.notChosen')}</span>
+        <span className="line-clamp-2 text-xs leading-4 text-ink-2">{product?.name ?? t('drafts.notChosen')}</span>
         {product?.unavailable && <span className="block text-[11px] font-medium leading-4 text-rose-700">{t('drafts.noLongerAvailable')}</span>}
       </span>
     </span>
@@ -100,11 +100,11 @@ export function ChangeSummary({ line }: { line: ChangeLine }) {
       {line.swap && (
         <span className="mt-1 flex items-center gap-1.5">
           <ProductMini product={line.swap.from} />
-          <ArrowRight aria-hidden className="h-3.5 w-3.5 shrink-0 text-subtext" />
+          <ArrowRight aria-hidden className="h-3.5 w-3.5 shrink-0 text-subtext-2" />
           <ProductMini product={line.swap.to} />
         </span>
       )}
-      {line.overridesChanged && <span className="mt-0.5 block text-xs text-slate-500">{t('drafts.overrideChanged')}</span>}
+      {line.overridesChanged && <span className="mt-0.5 block text-xs text-subtext">{t('drafts.overrideChanged')}</span>}
     </>
   );
 }
@@ -152,42 +152,42 @@ export function RoomDraftsBlock({ drafts, avatars, elements, previewId, onPrevie
               <div className="flex items-center gap-2">
                 <button type="button" aria-expanded={open} aria-label={t('drafts.showChanges', { room: d.room_name })} onClick={() => setOpenId(open ? null : d.id)}
                   className="flex min-w-0 flex-1 items-center gap-1 rounded text-left text-[13px] focus-visible:outline-2 focus-visible:outline-brand">
-                  <ChevronRight aria-hidden className={`h-3.5 w-3.5 shrink-0 text-slate-500 transition-transform ${open ? 'rotate-90' : ''}`} />
+                  <ChevronRight aria-hidden className={`h-3.5 w-3.5 shrink-0 text-subtext transition-transform ${open ? 'rotate-90' : ''}`} />
                   <Avatar id={d.designer_id} name={d.designer_name} label={avatars[d.designer_id]} />
                   <span className="ml-1 min-w-0">
                     <span className="block truncate font-medium text-ink" title={d.room_name}>{d.room_name}</span>
-                    <span className="flex gap-1 text-xs text-slate-500"><span className="min-w-0 truncate" title={d.designer_name}>{d.designer_name}</span><span aria-hidden>·</span><span className="shrink-0 tabular-nums">{t('drafts.changes', { n: draftChangeCount(d) })}</span></span>
+                    <span className="flex gap-1 text-xs text-subtext"><span className="min-w-0 truncate" title={d.designer_name}>{d.designer_name}</span><span aria-hidden>·</span><span className="shrink-0 tabular-nums">{t('drafts.changes', { n: draftChangeCount(d) })}</span></span>
                   </span>
                 </button>
                 <StatusChip kind="roomDraft" value={d.status} size="sm" />
                 <Button size="sm" variant="ghost" aria-pressed={previewId === d.id} aria-label={t('drafts.previewOf', { room: d.room_name })}
                   className={previewId === d.id ? 'bg-brand-soft text-brand' : ''} onClick={() => onPreview(d)}>{t('drafts.preview')}</Button>
               </div>
-              <div className="ml-[18px] mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs tabular-nums text-slate-600">
+              <div className="ml-[18px] mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs tabular-nums text-ink-2">
                 <span>{t('drafts.layoutCount', { n: layoutCount(d) })}</span>
-                <span aria-hidden className="text-subtext">·</span>
+                <span aria-hidden className="text-subtext-2">·</span>
                 <span>{t('drafts.productCount', { n: changeCount(d) })}</span>
                 {ignored > 0 && (
                   <button type="button" onClick={() => onShowIgnored(d)} aria-label={t('drafts.ignored', { n: ignored })}
-                    className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-900 hover:bg-amber-200 focus-visible:outline-2 focus-visible:outline-brand">
+                    className="rounded-full bg-accent-soft px-2 py-0.5 text-[11px] font-bold text-accent-text hover:bg-accent/30 focus-visible:outline-2 focus-visible:outline-brand">
                     {t('drafts.ignoredChip', { n: ignored })}
                   </button>
                 )}
               </div>
-              {d.status !== 'READY' && <p className="ml-[18px] mt-0.5 text-xs text-slate-500">{t('drafts.notReady')}</p>}
+              {d.status !== 'READY' && <p className="ml-[18px] mt-0.5 text-xs text-subtext">{t('drafts.notReady')}</p>}
               {open && (
                 <div className="ml-[18px] mt-1.5 rounded-lg border border-line">
                   <ul className="divide-y divide-line">
                     {lines.map((l) => (
                       <li key={`${l.layout?.op ?? 'p'}-${l.elementId}`}>
-                        <button type="button" onClick={() => onPickLine(l)} className="block w-full px-2.5 py-2 text-left hover:bg-sand-50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand">
+                        <button type="button" onClick={() => onPickLine(l)} className="block w-full px-2.5 py-2 text-left hover:bg-canvas focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand">
                           <ChangeSummary line={l} />
                         </button>
                       </li>
                     ))}
                   </ul>
                   <p className="flex justify-between gap-2 border-t border-line px-2.5 py-1.5 text-xs">
-                    <span className="text-slate-600">{t('drafts.roomTotal')}</span>
+                    <span className="text-ink-2">{t('drafts.roomTotal')}</span>
                     <span className="font-semibold tabular-nums text-ink">{signedVnd(totalDelta(lines))}</span>
                   </p>
                   {(d.has_source_file || onDiscard) && (
@@ -198,8 +198,8 @@ export function RoomDraftsBlock({ drafts, avatars, elements, previewId, onPrevie
                   )}
                   {!!handled.length && (
                     <div className="border-t border-line px-2.5 py-1.5">
-                      <p className="text-xs font-medium text-slate-700">{t('drafts.handledComments')}</p>
-                      <ul className="mt-0.5 space-y-0.5">{handled.map((c, i) => <li key={i} className="line-clamp-2 text-xs text-slate-600">{c}</li>)}</ul>
+                      <p className="text-xs font-medium text-ink-2">{t('drafts.handledComments')}</p>
+                      <ul className="mt-0.5 space-y-0.5">{handled.map((c, i) => <li key={i} className="line-clamp-2 text-xs text-ink-2">{c}</li>)}</ul>
                     </div>
                   )}
                 </div>

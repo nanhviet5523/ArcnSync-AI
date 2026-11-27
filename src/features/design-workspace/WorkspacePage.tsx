@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import type { KeyboardEvent } from 'react';
 import { Link, useBlocker, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { Box, Image as ImageIcon, Info, PanelLeftOpen, Upload, X } from 'lucide-react';
+import { Box, Image as ImageIcon, Info, PanelLeftOpen, Sparkles, Upload, X } from 'lucide-react';
 import { Avatar, Banner, Button, ErrorState, Field, Input, Modal, Skeleton, StatusChip, Textarea, Z, avatarLabels } from '@/components/ui';
 import { downloadFile, revokeBlobUrls } from '@/services/authService';
 import { errorText, formatDate, formatDateTime, formatMoney, isNetworkError, milestoneUnpaidText, t } from '@/i18n';
@@ -33,6 +33,13 @@ import { RoomOwnerMenu } from './RoomOwnerMenu';
 import { ChangeSummary, MemberDraftBar, RoomDraftsBlock } from './RoomDraftBars';
 import { IgnoredList, MemberDxfUploadDialog, UploadResultModal } from './MemberDxfUpload';
 import { useRoomWork } from './useRoomWork';
+import { AiComboPanel } from './AiComboPanel';
+import type { ComboPreview, ComboStart } from './AiComboPanel';
+import type { AiAcceptance, AiRecommendation, AiRecommendationCandidate } from '@/features/ai/recommendationApi';
+import { ELEMENTS_MAX, REC_ERRORS, VARIANT_KEYS, applyAcceptance, dropInvalidRecommendations, isRecommendable, previewPatches, togglePick, unchosenCount, withRecommendations } from '@/features/ai/recommendationLogic';
+import type { AiSources } from '@/features/ai/recommendationLogic';
+import { CountBadge } from './wsUi';
+import { floatIconBtn, iconBtn } from './wsClasses';
 import { applyLayout, draftChangeCount, draftPatches, droppedItemNames, foldOwnDrafts, hasLayoutChanges, isAddedItem, layoutLines, layoutTarget, localChangesInRoom, skippedRoomNames, mergePatches, mergeSummary, olderVersionDraftSource, previewHighlight, signedVnd, withPatches } from './roomDrafts';
 import type { ChangeLine, MemberDraftRow, Patches } from './roomDrafts';
 import { boxOf, elementRoom, floorRooms, roomAt } from './rooms';
@@ -71,22 +78,28 @@ const watchNarrow = (cb: () => void) => {
 };
 
 function RevisionPicker({ value, onChange, limit, major }: { value: RevisionType; onChange: (r: RevisionType) => void; limit: RevisionLimit | null; major: { ok: boolean; reason?: string } }) {
+  /** The stage's Major rounds (limit = the contract's maxRevisionsPerStage) are used up: only Minor is left. */
+  const exhausted = limit?.remaining === 0;
+  const majorOff = !major.ok || exhausted;
+  // a reload can use up the last round while Major is picked
+  useEffect(() => { if (majorOff && value === 'MAJOR') onChange('MINOR'); }, [majorOff, value, onChange]);
   return (
     <fieldset>
       <div className="grid grid-cols-2 gap-2">
         {(['MINOR', 'MAJOR'] as const).map((r) => {
-          const off = r === 'MAJOR' && !major.ok;
+          const off = r === 'MAJOR' && majorOff;
           return (
             <label key={r} className={`rounded-lg border p-3 text-sm transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-brand ${off ? 'cursor-not-allowed border-line opacity-60' : value === r ? 'cursor-pointer border-brand bg-brand-soft' : 'cursor-pointer border-line hover:border-line-strong'}`}>
               <input type="radio" name="revision" className="sr-only" checked={value === r} disabled={off} onChange={() => onChange(r)} />
               <span className="font-medium text-ink">{t(r === 'MINOR' ? 'workspace.minor' : 'workspace.major')}</span>
-              <span className="mt-0.5 block text-xs text-slate-500">{t(r === 'MINOR' ? 'workspace.minorHint' : 'workspace.majorHint')}</span>
+              <span className="mt-0.5 block text-xs text-subtext">{t(r === 'MINOR' ? 'workspace.minorHint' : 'workspace.majorHint')}</span>
             </label>
           );
         })}
       </div>
-      {major.reason ? <p className="mt-1.5 text-xs text-rose-600">{major.reason}</p>
-        : limit && <p className="mt-1.5 text-xs text-slate-500">{t('workspace.revisionsLeft', { remaining: limit.remaining, limit: limit.limit })}</p>}
+      {exhausted && limit ? <p className="mt-1.5 text-xs text-rose-600">{t('workspace.majorExhausted', { used: limit.used, limit: limit.limit })}</p>
+        : major.reason ? <p className="mt-1.5 text-xs text-rose-600">{major.reason}</p>
+        : limit && <p className="mt-1.5 text-xs text-subtext">{t('workspace.revisionsLeft', { remaining: limit.remaining, limit: limit.limit })}</p>}
     </fieldset>
   );
 }
@@ -96,10 +109,10 @@ function AddressedPicker({ threads, value, onChange, invalid = [] }: { threads: 
   if (!threads.length) return null;
   return (
     <fieldset>
-      <legend className="mb-1.5 text-[13px] font-medium text-slate-700">{t('upload.addressed')}</legend>
+      <legend className="mb-1.5 text-[13px] font-medium text-ink-2">{t('upload.addressed')}</legend>
       {threads.map((c) => (
-        <label key={c.id} className="mt-1.5 flex items-start gap-2 text-sm text-slate-700">
-          <input type="checkbox" className="mt-0.5 h-4 w-4 rounded border-slate-300" checked={value.includes(c.id)} onChange={(e) => onChange(e.target.checked ? [...value, c.id] : value.filter((x) => x !== c.id))} />
+        <label key={c.id} className="mt-1.5 flex items-start gap-2 text-sm text-ink-2">
+          <input type="checkbox" className="mt-0.5 h-4 w-4 rounded border-line-strong" checked={value.includes(c.id)} onChange={(e) => onChange(e.target.checked ? [...value, c.id] : value.filter((x) => x !== c.id))} />
           <span className="min-w-0 break-words">
             {c.content}
             {invalid.includes(c.id) && <span role="alert" className="mt-0.5 block text-xs text-rose-600">{t('workspace.addressedInvalid')}</span>}
@@ -170,9 +183,9 @@ function UploadDialog({ floors, first, latest, limit, major, wallHeight, threads
                   <Button size="sm" variant="ghost" aria-label={t('upload.removeFloor', { name: r.name })} className="mb-0.5" onClick={() => setRows(rows.filter((x) => x.key !== r.key))}>×</Button>
                 )}
               </div>
-              <input type="file" accept=".dxf" aria-label={`DXF ${r.name}`} className="mt-2 block w-full text-xs file:mr-3 file:rounded-md file:border file:border-slate-300 file:bg-surface file:px-2.5 file:py-1 file:text-xs file:font-medium file:text-slate-700"
+              <input type="file" accept=".dxf" aria-label={`DXF ${r.name}`} className="mt-2 block w-full text-xs file:mr-3 file:rounded-md file:border file:border-line-strong file:bg-surface file:px-2.5 file:py-1 file:text-xs file:font-medium file:text-ink-2"
                 onChange={(e) => patch(r.key, { file: e.target.files?.[0] ?? null })} />
-              {r.floor_id && !r.file && <p className="mt-1 text-xs text-slate-500">{first ? t('upload.noFileFirst') : t('upload.noFileCopy')}</p>}
+              {r.floor_id && !r.file && <p className="mt-1 text-xs text-subtext">{first ? t('upload.noFileFirst') : t('upload.noFileCopy')}</p>}
               {tried && rowErrors[r.key]?.file && <p role="alert" className="mt-1 text-xs text-rose-600">{rowErrors[r.key].file}</p>}
             </div>
           ))}
@@ -196,7 +209,7 @@ type Dialog =
   | { kind: 'uploadResult'; title: string; accepted: AcceptedLayoutChange[]; ignored: IgnoredLayoutChange[] }
   | { kind: 'ignored'; room: string; designer: string; items: IgnoredLayoutChange[] };
 
-type RightTab = 'room' | 'item' | 'comments';
+type RightTab = 'room' | 'item' | 'comments' | 'ai';
 
 /** Underlined tabs for the right column. */
 function PanelTabs({ items, value, onChange }: { items: { id: RightTab; label: string; badge?: number }[]; value: RightTab; onChange: (v: RightTab) => void }) {
@@ -211,9 +224,9 @@ function PanelTabs({ items, value, onChange }: { items: { id: RightTab; label: s
         const on = it.id === value;
         return (
           <button key={it.id} role="tab" type="button" aria-selected={on} tabIndex={on ? 0 : -1} onClick={() => onChange(it.id)}
-            className={`inline-flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap border-b-2 px-2 text-[13px] font-medium transition-colors focus-visible:outline-2 focus-visible:outline-brand ${on ? 'border-brand text-brand' : 'border-transparent text-slate-600 hover:text-ink'}`}>
+            className={`inline-flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap border-b-2 px-2 text-[13px] font-medium transition-colors focus-visible:outline-2 focus-visible:outline-brand ${on ? 'border-brand text-brand' : 'border-transparent text-ink-2 hover:text-ink'}`}>
             {it.label}
-            {!!it.badge && <span className="min-w-[18px] rounded-full bg-rose-500 px-1 text-center text-[11px] font-semibold leading-[18px] text-white">{it.badge}</span>}
+            <CountBadge n={it.badge} />
           </button>
         );
       })}
@@ -309,6 +322,9 @@ export function WorkspacePage() {
   const sceneRef = useRef<Scene3DHandle>(null);
   const planRef = useRef<Plan2DHandle>(null);
   const [scene3d, setScene3d] = useState(readScene);
+  /** 3D whole house: every floor stacked; cutAbove = highest level drawn (null = all). Not saved. */
+  const [allFloors, setAllFloors] = useState(false);
+  const [cutAbove, setCutAbove] = useState<number | null>(null);
   useEffect(() => {
     try { sessionStorage.setItem(SCENE_KEY, JSON.stringify(scene3d)); } catch { /* private mode: just not remembered */ }
   }, [scene3d]);
@@ -373,6 +389,16 @@ export function WorkspacePage() {
   const [proposal, setProposal] = useState<{ elementId: string; product: ProductOption } | null>(null);
   /** Lead: comments whose suggestion was applied to the draft, ticked in advance in the Save dialog. */
   const [appliedProposals, setAppliedProposals] = useState<string[]>([]);
+  /** Unsaved products that came from an AI combo: the Lead's Save sends their recommendationId. */
+  const [aiSources, setAiSources] = useState<AiSources>({});
+  /** Items of the AI option line under the pointer, tinted on the drawing. */
+  const [aiHover, setAiHover] = useState<string[]>([]);
+  /** Items picked with Shift+click on the 3D view, for "Suggest a combo for N items". */
+  const [aiPicks, setAiPicks] = useState<string[]>([]);
+  /** The AI tab's create dialog, opened from the tab, a room's sidebar button or the picks bar. null = closed. */
+  const [aiStart, setAiStart] = useState<ComboStart | null>(null);
+  /** "View on 3D": an AI option laid over the drawing on this page only, never saved. */
+  const [aiPreview, setAiPreview] = useState<(ComboPreview & { label: string; patches: Patches }) | null>(null);
   const versionId = params.get('v');
 
   // Another version: nothing pointed at on the old one survives. Done here, not when clicking, because the blocker may cancel the move.
@@ -444,8 +470,9 @@ export function WorkspacePage() {
         const opened = v.floors.find((x) => x.id === pendingFloor.current)?.id;
         pendingFloor.current = null;
         setFloorId((f) => opened ?? (v.floors.some((x) => x.id === f) ? f : [...v.floors].sort((a, b) => a.level - b.level)[0]?.id ?? ''));
-        setCanvas(CLEAR_CANVAS); setDraft({}); resetForVersion(); setMergeCompare(false); setRoomKey(null); setView2d(null);
-        setProposal(null); setAppliedProposals([]);
+        setCanvas(CLEAR_CANVAS); setDraft({}); resetForVersion(); setMergeCompare(false); setRoomKey(null); setView2d(null); setCutAbove(null);
+        setProposal(null); setAppliedProposals([]); setAiSources({}); setAiHover([]);
+        setAiPicks([]); setAiStart(null); setAiPreview(null);
       }
       setVersion(v);
       setError('');
@@ -628,6 +655,17 @@ export function WorkspacePage() {
     setView2d(roomView(r));
     setRightTab('room');
   };
+  /** Whole house needs more than one floor; a version with one floor just ignores the switch. */
+  const houseOn = allFloors && (version?.floors.length ?? 0) > 1;
+  const houseLevels = version ? [...version.floors].sort((a, b) => a.level - b.level) : [];
+  /** Cutting below the selected floor would tint rooms nobody sees: move to the highest floor still drawn. */
+  const cutHouse = (level: number | null) => {
+    setCutAbove(level);
+    if (level == null || !floor || floor.level <= level) return;
+    const top = houseLevels.filter((f) => f.level <= level).at(-1);
+    if (top) changeFloor(top.id);
+  };
+  const viewAll = () => { setRoomKey(null); sceneRef.current?.resetView(); };
   const roomCenter = (): [number, number] | null => {
     if (!room) return null;
     if (!room.boundary) return room.label;
@@ -644,6 +682,8 @@ export function WorkspacePage() {
     if (holdQuick()) return;
     // an item added by an uploaded DXF has no id on the server yet
     if (e && isAddedItem(e.id)) return;
+    // Shift+click on 3D adds the item to the AI combo picks (or takes it out); the selection stays as it is
+    if (at?.shiftKey && e && aiPickable(e)) { setAiPicks((p) => togglePick(p, e.id)); return; }
     if (e && e.floor_id !== floorId) changeFloor(e.floor_id);
     patchCanvas({ selEl: e?.id ?? null, selComment: null });
     if (commenting && e && at) { patchCanvas({ hint: null, quick: { target: { kind: 'element', element: e }, ...anchor(at) } }); return; }
@@ -766,6 +806,7 @@ export function WorkspacePage() {
     if (!option) { setDialog({ kind: 'notice', title: t('workspace.errorTitle'), body: t('comments.suggestionGone') }); return; }
     const chosen = option;
     setDraft((d) => ({ ...d, [el.id]: { ...d[el.id], product: chosen, choice: 'CHOSEN' } }));
+    forgetAiSource(el.id);
     if (isMember && el.room_id) work.setTick(el.room_id, x.root.id, true);
     else setAppliedProposals((ids) => (ids.includes(x.root.id) ? ids : [...ids, x.root.id]));
     patchCanvas({ selEl: el.id });
@@ -808,12 +849,14 @@ export function WorkspacePage() {
           overrides: p.overrides ?? undefined,
         };
       }).filter((e) => e.product_id || e.overrides);
+      // only /edits carries recommendationId; taken-over drafts above go through saveRoomDraft without it
+      const linked = withRecommendations(edits, aiSources);
       // a taken-over draft goes back to DRAFT, and only Ready drafts can be merged
       for (const r of own.rooms) {
         if (r.changed) await designApi.saveRoomDraft(version!.id, r.draft.room_id, r.input);
         if (r.count && (r.changed || r.draft.status !== 'READY')) await designApi.markRoomDraftReady(version!.id, r.draft.room_id);
       }
-      const v = await designApi.saveEdits(version!.id, { title: text.trim(), revision_type: saveMode === 'first' ? 'MINOR' : mergingLayout ? 'MAJOR' : revision, edits, choose_all_remaining: chooseAll > 0, addressed_comment_ids: addressed, room_draft_ids: [...work.readyDrafts, ...own.rooms.filter((r) => r.count).map((r) => r.draft)].map((d) => d.id) });
+      const v = await designApi.saveEdits(version!.id, { title: text.trim(), revision_type: saveMode === 'first' ? 'MINOR' : mergingLayout ? 'MAJOR' : revision, edits: linked, choose_all_remaining: chooseAll > 0, addressed_comment_ids: addressed, room_draft_ids: [...work.readyDrafts, ...own.rooms.filter((r) => r.count).map((r) => r.draft)].map((d) => d.id) });
       const skipped = skippedRoomNames(v.skipped_room_ids, version!.floors);
       const lostLayout = v.layout_merge?.skipped ?? [];
       const notices = [
@@ -823,6 +866,7 @@ export function WorkspacePage() {
       if (notices.length) setNotice(notices.join(' '));
       setDraft({});
       setAppliedProposals([]);
+      setAiSources({});
       setDialog(null);
       if (assignAfterSave) {
         // the version is saved either way: a failed assignment must not hide it
@@ -839,6 +883,12 @@ export function WorkspacePage() {
       }
       if (roomConflict(e)) return;
       if (isStale(e)) { setDialog(staleNotice(e)); return; }
+      // an AI link the backend refused: drop those links, keep the products, let the Lead save again
+      if ((e as { code?: string }).code === 'INVALID_RECOMMENDATION') {
+        setAiSources((s) => dropInvalidRecommendations(s, (e as { details?: unknown }).details));
+        setSaveError(t(REC_ERRORS.INVALID_RECOMMENDATION.key));
+        return;
+      }
       // a Member changed a draft while the Lead was merging: show the new drafts, keep the dialog open
       if ((e as { code?: string }).code === 'ROOM_DRAFT_CHANGED') { setSaveError(errorText(e)); loadRef.current(); return; }
       // The dialog stays open with everything typed; the backend names the refused ticks.
@@ -848,11 +898,55 @@ export function WorkspacePage() {
       setSaveError(err.code === 'REVISION_LIMIT_REACHED' && mergingLayout ? `${errorText(e)} ${t('drafts.discardMovedHint')}` : errorText(e));
     } finally { setBusy(false); }
   };
-  const patchSelected = (patch: Partial<DesignElement>) => selEl && setDraft((d) => ({ ...d, [selEl]: { ...d[selEl], ...patch } }));
+  const patchSelected = (patch: Partial<DesignElement>) => {
+    if (!selEl) return;
+    setDraft((d) => ({ ...d, [selEl]: { ...d[selEl], ...patch } }));
+    // a product picked by hand is no longer the AI's suggestion
+    if (patch.product) forgetAiSource(selEl);
+  };
+  function forgetAiSource(elementId: string) {
+    setAiSources((s) => {
+      if (!s[elementId]) return s;
+      const { [elementId]: _gone, ...rest } = s;
+      return rest;
+    });
+  }
+  /**
+   * An AI option was accepted: its products go into the editor like the designer's own picks (not saved yet). Picking
+   * another option of the same suggestion puts back the items the new one leaves out, if nobody changed them since.
+   */
+  const applyAiOption = (a: AiAcceptance) => {
+    if (!version) return;
+    work.setPreviewId(null);
+    setAiPreview(null);
+    const byId = new Map(version.elements.map((e) => [e.id, e]));
+    const r = applyAcceptance(a, (id) => { const el = byId.get(id); return !!el && allow('editItem', el.room_id).ok; });
+    const left = Object.entries(aiSources).filter(([id, s]) => s.recommendationId === a.recommendation.id && !r.patches[id]);
+    setDraft((d) => {
+      const out = { ...d };
+      for (const [id, s] of left) {
+        if (out[id]?.product?.id !== s.productId) continue;
+        const { product: _p, choice: _c, ...rest } = out[id];
+        if (Object.keys(rest).length) out[id] = rest; else delete out[id];
+      }
+      for (const [id, p] of Object.entries(r.patches)) out[id] = { ...out[id], ...p };
+      return out;
+    });
+    setAiSources((s) => ({ ...Object.fromEntries(Object.entries(s).filter(([id]) => !left.some(([x]) => x === id))), ...r.sources }));
+    const n = Object.keys(r.patches).length;
+    setNotice([
+      // Lead: unsaved edits of the version. Member: the room draft, kept with the draft bar's Save (PUT room-drafts, no recommendationId)
+      t(isMember ? 'aiCombo.appliedNoticeMember' : 'aiCombo.appliedNotice', { n }),
+      a.unavailableProductIds.length ? t('aiCombo.unavailableNotice', { n: a.unavailableProductIds.length }) : '',
+      r.skipped.length ? t('aiCombo.skippedNotice', { n: r.skipped.length }) : '',
+    ].filter(Boolean).join(' '));
+  };
 
   /** Cleared after the reload, so the canvas never falls back to the old draft in between. */
   const clearRoomLocal = (roomId: string) => {
-    setDraft((d) => Object.fromEntries(Object.entries(d).filter(([id]) => version?.elements.find((e) => e.id === id)?.room_id !== roomId)));
+    const outside = ([id]: [string, unknown]) => version?.elements.find((e) => e.id === id)?.room_id !== roomId;
+    setDraft((d) => Object.fromEntries(Object.entries(d).filter(outside)));
+    setAiSources((s) => Object.fromEntries(Object.entries(s).filter(outside)));
     work.clearRoomTicks(roomId);
   };
   /** Throws a room draft away on the server (owner or Lead). Any answer reloads: the drafts may have moved on. */
@@ -918,12 +1012,13 @@ export function WorkspacePage() {
   };
   const discardLeadWork = () => {
     const own = work.ownDrafts;
-    if (!own.length) { setDraft({}); return; }
+    if (!own.length) { setDraft({}); setAiSources({}); return; }
     // saved on the server, so this cannot be undone
     setDialog({
       kind: 'confirm', title: t('drafts.discardOwnTitle'), body: t('drafts.discardOwnBody'), label: t('items.discard'),
       run: () => {
         setDraft({});
+        setAiSources({});
         run(async () => { for (const d of own) await designApi.saveRoomDraft(version!.id, d.room_id, { selections: [], overrides: [], addressed_comment_ids: [] }); });
       },
     });
@@ -1020,8 +1115,8 @@ export function WorkspacePage() {
   } : null;
 
   const canvasMenu = tab === '3d' && canExport ? [
-    { label: t('scene.glb'), icon: <Box aria-hidden className="h-4 w-4 text-slate-500" />, run: () => sceneRef.current?.exportGlb() },
-    { label: t('scene.png'), icon: <ImageIcon aria-hidden className="h-4 w-4 text-slate-500" />, run: () => sceneRef.current?.savePng() },
+    { label: t('scene.glb'), icon: <Box aria-hidden className="h-4 w-4 text-subtext" />, run: () => sceneRef.current?.exportGlb() },
+    { label: t('scene.png'), icon: <ImageIcon aria-hidden className="h-4 w-4 text-subtext" />, run: () => sceneRef.current?.savePng() },
   ] : [];
 
   const drawerCls = (side: 'left' | 'right') =>
@@ -1030,12 +1125,58 @@ export function WorkspacePage() {
     ? 'lg:grid-cols-[minmax(0,1fr)_320px] xl:grid-cols-[minmax(0,1fr)_340px]'
     : 'lg:grid-cols-[220px_minmax(0,1fr)_320px] xl:grid-cols-[240px_minmax(0,1fr)_340px]';
 
+  /** AI combos: the design team, Staff and Admin read them at Products; only a designer on the current version makes or applies one. */
+  const aiTab = isRender && viewer.role !== 'homeowner';
+  const aiCreate = aiTab && viewer.role === 'designer' && project.status === 'PRODUCT_SELECTION' && !readOnly
+    && !!version && newestRender?.id === version.id && (leadEditing || memberDrafting);
+  /** Outlined on the drawing: the hovered line of an AI option (AI tab only) and the Shift+click picks. */
+  const aiMarks = aiCreate ? [...(rightTab === 'ai' ? aiHover : []), ...aiPicks] : rightTab === 'ai' ? aiHover : [];
+  const aiHighlight = Object.fromEntries(aiMarks.map((id) => [id, 'replaced' as const]));
+  const allRooms = (version?.floors ?? []).flatMap((f) => f.scene_json.rooms);
+  // the backend only suggests for furniture, decor and lighting with a category, and skips other items silently
+  const aiRecommendable = (e: DesignElement) => !isAddedItem(e.id) && isRecommendable(e);
+  const aiRoomsWithItems = new Set(elements.filter(aiRecommendable).flatMap((e) => (e.room_id ? [e.room_id] : [])));
+  const aiRooms = [...new Map(allRooms.flatMap((r) => (r.room_id && allow('editItem', r.room_id).ok
+    ? [[r.room_id, { id: r.room_id, name: r.name, disabled: !aiRoomsWithItems.has(r.room_id) }] as const] : []))).values()];
+  const aiPickable = (e: DesignElement) => aiCreate && aiRecommendable(e) && allow('editItem', e.room_id).ok;
+  // the room (or floor) on screen, plus Shift+click picks from elsewhere
+  const aiScope = room ? roomItems : floorEls;
+  const aiItems = [...aiScope, ...elements.filter((e) => aiPicks.includes(e.id) && !aiScope.includes(e))]
+    .filter(aiPickable)
+    .map((e) => ({ id: e.id, name: elementName(e, 'designer'), chosen: !!e.product }));
+  /** The item's unsaved product still is the one an AI option gave it. */
+  const isAiLinked = (id: string) => !!aiSources[id] && draft[id]?.product?.id === aiSources[id].productId;
+  const aiLinked = !!selElement && isAiLinked(selElement.id);
+  const openAiCreate = (s: ComboStart) => { setAiStart(s); setRightTab('ai'); setDrawer('right'); };
+  const previewAiOption = (rec: AiRecommendation, c: AiRecommendationCandidate | null) => {
+    if (!c) { setAiPreview(null); return; }
+    setAiPreview({ recId: rec.id, index: c.index, label: t(VARIANT_KEYS[c.label]), patches: previewPatches(c) });
+    // shown on 3D: the models come from GET /design-elements/:id/model-3d?productId=, nothing is written
+    if (tab !== '3d') { setTab('3d'); if (compareParam) setCompareParam(null); setMergeCompare(false); }
+  };
+  /** Sidebar: a room the viewer may choose products in (Lead: not one given to a Member; Member: their own), with what is left to choose. */
+  const aiRoomButton = (roomId: string, name: string) => {
+    if (!aiCreate || !aiRoomsWithItems.has(roomId) || !allow('editItem', roomId).ok) return null;
+    const n = unchosenCount(elements.filter((e) => e.room_id === roomId && !isAddedItem(e.id)));
+    const label = t('aiCombo.roomButtonLabel', { room: name, n });
+    return (
+      <button type="button" aria-label={label} title={label} onClick={() => openAiCreate({ roomId })}
+        className={`${iconBtn} relative shrink-0 text-brand`}>
+        <Sparkles aria-hidden className="h-4 w-4" />
+        {n > 0 && <span aria-hidden className="absolute -right-0.5 -top-0.5 min-w-4 rounded-full bg-accent px-1 text-center text-[10px] font-semibold leading-4 text-surface tabular-nums">{n}</span>}
+      </button>
+    );
+  };
+
   const tabs: { id: RightTab; label: string; badge?: number }[] = [
     { id: 'room', label: t('ws.tabRoom') },
     ...(isRender ? [{ id: 'item' as const, label: t('ws.tabItem') }] : []),
     { id: 'comments', label: t('workspace.comments'), badge: commentBadge },
+    ...(aiTab ? [{ id: 'ai' as const, label: t('aiCombo.tab') }] : []),
   ];
   const activeTab = tabs.some((x) => x.id === rightTab) ? rightTab : 'comments';
+  // leaving the AI tab (or the version losing it) ends the 3D preview of an AI option
+  if (aiPreview && activeTab !== 'ai') setAiPreview(null);
   const due = version && !awaiting ? reviewDue(stageMilestone(milestones, version.version_type), version) : null;
   const awaitingLine = readOnly ? null : awaitingNotice(viewer.role, version);
   const showDecision = viewer.role === 'homeowner' && (requestVisible || !!blockers.length || noRoundsLeft || !!due || !!awaitingLine);
@@ -1055,7 +1196,7 @@ export function WorkspacePage() {
         autoApproved={(id) => isAutoApproved(id, milestones)} />
 
       <div className={`relative grid min-h-0 grid-cols-1 ${cols}`}>
-        {drawer && <div className={`fixed inset-0 ${Z.drawerBackdrop} bg-dark/30 lg:hidden`} onClick={() => setDrawer(null)} />}
+        {drawer && <div className={`fixed inset-0 ${Z.drawerBackdrop} bg-ink/30 lg:hidden`} onClick={() => setDrawer(null)} />}
 
         {/* left: floors → rooms */}
         <aside ref={leftRef} tabIndex={-1} inert={narrow && drawer !== 'left'} aria-label={t('ws.floorsRooms')} className={`${drawerCls('left')} w-[85vw] max-w-[280px] border-r border-line lg:w-auto lg:max-w-none ${leftCollapsed ? 'lg:hidden' : ''}`}>
@@ -1063,9 +1204,9 @@ export function WorkspacePage() {
             <FloorRoomTree floors={version.floors} floorId={floorId} onFloor={changeFloor} rooms={rooms} roomKey={roomKey}
               onRoom={(k) => { pickRoom(k); setDrawer(null); }} floorCounts={floorCounts} roomCounts={roomCounts}
               showFurniture={showFurniture} onShowFurniture={setShowFurniture} onCollapse={() => setLeftCollapsed(true)}
-              roomMeta={viewer.role === 'designer' ? (r) => (!r.has_name && !r.room_id ? <span className="block truncate text-[11px] font-normal text-slate-500">{t('team.unnamed')}</span> : null) : undefined}
-              roomAction={viewer.role === 'designer' ? (r) => (r.room_id ? ownerMenu(r.room_id, r.name) : null) : undefined} />
-          ) : <p className="p-4 text-sm text-slate-500">{t('workspace.noVersions')}</p>}
+              roomMeta={viewer.role === 'designer' ? (r) => (!r.has_name && !r.room_id ? <span className="block truncate text-[11px] font-normal text-subtext">{t('team.unnamed')}</span> : null) : undefined}
+              roomAction={viewer.role === 'designer' ? (r) => (r.room_id ? <>{aiRoomButton(r.room_id, r.name)}{ownerMenu(r.room_id, r.name)}</> : null) : undefined} />
+          ) : <p className="p-4 text-sm text-subtext">{t('workspace.noVersions')}</p>}
         </aside>
 
         {/* centre: drawing, edge to edge */}
@@ -1111,11 +1252,11 @@ export function WorkspacePage() {
             <div className="flex h-full items-center justify-center px-6 text-center">
               <div className="max-w-sm">
                 <p className="text-[15px] font-semibold text-ink">{t('workspace.noDrawing')}</p>
-                <p className="mt-1 text-sm text-slate-600">{conceptFirst ? t('workspace.conceptFirst') : canFirstUpload ? t('workspace.uploadFirst') : t('workspace.waitingDesigner')}</p>
+                <p className="mt-1 text-sm text-ink-2">{conceptFirst ? t('workspace.conceptFirst') : canFirstUpload ? t('workspace.uploadFirst') : t('workspace.waitingDesigner')}</p>
                 {firstUploadReady && <Button variant="primary" className="mt-4" onClick={() => setUploading(true)}>{t('workspace.uploadDxf')}</Button>}
                 {conceptFirst && (
                   <Link to={`/designer/projects/${project.id}#concept`}
-                    className="mt-4 inline-flex h-9 items-center justify-center rounded-lg bg-brand px-3.5 text-sm font-medium text-white transition-colors hover:bg-brand-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">
+                    className="mt-4 inline-flex h-9 items-center justify-center rounded-lg bg-brand px-3.5 text-sm font-medium text-surface transition-colors hover:bg-brand-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">
                     {t('concepts.goToConcepts')}
                   </Link>
                 )}
@@ -1133,14 +1274,16 @@ export function WorkspacePage() {
                 ) : compareOn && compareTarget ? (
                   <ComparePanel planRef={planRef} role={viewer.role} fromId={compareTarget.id} toId={version.id} floorId={floorId} layers={layers} view={view2d} onViewChange={setView2d} />
                 ) : tab === '3d' ? (
-                  <LazyScene3D ref={sceneRef} floors={version.floors} elements={showFurniture ? elements : NO_ELEMENTS} floorId={floorId} selectedId={selEl} onPick={clickElement}
+                  <LazyScene3D ref={sceneRef} floors={version.floors} elements={showFurniture ? (aiPreview ? withPatches(elements, aiPreview.patches) : elements) : NO_ELEMENTS}
+                    floorId={floorId} selectedId={selEl} highlightIds={aiMarks} onPick={clickElement}
                     fileName={`${project.code} ${version.label}`} navMode={nav} lights={scene3d.lights} ceiling={scene3d.ceiling}
                     room={room ? { key: room.key, center: roomCenter()!, boundary: room.boundary } : null} dimmed={dimmed}
+                    allFloors={houseOn} cutAbove={houseOn ? cutAbove : null}
                     onExportError={() => setDialog({ kind: 'notice', title: t('workspace.errorTitle'), body: t('scene.glbFailed') })} />
                 ) : (
                   <Plan2D ref={planRef} floor={floor} elements={floorEls} layers={layers} selectedId={selEl} onSelect={clickElement} pins={pins}
                     onPinClick={(id) => { patchCanvas({ selComment: id }); setRightTab('comments'); setDrawer('right'); }} focus={focus}
-                    room={room?.boundary} dimmed={dimmed} highlight={{ ...previewHighlight(work.previewDraft), ...layoutView.highlight }} ghosts={layoutView.ghosts} view={view2d} onViewChange={setView2d}
+                    room={room?.boundary} dimmed={dimmed} highlight={{ ...previewHighlight(work.previewDraft), ...layoutView.highlight, ...aiHighlight }} ghosts={layoutView.ghosts} view={view2d} onViewChange={setView2d}
                     onEmptyClick={commenting ? clickSpot : undefined} />
                 )}
               </div>
@@ -1162,7 +1305,7 @@ export function WorkspacePage() {
                     <ProposalChip name={activeProposal.product.name} price={activeProposal.product.unit_price} supplier={activeProposal.product.supplier_name}
                       thumb={activeProposal.product.thumbnail_url} current={elements.find((e) => e.id === activeProposal.elementId)?.product?.unit_price}
                       action={
-                        <button type="button" onClick={() => setProposal(null)} aria-label={t('comments.clearSuggestion')} title={t('comments.clearSuggestion')} className="shrink-0 self-start rounded p-0.5 text-slate-500 hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-2 focus-visible:outline-brand">
+                        <button type="button" onClick={() => setProposal(null)} aria-label={t('comments.clearSuggestion')} title={t('comments.clearSuggestion')} className="shrink-0 self-start rounded p-0.5 text-subtext hover:bg-muted hover:text-ink-2 focus-visible:outline-2 focus-visible:outline-brand">
                           <X className="h-3.5 w-3.5" />
                         </button>
                       } />
@@ -1175,31 +1318,37 @@ export function WorkspacePage() {
               <div className="pointer-events-none absolute inset-x-3 top-3 flex items-start gap-2">
                 {leftCollapsed && (
                   <button type="button" onClick={() => setLeftCollapsed(false)} aria-label={t('ws.expand')} title={t('ws.expand')}
-                    className="pointer-events-auto hidden h-8 w-8 items-center justify-center rounded-lg border border-line bg-surface text-slate-700 shadow-float hover:bg-sand-50 focus-visible:outline-2 focus-visible:outline-brand lg:flex">
+                    className={`${floatIconBtn} pointer-events-auto hidden lg:inline-flex`}>
                     <PanelLeftOpen className="h-4 w-4" />
                   </button>
                 )}
                 {floor.scene_json.warnings.length > 0 && viewer.role === 'designer' && tab === '2d' && !compareOn && (
-                  <p className="max-w-xs rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800 shadow-card">{floor.scene_json.warnings[0]}</p>
+                  <p className="max-w-xs rounded-lg bg-accent-soft px-3 py-2 text-xs text-accent-text shadow-card">{floor.scene_json.warnings[0]}</p>
                 )}
                 <div className="flex-1" />
                 {readOnly && (
-                  <div className="pointer-events-auto absolute left-1/2 top-0 flex -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-full bg-slate-800 py-1 pl-3.5 pr-1 text-xs text-white shadow-float">
+                  <div className="pointer-events-auto flex min-w-0 shrink self-center xl:absolute xl:left-1/2 xl:top-0 xl:-translate-x-1/2 xl:self-auto items-center gap-2 whitespace-nowrap rounded-full bg-ink py-1 pl-3.5 pr-1 text-xs text-surface shadow-card">
                     {t('workspace.readOnly')}
                     {latest && latest.id !== version.id
-                      ? <button type="button" className="rounded-full bg-surface/15 px-2.5 py-1 font-medium hover:bg-surface/25 focus-visible:outline-2 focus-visible:outline-white" onClick={() => goVersion(latest.id)}>{t('workspace.viewLatest')}</button>
+                      ? <button type="button" className="rounded-full bg-surface/15 px-2.5 py-1 font-medium hover:bg-surface/25 focus-visible:outline-2 focus-visible:outline-surface" onClick={() => goVersion(latest.id)}>{t('workspace.viewLatest')}</button>
                       : <span className="pr-2" />}
                   </div>
                 )}
+                {aiPreview && (
+                  <div role="status" className="pointer-events-auto flex min-w-0 shrink self-center xl:absolute xl:left-1/2 xl:top-0 xl:-translate-x-1/2 xl:self-auto items-center gap-2 whitespace-nowrap rounded-full bg-ink py-1 pl-3.5 pr-1 text-xs text-surface shadow-card">
+                    <span className="truncate">{t('aiCombo.previewBanner', { label: aiPreview.label })}</span>
+                    <button type="button" className="rounded-full bg-surface/15 px-2.5 py-1 font-medium hover:bg-surface/25 focus-visible:outline-2 focus-visible:outline-surface" onClick={() => setAiPreview(null)}>{t('aiCombo.cancelPreview')}</button>
+                  </div>
+                )}
                 {work.previewDraft && (
-                  <div role="status" className="pointer-events-auto absolute left-1/2 top-0 flex -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-full bg-slate-800 py-1 pl-3.5 pr-1 text-xs text-white shadow-float">
+                  <div role="status" className="pointer-events-auto flex min-w-0 shrink self-center xl:absolute xl:left-1/2 xl:top-0 xl:-translate-x-1/2 xl:self-auto items-center gap-2 whitespace-nowrap rounded-full bg-ink py-1 pl-3.5 pr-1 text-xs text-surface shadow-card">
                     {t('drafts.previewing', { room: work.previewDraft.room_name, name: work.previewDraft.designer_name })}
-                    <button type="button" className="rounded-full bg-surface/15 px-2.5 py-1 font-medium hover:bg-surface/25 focus-visible:outline-2 focus-visible:outline-white" onClick={() => work.setPreviewId(null)}>{t('drafts.exitPreview')}</button>
+                    <button type="button" className="rounded-full bg-surface/15 px-2.5 py-1 font-medium hover:bg-surface/25 focus-visible:outline-2 focus-visible:outline-surface" onClick={() => work.setPreviewId(null)}>{t('drafts.exitPreview')}</button>
                   </div>
                 )}
                 <div className="pointer-events-auto flex items-center gap-2">
                   {tab === '3d' && (
-                    <SceneToggles lights={scene3d.lights} ceiling={scene3d.ceiling}
+                    <SceneToggles lights={scene3d.lights} ceiling={scene3d.ceiling} ceilingOff={houseOn}
                       onLights={() => setScene3d((s) => ({ ...s, lights: !s.lights }))}
                       onCeiling={() => setScene3d((s) => ({ ...s, ceiling: !s.ceiling }))} />
                   )}
@@ -1207,6 +1356,16 @@ export function WorkspacePage() {
                 </div>
               </div>
 
+              {aiCreate && aiPicks.length > 0 && (
+                <div className="pointer-events-none absolute inset-x-0 bottom-16 flex justify-center px-4">
+                  <div role="status" className="pointer-events-auto flex max-w-full items-center gap-2 rounded-full bg-ink py-1 pl-3.5 pr-1 text-xs text-surface shadow-card">
+                    <span className="hidden truncate sm:inline">{aiPicks.length >= ELEMENTS_MAX ? t('aiCombo.picksMax', { max: ELEMENTS_MAX }) : t('aiCombo.picksHint')}</span>
+                    <button type="button" className="whitespace-nowrap rounded-full bg-surface px-2.5 py-1 font-semibold text-ink hover:bg-surface/90 focus-visible:outline-2 focus-visible:outline-surface"
+                      onClick={() => openAiCreate({ elementIds: aiPicks })}>✨ {t('aiCombo.picksBar', { n: aiPicks.length })}</button>
+                    <button type="button" className="whitespace-nowrap rounded-full bg-surface/15 px-2.5 py-1 font-medium hover:bg-surface/25 focus-visible:outline-2 focus-visible:outline-surface" onClick={() => setAiPicks([])}>{t('aiCombo.clearPicks')}</button>
+                  </div>
+                </div>
+              )}
               {/* bottom floating toolbar */}
               <div className="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center">
                 <CanvasToolbar mode={tab} nav={nav} onNav={setNav}
@@ -1216,7 +1375,12 @@ export function WorkspacePage() {
                     on: compareOn, selected: compareOption(compareTarget), options: compareOptions.map(compareOption),
                     toggle: () => (compareOn ? stopCompare() : startCompare(compareTarget.id)), onPick: startCompare,
                   } : null}
-                  comment={canComment && !compareOn && !mergeCompareOn ? { on: commenting, toggle: toggleCommentMode } : null} />
+                  comment={canComment && !compareOn && !mergeCompareOn ? { on: commenting, toggle: toggleCommentMode } : null}
+                  house={tab === '3d' && houseLevels.length > 1 ? {
+                    on: houseOn, toggle: () => setAllFloors((v) => !v), cut: cutAbove, onCut: cutHouse,
+                    levels: houseLevels.map((f) => ({ level: f.level, name: f.name })),
+                  } : null}
+                  onViewAll={tab === '3d' ? viewAll : null} />
               </div>
             </>
           )}
@@ -1229,7 +1393,7 @@ export function WorkspacePage() {
               <PanelTabs items={tabs} value={activeTab} onChange={setRightTab} />
               <div className="min-h-0 flex-1 overflow-hidden">
                 {activeTab === 'room' && floor && (
-                  <RoomPanel room={room} floorName={floor.name} items={roomItems} selectedId={selEl} onSelect={clickElement} priced={isRender} role={viewer.role} owner={roomOwner && { id: roomOwner.designerId, name: roomOwner.designerName, label: avatars[roomOwner.designerId] }}
+                  <RoomPanel room={room} floorName={floor.name} items={roomItems} selectedId={selEl} onSelect={clickElement} priced={isRender} role={viewer.role} aiTagged={isAiLinked} owner={roomOwner && { id: roomOwner.designerId, name: roomOwner.designerName, label: avatars[roomOwner.designerId] }}
                     ownerAction={room?.room_id && allow('assignRooms').ok ? ownerMenu(room.room_id, room.name, 'link') : undefined}
                     onTakeOver={room && canTakeOver(room.room_id) ? () => takeOverRoom(room.room_id!) : undefined} />
                 )}
@@ -1240,7 +1404,7 @@ export function WorkspacePage() {
                     canComment={canComment} leadTools={leadEditing && !previewing} note={itemNote}
                     noteAvatar={itemOwner ? <Avatar id={itemOwner.designerId} name={itemOwner.designerName} label={avatars[itemOwner.designerId]} /> : undefined}
                     onTakeOver={selElement && canTakeOver(selElement.room_id) ? () => takeOverRoom(selElement.room_id!) : undefined}
-                    change={mergeChange ? <ChangeSummary line={mergeChange} /> : undefined}
+                    change={mergeChange ? <ChangeSummary line={mergeChange} /> : aiLinked ? <p className="text-xs text-ink-2">{t('aiCombo.fromAi')}</p> : undefined}
                     onSuggest={allow('suggestProduct').ok && canComment ? suggestProduct : undefined} />
                 )}
                 {activeTab === 'comments' && (
@@ -1267,6 +1431,22 @@ export function WorkspacePage() {
                     onNotYet={async (id, content) => { await run(() => designApi.reopenComment(id, content, version.id)); }}
                     apply={viewer.role === 'designer' ? { can: canApply, onApply: applyProposal } : undefined} />
                 )}
+                {/* kept mounted while hidden: the opened suggestion and the history survive a tab switch */}
+                {aiTab && (
+                  <div hidden={activeTab !== 'ai'} className="h-full">
+                    <AiComboPanel key={version.id} projectId={project.id} versionId={version.id} canCreate={aiCreate}
+                      rooms={aiRooms} defaultRoomId={room?.room_id ?? null} items={aiItems} itemsWhere={room?.name ?? floor?.name ?? t('aiCombo.itemsAll')}
+                      selectedId={selEl}
+                      roomName={(id) => allRooms.find((r) => r.room_id === id)?.name ?? t('aiCombo.roomFallback')}
+                      itemName={(id) => { const e = elements.find((x) => x.id === id); return e ? elementName(e, 'designer') : '—'; }}
+                      onHover={setAiHover} onApply={applyAiOption}
+                      start={aiStart} onStart={(s) => (s ? openAiCreate(s) : setAiStart(null))}
+                      preview={aiPreview} onPreview={previewAiOption}
+                      onReload={() => loadRef.current()}
+                      // no id named: drop ?v= and the page opens the newest version (already none: just read it again)
+                      onLatest={(id) => (id ? goVersion(id) : versionId ? setParams((p) => { p.delete('v'); return p; }) : loadRef.current())} />
+                  </div>
+                )}
               </div>
 
               {reviewing && (
@@ -1279,7 +1459,7 @@ export function WorkspacePage() {
               )}
               {leadEditing && (
                 <div className="flex shrink-0 items-center gap-2 border-t border-line bg-surface px-4 py-3">
-                  <span className={`min-w-0 flex-1 truncate text-[13px] ${leadCount ? 'font-medium text-ink' : 'text-slate-500'}`}>
+                  <span className={`min-w-0 flex-1 truncate text-[13px] ${leadCount ? 'font-medium text-ink' : 'text-subtext'}`}>
                     {leadCount ? t('items.draft', { n: leadCount }) : work.readyDrafts.length ? t('drafts.readyCount', { n: work.readyDrafts.length }) : t('ws.noDraft')}
                   </span>
                   {leadCount > 0 && <Button size="sm" variant="ghost" onClick={discardLeadWork} disabled={busy}>{t('items.discard')}</Button>}
@@ -1292,7 +1472,7 @@ export function WorkspacePage() {
               )}
               {reviewing && !leadEditing && (
                 <div className="flex shrink-0 items-center gap-2 border-t border-line bg-surface px-4 py-3">
-                  <span className={`min-w-0 flex-1 truncate text-[13px] ${work.readyDrafts.length ? 'font-medium text-ink' : 'text-slate-500'}`}>
+                  <span className={`min-w-0 flex-1 truncate text-[13px] ${work.readyDrafts.length ? 'font-medium text-ink' : 'text-subtext'}`}>
                     {work.readyDrafts.length ? t('drafts.readyCount', { n: work.readyDrafts.length }) : t('drafts.noneReady')}
                   </span>
                   <Button size="sm" variant="primary" disabled={!work.readyDrafts.length || layoutBlocked || awaitingLayoutPayment} loading={busy}
@@ -1309,14 +1489,14 @@ export function WorkspacePage() {
                 <section ref={decisionRef} tabIndex={-1} aria-label={t('workspace.decision')}
                   className="shrink-0 space-y-2 border-t border-line bg-surface px-4 py-3 outline-none focus:ring-2 focus:ring-inset focus:ring-brand/40">
                   {!!blockers.length && (
-                    <ul className="space-y-1 text-xs leading-5 text-amber-800">
+                    <ul className="space-y-1 text-xs leading-5 text-accent-text">
                       {blockers.map((line) => <li key={line} className="flex gap-1.5"><span aria-hidden>•</span><span className="min-w-0">{line}</span></li>)}
                     </ul>
                   )}
-                  {awaitingLine && <p className="text-xs leading-5 text-slate-700">{awaitingLine}</p>}
-                  {due && <p className={`text-xs leading-5 ${due.soon ? 'font-medium text-amber-800' : 'text-slate-600'}`}>{t('workspace.reviewBy', { date: formatDateTime(due.at) })}</p>}
-                  {noRoundsLeft && <p className="text-xs leading-5 text-slate-700">{t('workspace.noRoundsLeft')}</p>}
-                  {requestState.reason && <p className="text-xs leading-5 text-slate-500">{requestState.reason}</p>}
+                  {awaitingLine && <p className="text-xs leading-5 text-ink-2">{awaitingLine}</p>}
+                  {due && <p className={`text-xs leading-5 ${due.soon ? 'font-medium text-accent-text' : 'text-ink-2'}`}>{t('workspace.reviewBy', { date: formatDateTime(due.at) })}</p>}
+                  {noRoundsLeft && <p className="text-xs leading-5 text-ink-2">{t('workspace.noRoundsLeft')}</p>}
+                  {requestState.reason && <p className="text-xs leading-5 text-subtext">{requestState.reason}</p>}
                   {requestVisible && (
                     <Button block disabled={!requestState.ok} onClick={() => { setText(''); setDialog({ kind: 'request' }); }}>
                       {t('workspace.requestChanges')}
@@ -1325,7 +1505,7 @@ export function WorkspacePage() {
                 </section>
               )}
             </>
-          ) : <p className="p-4 text-sm text-slate-500">{t('workspace.waitingDesigner')}</p>}
+          ) : <p className="p-4 text-sm text-subtext">{t('workspace.waitingDesigner')}</p>}
         </aside>
       </div>
 
@@ -1352,12 +1532,13 @@ export function WorkspacePage() {
             hasDraft.current = false;
             quickHasText.current = false;
             setDraft({});
+            setAiSources({});
             resetForVersion();
             patchCanvas({ quick: null });
             blocker.proceed();
           }}>{t('items.discard')}</Button>
         </>}>
-          <p className="text-sm text-slate-700">{t('workspace.discardBody')}</p>
+          <p className="text-sm text-ink-2">{t('workspace.discardBody')}</p>
         </Modal>
       )}
       {dialog?.kind === 'notice' && (
@@ -1365,7 +1546,7 @@ export function WorkspacePage() {
           <Button onClick={closeDialog}>{t('common.close')}</Button>
           <Button variant="primary" autoFocus onClick={() => { const go = dialog.action!.run; setDialog(null); go(); }}>{dialog.action.label}</Button>
         </> : <Button variant="primary" autoFocus onClick={closeDialog}>{t('common.close')}</Button>}>
-          <p className="text-sm text-slate-700">{dialog.body}</p>
+          <p className="text-sm text-ink-2">{dialog.body}</p>
         </Modal>
       )}
       {dialog?.kind === 'confirm' && (
@@ -1373,7 +1554,7 @@ export function WorkspacePage() {
           <Button onClick={closeDialog}>{dialog.cancelLabel ?? t('common.cancel')}</Button>
           <Button variant={dialog.danger ? 'danger' : 'primary'} autoFocus disabled={busy} onClick={() => { const r = dialog.run; setDialog(null); r(); }}>{dialog.label}</Button>
         </>}>
-          <p className="text-sm text-slate-700">{dialog.body}</p>
+          <p className="text-sm text-ink-2">{dialog.body}</p>
         </Modal>
       )}
       {dialog?.kind === 'assignUnsaved' && (
@@ -1386,7 +1567,7 @@ export function WorkspacePage() {
           }}>{t('team.discardAndAssign')}</Button>
           <Button variant="primary" autoFocus onClick={() => { const { roomId, roomName, designerId, designerName } = dialog; openSave('', 0, { roomId, roomName, designerId, designerName }); }}>{t('team.saveAndAssign')}</Button>
         </>}>
-          <p className="text-sm text-slate-700">{t('team.unsavedBody', { n: dialog.n, room: dialog.roomName })}</p>
+          <p className="text-sm text-ink-2">{t('team.unsavedBody', { n: dialog.n, room: dialog.roomName })}</p>
         </Modal>
       )}
       {dialog?.kind === 'request' && version && (
@@ -1396,7 +1577,7 @@ export function WorkspacePage() {
             if (await run(() => designApi.requestChanges(version.id, text.trim()))) setDialog({ kind: 'notice', title: t('workspace.sentTitle'), body: t('workspace.sentBody') });
           }}>{t('workspace.sendRequest')}</Button>
         </>}>
-          <p className="mb-3 text-sm text-slate-700">{t('workspace.requestBody', { label: versionLabel(version.label, viewer.role) })}</p>
+          <p className="mb-3 text-sm text-ink-2">{t('workspace.requestBody', { label: versionLabel(version.label, viewer.role) })}</p>
           {roundLimit && <p className="mb-3 text-sm font-medium text-ink">{t('workspace.roundsLeft', { n: roundLimit.remaining, max: roundLimit.limit })}</p>}
           <Textarea autoFocus rows={3} maxLength={2000} value={text} aria-label={t('workspace.requestChanges')} onChange={(e) => setText(e.target.value)} />
         </Modal>
@@ -1419,8 +1600,8 @@ export function WorkspacePage() {
       )}
       {dialog?.kind === 'ignored' && (
         <Modal title={t('drafts.ignoredTitle', { room: dialog.room })} size="md" onClose={closeDialog} footer={<Button variant="primary" onClick={closeDialog}>{t('common.close')}</Button>}>
-          <p className="mb-2 text-[13px] text-slate-600">{t('drafts.ignoredIntro', { name: dialog.designer })}</p>
-          <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-1 text-amber-900"><IgnoredList items={dialog.items} ownerOfRoom={ownerOfRoomName} /></div>
+          <p className="mb-2 text-[13px] text-ink-2">{t('drafts.ignoredIntro', { name: dialog.designer })}</p>
+          <div className="rounded-lg border border-accent/30 bg-accent-soft px-3 py-1 text-accent-text"><IgnoredList items={dialog.items} ownerOfRoom={ownerOfRoomName} /></div>
         </Modal>
       )}
       {dialog?.kind === 'save' && version && (
@@ -1431,9 +1612,9 @@ export function WorkspacePage() {
           <div className="space-y-4">
             <Field label={t('workspace.titleLabel')}>{(f) => <Input {...f} autoFocus value={text} maxLength={255} onChange={(e) => setText(e.target.value)} placeholder={t('workspace.savePlaceholder')} />}</Field>
             {saveMode === 'first' ? (
-              <p className="rounded-lg border border-line bg-sand-50 px-3 py-2 text-[13px] text-slate-700">{t('workspace.firstSubmission')}</p>
+              <p className="rounded-lg border border-line bg-canvas px-3 py-2 text-[13px] text-ink-2">{t('workspace.firstSubmission')}</p>
             ) : saveMode === 'layoutMajor' ? (
-              <p className={`rounded-lg border px-3 py-2 text-[13px] ${layoutBlocked ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-line bg-sand-50 text-slate-700'}`}>
+              <p className={`rounded-lg border px-3 py-2 text-[13px] ${layoutBlocked ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-line bg-canvas text-ink-2'}`}>
                 {layoutBlocked ? `${t('reasons.noMajorLeft')} ${t('drafts.discardMovedHint')}`
                   : layoutStage ? t('drafts.layoutRevision', { used: (stageLimit?.used ?? 0) + 1, max: stageLimit?.limit ?? '—' })
                   : t('drafts.majorUse', { used: stageLimit?.used ?? 0, max: stageLimit?.limit ?? '—' })}
@@ -1441,19 +1622,19 @@ export function WorkspacePage() {
             ) : <RevisionPicker value={revision} onChange={setRevision} limit={limits.RENDER_3D ?? null} major={allow('majorRevision')} />}
             {assignAfterSave && <Banner>{t('team.assignAfterSave', { room: assignAfterSave.roomName, name: assignAfterSave.designerName })}</Banner>}
             {chooseAll > 0 && <Banner tone="amber">{t('workspace.keepRemainingBody', { n: chooseAll })}</Banner>}
-            {!layoutStage && (leadCount > 0 || !work.readyDrafts.length) && <p className="text-xs text-slate-500">{t('workspace.draftCount', { n: leadCount })}</p>}
+            {!layoutStage && (leadCount > 0 || !work.readyDrafts.length) && <p className="text-xs text-subtext">{t('workspace.draftCount', { n: leadCount })}</p>}
             {!!work.readyDrafts.length && summary && (
               <section aria-label={t('drafts.mergeSummary')} className="rounded-lg border border-line p-3 text-[13px]">
                 <h3 className="font-medium text-ink">{t('drafts.mergeSummary')}</h3>
                 <ul className="mt-1.5 space-y-1">
                   {summary.rooms.map((r) => (
-                    <li key={r.key} className="flex justify-between gap-3 text-slate-700">
+                    <li key={r.key} className="flex justify-between gap-3 text-ink-2">
                       <span className="min-w-0 truncate">{r.room} · {t('drafts.changes', { n: r.count })}</span>
                       {!layoutStage && <span className="shrink-0 tabular-nums">{signedVnd(r.delta)}</span>}
                     </li>
                   ))}
                   {summary.own && (
-                    <li className="flex justify-between gap-3 text-slate-700">
+                    <li className="flex justify-between gap-3 text-ink-2">
                       <span className="min-w-0 truncate">{t('drafts.yourChanges')} · {t('drafts.changes', { n: summary.own.count })}</span>
                       <span className="shrink-0 tabular-nums">{signedVnd(summary.own.delta)}</span>
                     </li>
@@ -1468,12 +1649,12 @@ export function WorkspacePage() {
             <AddressedPicker threads={openThreads.map((x) => x.root).filter((c) => !draftNotes.some((n) => n.commentId === c.id))} value={addressed} onChange={setAddressed} invalid={invalidAddressed} />
             {!!draftNotes.length && (
               <section aria-label={t('drafts.markedByTitle')}>
-                <h3 className="mb-1.5 text-[13px] font-medium text-slate-700">{t('drafts.markedByTitle')}</h3>
+                <h3 className="mb-1.5 text-[13px] font-medium text-ink-2">{t('drafts.markedByTitle')}</h3>
                 <ul className="space-y-1.5">
                   {draftNotes.map((n) => (
-                    <li key={n.commentId} className="text-sm text-slate-700">
+                    <li key={n.commentId} className="text-sm text-ink-2">
                       <span className="block break-words">{n.content}</span>
-                      <span className="block text-xs text-slate-500">{t('drafts.markedBy', { member: n.member })}</span>
+                      <span className="block text-xs text-subtext">{t('drafts.markedBy', { member: n.member })}</span>
                     </li>
                   ))}
                 </ul>

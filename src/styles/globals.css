@@ -21,6 +21,11 @@
   --mut: #EBE4D0;   /* muted surfaces */
   --bd: #DAD2BC;    /* borders */
   --t2: #655B47;    /* subtext 1 */
+  /* Toast tones (components/ui/Toast), drawn from the palette: main colour, soft fill, border. */
+  --tone-ok: #5B6B3A;   --tone-ok-soft: #EEF1E3;   --tone-ok-line: #CDD5B2;    /* olive: done */
+  --tone-info: #8A6A3F; --tone-info-soft: #F7F0E4; --tone-info-line: #E2D3BA;  /* wood: for your information */
+  --tone-warn: #B07A2E; --tone-warn-soft: #FAF0DA; --tone-warn-line: #EBD2A0;  /* amber wood: careful */
+  --tone-bad: #A9472E;  --tone-bad-soft: #F9EAE3;  --tone-bad-line: #EAC6B8;   /* terracotta: went wrong */
   --t3: #655B47;    /* deprecated alias: readable secondary text */
   --control: #8F866E;
   --dark: #2B2418;
@@ -180,4 +185,114 @@ select:-webkit-autofill {
   .profile-settings-layout {
     grid-template-columns: minmax(0, 1fr) minmax(0, 3fr);
   }
+}
+
+/*
+ * Landing page scroll reveal (useReveal): a short fade-up, once. `.reveal` moves itself; `.reveal-group` moves its
+ * `.reveal-item` children one after another (set --i on each child). Reduced motion: shown as is, no movement.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  .reveal,
+  .reveal-group .reveal-item {
+    opacity: 0;
+    transform: translateY(14px);
+    transition: opacity 600ms cubic-bezier(0.22, 1, 0.36, 1), transform 600ms cubic-bezier(0.22, 1, 0.36, 1);
+    transition-delay: calc(var(--i, 0) * 70ms);
+  }
+  .reveal[data-shown],
+  .reveal-group[data-shown] .reveal-item {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/*
+ * Toasts (components/ui/Toast). The bar at the bottom drains over the toast's duration (set inline, paused on hover).
+ * The badge glyph draws itself in (paths use pathLength="1"); error shakes, the others pop. Reduced motion: still.
+ */
+@keyframes toast-countdown { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+.toast-countdown {
+  animation-name: toast-countdown;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+.toast-draw { stroke-dasharray: 1; stroke-dashoffset: 0; }
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes toast-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+  @keyframes toast-shake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-3px); }
+    40% { transform: translateX(3px); }
+    60% { transform: translateX(-2px); }
+    80% { transform: translateX(1px); }
+  }
+  @keyframes toast-pop {
+    0% { transform: scale(0.3); opacity: 0; }
+    60% { transform: scale(1.18); opacity: 1; }
+    100% { transform: scale(1); }
+  }
+  .toast-draw { animation: toast-draw 380ms 520ms cubic-bezier(0.65, 0, 0.35, 1) both; }
+  .toast-draw-late { animation-delay: 640ms; }
+  .toast-pop { animation: toast-pop 380ms 380ms cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+  .toast-shake { animation: toast-pop 380ms 380ms cubic-bezier(0.34, 1.56, 0.64, 1) both, toast-shake 420ms 820ms ease-in-out; }
+}
+
+/*
+ * House sticker (components/ui/HouseSticker): cream die-cut outline + soft shadow. While a toast is up it is slapped
+ * on (sticker-slap), then lives quietly: smoke curls from the chimney, the areca palm sways, the windows flicker.
+ */
+.house-sticker {
+  overflow: visible;
+  filter:
+    drop-shadow(1.6px 0 0 #FFFDF8) drop-shadow(-1.6px 0 0 #FFFDF8)
+    drop-shadow(0 1.6px 0 #FFFDF8) drop-shadow(0 -1.6px 0 #FFFDF8)
+    drop-shadow(0 3px 3px rgb(43 36 24 / 0.28));
+}
+.sticker-palm { transform-origin: 13px 54px; }
+.sticker-smoke { transform-box: fill-box; transform-origin: center; opacity: 0.75; }
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes sticker-slap {
+    0% { transform: scale(1.9) rotate(-16deg); opacity: 0; }
+    55% { transform: scale(0.9) rotate(5deg); opacity: 1; }
+    78% { transform: scale(1.05) rotate(-2deg); }
+    100% { transform: none; }
+  }
+  @keyframes sticker-sway { from { transform: rotate(-4deg); } to { transform: rotate(3deg); } }
+  @keyframes sticker-smoke {
+    0% { opacity: 0; transform: translate(0, 0) scale(0.5); }
+    25% { opacity: 0.9; }
+    100% { opacity: 0; transform: translate(4px, -13px) scale(1.8); }
+  }
+  @keyframes sticker-glow { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+  .sticker-slap { animation: sticker-slap 560ms 40ms cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+  .sticker-palm { animation: sticker-sway 2.6s ease-in-out infinite alternate; }
+  .sticker-smoke { animation: sticker-smoke 2.7s ease-out infinite both; }
+  .sticker-smoke-2 { animation-delay: 0.9s; }
+  .sticker-smoke-3 { animation-delay: 1.8s; }
+  .sticker-glow { animation: sticker-glow 2.2s ease-in-out infinite; }
+  .sticker-glow-2 { animation-delay: 1.1s; }
+}
+
+/* Modal (components/ui/Modal): backdrop fades in, the panel lifts into place. Reduced motion: appears at once. */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes modal-backdrop-in { from { opacity: 0; } }
+  @keyframes modal-panel-in { from { opacity: 0; transform: translateY(12px) scale(0.98); } }
+  @keyframes modal-sheet-in { from { transform: translateY(100%); } }
+  .modal-backdrop { animation: modal-backdrop-in 180ms ease-out; }
+  .modal-panel { animation: modal-sheet-in 260ms cubic-bezier(0.22, 1, 0.36, 1); }
+  @media (min-width: 640px) {
+    .modal-panel { animation: modal-panel-in 220ms cubic-bezier(0.22, 1, 0.36, 1); }
+  }
+}
+
+/* Step change in multi-step forms (New project): the new step fades up into place. Reduced motion: no movement. */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes step-in { from { opacity: 0; transform: translateY(8px); } }
+  .step-in { animation: step-in 320ms cubic-bezier(0.22, 1, 0.36, 1); }
+}
+
+/* Notice (components/ui/Feedback): a static notice fades in once, in place. Reduced motion: appears at once. */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes notice-in { from { opacity: 0; } }
+  .notice-in { animation: notice-in 260ms ease-out; }
 }

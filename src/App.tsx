@@ -12,9 +12,11 @@ import { NoApiPage } from '@/features/auth/NoApiPage';
 import { ResetPasswordPage } from '@/features/auth/ResetPasswordPage';
 import { AcceptInvitation } from '@/features/auth/AcceptInvitation';
 import { HomeownerPayments } from '@/features/homeowner/HomeownerPayments';
+import { PaymentHistoryPage } from '@/features/payments/PaymentHistoryPage';
 import { ProfileSettings } from '@/features/shared/ProfileSettings';
 import { MessagesPage } from '@/features/chat/MessagesPage';
 import { ChatRealtimeProvider } from '@/features/chat/ChatRealtimeProvider';
+import { Toaster } from '@/components/ui';
 import { CHAT_ROLES } from '@/features/chat/chatApi';
 import { CustomerDirectory } from '@/features/shared/CustomerDirectory';
 import { ApartmentManagement } from '@/features/shared/ApartmentManagement';
@@ -170,6 +172,10 @@ function App() {
             <Route path="/homeowner/payments" element={<HomeownerPayments />} />
             <Route path="/payments/result" element={<HomeownerPayments />} />
           </Route>
+          {/* GET /payment-transactions: CUSTOMER, STAFF, ADMIN (designer gets 403, supplier has no payments) */}
+          <Route element={<ProtectedRoute allowedRoles={['homeowner', 'staff', 'admin']} />}>
+            <Route path="/payments/history" element={<PaymentHistoryPage />} />
+          </Route>
           {/* Design workspace (design-versions APIs): every project role; actions gated by can() in design-workspace/logic.ts */}
           <Route element={<ProtectedRoute allowedRoles={['homeowner', 'designer', 'staff', 'admin']} />}>
             <Route path="/projects/:projectId/ai" element={<ProjectAiAssistant />} />
@@ -243,6 +249,7 @@ function App() {
         </Routes>
       </AnimatePresence>
       </div>
+      <Toaster />
     </ChatRealtimeProvider>
   );
 }

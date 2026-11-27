@@ -1,9 +1,11 @@
 import { apiRequest, apiUpload, getCurrentUser } from '@/services/authService';
 import { projectApi } from '@/features/projects/projectApi';
 import { uploadFloorRefs } from './logic';
+import { editsBody, roomDraftBody } from './payloads';
+import type { SaveEditsInput } from './payloads';
 import type {
-  Comment, CommentReply, ComparedElement, DesignElement, DesignVersion, DraftProduct, DraftLastUpload, DraftLayoutChange, ElementEdit, LayoutMerge, ElementRef, Opening, Product, ProductOption,
-  Project, RevisionLimit, RevisionType, Role, RoomDraft, RoomDraftInput, RoomDraftUploadResult, SceneJson, UploadInput, VersionComparison, VersionFloor, VersionSummary, VersionType, Viewer,
+  Comment, CommentReply, ComparedElement, DesignElement, DesignVersion, DraftProduct, DraftLastUpload, DraftLayoutChange, LayoutMerge, ElementRef, Opening, Product, ProductOption,
+  Project, RevisionLimit, Role, RoomDraft, RoomDraftInput, RoomDraftUploadResult, SceneJson, UploadInput, VersionComparison, VersionFloor, VersionSummary, VersionType, Viewer,
 } from './types';
 
 export interface DesignApi {
@@ -24,7 +26,7 @@ export interface DesignApi {
   approve(versionId: string): Promise<VersionSummary>;
   listProductOptions(elementId: string): Promise<ProductOption[]>;
   /** choose_all_remaining: món chưa chọn giữ model hiện tại (sản phẩm có block_code trùng tên block). */
-  saveEdits(versionId: string, input: { title: string; revision_type: RevisionType; edits: ElementEdit[]; choose_all_remaining?: boolean; addressed_comment_ids?: string[]; room_draft_ids?: string[] }): Promise<DesignVersion & { skipped_room_ids: string[]; layout_merge: LayoutMerge | null }>;
+  saveEdits(versionId: string, input: SaveEditsInput): Promise<DesignVersion & { skipped_room_ids: string[]; layout_merge: LayoutMerge | null }>;
   /** Lead: every draft of the version. Member: their own. */
   listRoomDrafts(versionId: string): Promise<RoomDraft[]>;
   /** Replaces the whole draft of the room and puts it back to DRAFT. */
@@ -178,10 +180,8 @@ export const designApi: DesignApi = {
     return r.items.map((o: Raw): ProductOption => ({ ...product(o, o.id), fit: o.fit, current: o.current }));
   },
   async addressComment(id, addressedInVersionId, viewVersionId) { await apiRequest(`/comments/${id}/status${qs({ viewVersionId })}`, post({ action: 'ADDRESS', addressedInVersionId }, 'PATCH')); },
-  async saveEdits(id, { title, revision_type, edits, choose_all_remaining, addressed_comment_ids, room_draft_ids }) {
-    const selections = edits.filter((e) => e.product_id).map((e) => ({ elementId: e.element_id, productId: e.product_id }));
-    const overrides = edits.filter((e) => e.overrides).map((e) => ({ elementId: e.element_id, overrides: e.overrides }));
-    const saved = await apiRequest<Raw>(`/design-versions/${id}/edits`, post({ title, revisionType: revision_type, selections, overrides, ...(choose_all_remaining ? { chooseAllRemaining: true } : {}), ...(addressed_comment_ids?.length ? { addressedCommentIds: addressed_comment_ids } : {}), ...(room_draft_ids?.length ? { roomDraftIds: room_draft_ids } : {}) }));
+  async saveEdits(id, input) {
+    const saved = await apiRequest<Raw>(`/design-versions/${id}/edits`, post(editsBody(input)));
     const lm = saved.layoutMerge;
     return {
       ...detail(saved), skipped_room_ids: saved.skippedRoomIds ?? [],
@@ -190,11 +190,7 @@ export const designApi: DesignApi = {
   },
   listRoomDrafts: async (id) => (await apiRequest<Raw>(`/design-versions/${id}/room-drafts`)).items.map(roomDraft),
   async saveRoomDraft(id, roomId, input) {
-    await apiRequest(`/design-versions/${id}/room-drafts/${roomId}`, post({
-      selections: input.selections.map((s) => ({ elementId: s.element_id, productId: s.product_id })),
-      overrides: input.overrides.map((o) => ({ elementId: o.element_id, overrides: o.overrides })),
-      addressedCommentIds: input.addressed_comment_ids,
-    }, 'PUT'));
+    await apiRequest(`/design-versions/${id}/room-drafts/${roomId}`, post(roomDraftBody(input), 'PUT'));
   },
   async markRoomDraftReady(id, roomId) { await apiRequest(`/design-versions/${id}/room-drafts/${roomId}`, post({ status: 'READY' }, 'PATCH')); },
   async deleteRoomDraft(id, roomId) { await apiRequest(`/design-versions/${id}/room-drafts/${roomId}`, { method: 'DELETE' }); },

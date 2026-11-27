@@ -1,13 +1,23 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Logo, PasswordInput } from '@/components/common';
+import { t } from '@/i18n';
 import {
   ApiError,
+  clearSignOutReason,
   loginUser,
+  peekSignOutReason,
   saveSession,
 } from '@/services/authService';
+
+/** Sentence for the code that ended the previous session (signed in elsewhere, account locked...). */
+function signOutReasonText(code: string | null): string {
+  if (!code) return '';
+  const text = t(`errors.${code}`);
+  return text === `errors.${code}` ? t('errors.SESSION_EXPIRED') : text;
+}
 import { ROLE_CONFIG } from '@/types/role';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -22,7 +32,9 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSignUpClick }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
-  const [error, setError] = useState('');
+  // Read in the initializer (StrictMode may run it twice), cleared once in an effect.
+  const [error, setError] = useState(() => signOutReasonText(peekSignOutReason()));
+  useEffect(() => { clearSignOutReason(); }, []);
   const [loading, setLoading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<{
     email?: string;

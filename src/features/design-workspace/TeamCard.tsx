@@ -12,7 +12,7 @@ export function TeamRow({ id, name, label, sub, action }: { id: string; name: st
       <Avatar id={id} name={name} label={label} size="md" />
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-semibold text-ink">{name}</p>
-        <p className="truncate text-xs text-slate-500">{sub}</p>
+        <p className="truncate text-xs text-subtext">{sub}</p>
       </div>
       {action}
     </li>
@@ -63,23 +63,23 @@ export function TeamCard({ project, role, bare = false, reloadKey = 0 }: Props) 
         : !shown ? <div className="space-y-2"><Skeleton className="h-10 w-full" /><Skeleton className="h-10 w-full" /></div>
         : (
           <>
-            <ul className="divide-y divide-slate-100">
+            <ul className="divide-y divide-line">
               {shown.lead && <TeamRow id={shown.lead.userId} name={shown.lead.name} label={avatars[shown.lead.userId]} sub={subOf(t('team.lead'), shown.lead.assignedRooms)} />}
               {shown.members.map((m) => (
                 <TeamRow key={m.userId} id={m.userId} name={m.name} label={avatars[m.userId]} sub={subOf(t('team.member'), m.assignedRooms)} />
               ))}
             </ul>
-            {!shown.members.length && <p className="mt-2 text-xs text-slate-500">{t('team.noMembers')}</p>}
+            {!shown.members.length && <p className="mt-2 text-xs text-subtext">{t('team.noMembers')}</p>}
           </>
         )}
       {/* designers (the Lead included) never manage the team */}
-      {role === 'designer' && <p className="mt-3 border-t border-line pt-3 text-xs text-slate-500">{t('team.managedByStaff')}</p>}
+      {role === 'designer' && <p className="mt-3 border-t border-line pt-3 text-xs text-subtext">{t('team.managedByStaff')}</p>}
     </>
   );
   if (!bare) return <Card title={t('team.title')}>{body}</Card>;
   return (
     <section>
-      <h3 className="mb-2 text-[13px] font-medium text-slate-700">{t('team.title')}</h3>
+      <h3 className="mb-2 text-[13px] font-medium text-ink-2">{t('team.title')}</h3>
       {body}
     </section>
   );

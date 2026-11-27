@@ -2,9 +2,11 @@ import { io } from 'socket.io-client';
 import type { Socket } from 'socket.io-client';
 import {
   API_BASE_URL,
+  endSession,
   getAccessToken,
   getCurrentUser,
   refreshAccessToken,
+  SESSION_ENDED_CODES,
 } from '@/services/authService';
 import { onSignOut } from '@/services/signOut';
 import type {
@@ -21,15 +23,24 @@ export type ChatSocketStatus = 'disconnected' | 'connecting' | 'connected';
 
 type Listener<T> = (payload: T) => void;
 
-const AUTH_ERROR_CODES = new Set(['UNAUTHENTICATED', 'TOKEN_EXPIRED']);
+/** `connect_error` codes a fresh access token fixes. */
+const AUTH_ERROR_CODES = new Set(['UNAUTHENTICATED', 'TOKEN_EXPIRED', 'INVALID_TOKEN']);
+/** The gateway sends CHAT_NOT_ALLOWED for admins; INSUFFICIENT_ROLE is kept in case a role guard answers. */
 const FORBIDDEN_ERROR_CODES = new Set(['CHAT_NOT_ALLOWED', 'INSUFFICIENT_ROLE']);
 const SIGNAL_ACK_TIMEOUT_MS = 6_000;
+/** Manual reconnect backoff (socket.io does not retry after the server's middleware refused the handshake). */
+const RETRY_BASE_MS = 1_000;
+const RETRY_MAX_MS = 30_000;
+/** Spread the resync after a reconnect so a backend restart is not hit by every client at once. */
+const RESYNC_JITTER_MS = 3_000;
 
 /**
  * Singleton Socket.IO client for backend namespace `/chat` (`ChatGateway`).
  * - Connects only for chat-enabled signed-in users (`CUSTOMER`, `STAFF`, `DESIGNER`, `SUPPLIER`).
  * - Refreshes the JWT and reconnects immediately on `io server disconnect` (token expiry grace = 10s)
  *   and auth-related `connect_error`, keeping ongoing video calls alive seamlessly.
+ * - Session-ended codes (TOKEN_REVOKED, ACCOUNT_*...) sign out; other refusals retry with backoff.
+ * - After a reconnect, tells `onResync` listeners (after a random delay) to reload what may have been missed.
  * - Disconnects automatically on sign-out.
  */
 class ChatSocketManager {
@@ -37,7 +48,13 @@ class ChatSocketManager {
   private connectedUserId: string | null = null;
   private status: ChatSocketStatus = 'disconnected';
   private refreshingReconnect = false;
+  /** This socket has connected once: the next `connect` is a reconnect. */
+  private hasConnected = false;
+  private retryAttempt = 0;
+  private retryTimer: number | null = null;
+  private resyncTimer: number | null = null;
 
+  private readonly resyncListeners = new Set<() => void>();
   private readonly statusListeners = new Set<Listener<ChatSocketStatus>>();
   private readonly messageCreatedListeners = new Set<Listener<MessageCreatedSocketEvent>>();
   private readonly conversationReadListeners = new Set<Listener<ConversationReadSocketEvent>>();
@@ -93,7 +110,11 @@ class ChatSocketManager {
 
     socket.on('connect', () => {
       if (this.socket !== socket) return;
+      this.retryAttempt = 0;
+      this.clearRetry();
       this.setStatus('connected');
+      if (this.hasConnected) this.scheduleResync();
+      this.hasConnected = true;
     });
 
     socket.on('disconnect', (reason) => {
@@ -113,6 +134,11 @@ class ChatSocketManager {
     socket.on('connect_error', (err: Error & { data?: { code?: string } }) => {
       if (this.socket !== socket) return;
       const code = typeof err?.data?.code === 'string' ? err.data.code.toUpperCase() : '';
+      if (SESSION_ENDED_CODES.has(code)) {
+        // Signed in elsewhere, account locked...: no token will be accepted again. Sign-out disconnects this socket.
+        endSession(code);
+        return;
+      }
       if (FORBIDDEN_ERROR_CODES.has(code)) {
         this.disconnect();
         return;
@@ -122,6 +148,9 @@ class ChatSocketManager {
         return;
       }
       this.setStatus('connecting');
+      // A transport error keeps socket.active and socket.io retries by itself. A refusal by the server's middleware
+      // (any other code) does not, so the socket would stay dead without a manual retry.
+      if (!socket.active) this.scheduleRetry(socket);
     });
 
     socket.on('message.created', (payload: MessageCreatedSocketEvent) => {
@@ -159,11 +188,39 @@ class ChatSocketManager {
         target.connect();
       }
     } catch {
-      // refreshAccessToken clears session and redirects on terminal failure.
-      if (this.socket === target) this.disconnect();
+      // A 401 already ended the session (sign-out disconnects this socket). 429, 5xx, network: keep the session and
+      // try again later.
+      if (this.socket === target && getCurrentUser()) this.scheduleRetry(target);
     } finally {
       this.refreshingReconnect = false;
     }
+  }
+
+  /** Reconnect `target` after an exponential, jittered delay (unless something else connects it first). */
+  private scheduleRetry(target: Socket): void {
+    if (this.retryTimer !== null) return;
+    const delay = Math.min(RETRY_BASE_MS * 2 ** this.retryAttempt, RETRY_MAX_MS) * (0.5 + Math.random() / 2);
+    this.retryAttempt += 1;
+    this.retryTimer = window.setTimeout(() => {
+      this.retryTimer = null;
+      if (this.socket !== target || target.connected || target.active) return;
+      this.setStatus('connecting');
+      target.connect();
+    }, delay);
+  }
+
+  private clearRetry(): void {
+    if (this.retryTimer !== null) window.clearTimeout(this.retryTimer);
+    this.retryTimer = null;
+  }
+
+  private scheduleResync(): void {
+    if (this.resyncTimer !== null) return;
+    this.resyncTimer = window.setTimeout(() => {
+      this.resyncTimer = null;
+      if (!this.socket?.connected) return;
+      for (const fn of [...this.resyncListeners]) fn();
+    }, Math.random() * RESYNC_JITTER_MS);
   }
 
   disconnect(): void {
@@ -171,6 +228,11 @@ class ChatSocketManager {
     this.socket = null;
     this.connectedUserId = null;
     this.refreshingReconnect = false;
+    this.hasConnected = false;
+    this.retryAttempt = 0;
+    this.clearRetry();
+    if (this.resyncTimer !== null) window.clearTimeout(this.resyncTimer);
+    this.resyncTimer = null;
     if (current) {
       current.removeAllListeners();
       current.disconnect();
@@ -200,6 +262,15 @@ class ChatSocketManager {
         resolve(ack ?? { ok: true });
       });
     });
+  }
+
+  /**
+   * Called a random 0–3 s after the socket connects again (never on the first connect): events sent while it was down
+   * are lost, so reload the latest data. Returns the unsubscribe function.
+   */
+  onResync(fn: () => void): () => void {
+    this.resyncListeners.add(fn);
+    return () => { this.resyncListeners.delete(fn); };
   }
 
   onStatusChange(fn: Listener<ChatSocketStatus>): () => void {

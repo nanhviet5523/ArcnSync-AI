@@ -41,14 +41,14 @@ export function ProposalChip({ name, price, supplier, thumb, current, unavailabl
 }) {
   const delta = proposalDelta(price, current);
   return (
-    <div className="flex items-center gap-2 rounded-lg border border-line bg-sand-50 p-1.5">
+    <div className="flex items-center gap-2 rounded-lg border border-line bg-canvas p-1.5">
       <Thumb path={unavailable ? null : thumb} className="h-9 w-9" />
       <div className="min-w-0 flex-1 text-xs">
         <p className="truncate font-medium text-ink" title={name}>{name}</p>
-        <p className="flex flex-wrap gap-x-1.5 tabular-nums text-slate-600">
+        <p className="flex flex-wrap gap-x-1.5 tabular-nums text-ink-2">
           <span className="font-semibold text-ink">{formatVnd(price)}</span>
           {delta && <span>{t('comments.vsCurrent', { delta: signedVnd(delta) })}</span>}
-          {supplier && <span className="truncate text-slate-500">{supplier}</span>}
+          {supplier && <span className="truncate text-subtext">{supplier}</span>}
         </p>
         {unavailable && <span className="mt-0.5 inline-block rounded-full bg-rose-50 px-1.5 text-[11px] font-medium text-rose-700">{t('drafts.noLongerAvailable')}</span>}
       </div>
@@ -57,7 +57,7 @@ export function ProposalChip({ name, price, supplier, thumb, current, unavailabl
   );
 }
 
-const Tag = ({ children }: { children: ReactNode }) => <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] text-slate-600">{children}</span>;
+const Tag = ({ children }: { children: ReactNode }) => <span className="rounded bg-muted px-1.5 py-0.5 text-[11px] text-ink-2">{children}</span>;
 
 function Composer({ placeholder, onSend, onCancel, label, autoFocus, rows = 2, quiet, compact, hint }: {
   placeholder: string; onSend: (t: string) => Promise<unknown>; onCancel?: () => void; label?: string; autoFocus?: boolean; rows?: number;
@@ -83,7 +83,7 @@ function Composer({ placeholder, onSend, onCancel, label, autoFocus, rows = 2, q
         <Textarea autoFocus={autoFocus} rows={open ? rows : 1} value={text} aria-label={placeholder} onChange={(e) => setText(e.target.value)} placeholder={placeholder}
           onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); send(); } }} />
       </div>
-      {open && hint && <p className="text-[11px] leading-4 text-slate-500">{hint}</p>}
+      {open && hint && <p className="text-[11px] leading-4 text-subtext">{hint}</p>}
       <div className="flex shrink-0 justify-end gap-2">
         {onCancel && <Button size="sm" onClick={onCancel}>{t('common.cancel')}</Button>}
         <Button size="sm" variant={!quiet && text.trim() ? 'primary' : 'secondary'} onClick={send} loading={busy} disabled={!text.trim()}>{label ?? t('comments.send')}</Button>
@@ -118,36 +118,36 @@ export function CommentPanel(p: Props) {
           ]} />
         {p.mine && (
           <button type="button" aria-pressed={mineOnly} onClick={() => setMineOnly(!mineOnly)}
-            className={`rounded-full border px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-brand ${mineOnly ? 'border-brand bg-brand-soft text-brand' : 'border-line text-slate-600 hover:bg-sand-50'}`}>
+            className={`rounded-full border px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-brand ${mineOnly ? 'border-brand bg-brand-soft text-brand' : 'border-line text-ink-2 hover:bg-canvas'}`}>
             {t('comments.myRooms')}
           </button>
         )}
         {p.room && (
           <button type="button" aria-pressed={roomOnly} onClick={() => setRoomOnly(!roomOnly)}
-            className={`max-w-[160px] truncate rounded-full border px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-brand ${roomOnly ? 'border-brand bg-brand-soft text-brand' : 'border-line text-slate-600 hover:bg-sand-50'}`}>
+            className={`max-w-[160px] truncate rounded-full border px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-brand ${roomOnly ? 'border-brand bg-brand-soft text-brand' : 'border-line text-ink-2 hover:bg-canvas'}`}>
             {t('ws.onlyRoom', { room: p.room.name })}
           </button>
         )}
         {multi && (
-          <label className="ml-auto flex items-center gap-1.5 text-xs text-slate-600">
-            <input type="checkbox" className="h-3.5 w-3.5 rounded border-slate-300 accent-brand" checked={allFloors} onChange={(e) => setAllFloors(e.target.checked)} />
+          <label className="ml-auto flex items-center gap-1.5 text-xs text-ink-2">
+            <input type="checkbox" className="h-3.5 w-3.5 rounded border-line-strong accent-brand" checked={allFloors} onChange={(e) => setAllFloors(e.target.checked)} />
             {t('comments.allFloors')}
           </label>
         )}
       </div>
 
       <ul className="min-h-0 flex-1 space-y-2 overflow-y-auto px-4 pb-3">
-        {!list.length && <li className="rounded-lg border border-dashed border-line-strong px-4 py-6 text-center text-sm text-slate-500">{t(status === 'WAITING' ? 'comments.emptyWaiting' : 'comments.empty')}</li>}
+        {!list.length && <li className="rounded-lg border border-dashed border-line-strong px-4 py-6 text-center text-sm text-subtext">{t(status === 'WAITING' ? 'comments.emptyWaiting' : 'comments.empty')}</li>}
         {list.map((thread) => {
           const { root, replies, element, carried, num } = thread;
           const open = p.selectedId === root.id;
           const kind = commentKind(root);
           const floor = multi ? floorName(root.floor_id) : undefined;
           return (
-            <li key={root.id} className={`rounded-card border bg-surface transition-colors ${open ? 'border-brand ring-2 ring-brand/15' : 'border-line hover:border-line-strong'}`}>
-              <button type="button" aria-expanded={open} className="w-full rounded-card px-3 py-2.5 text-left focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand" onClick={() => p.onSelect(open ? null : root.id)}>
+            <li key={root.id} className={`rounded-lg border bg-surface transition-colors ${open ? 'border-brand ring-2 ring-brand/15' : 'border-line hover:border-line-strong'}`}>
+              <button type="button" aria-expanded={open} className="w-full rounded-lg px-3 py-2.5 text-left focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand" onClick={() => p.onSelect(open ? null : root.id)}>
                 <div className="flex items-start gap-2.5">
-                  <span aria-hidden className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-navy text-[11px] font-semibold text-white">
+                  <span aria-hidden className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-navy text-[11px] font-semibold text-surface">
                     {initials(root.author.name)}
                   </span>
                   <div className="min-w-0 flex-1">
@@ -155,19 +155,19 @@ export function CommentPanel(p: Props) {
                       <p className="min-w-0 truncate text-[13px] font-semibold text-ink">{root.author.name}</p>
                       <StatusChip kind="comment" value={root.status} size="sm" />
                     </div>
-                    <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[11px] text-slate-500">
+                    <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[11px] text-subtext">
                       {num != null && <span className="font-semibold text-rose-600">{t('ws.pin', { n: num })}</span>}
                       <span>{formatTime(root.created_at)}</span>
                     </p>
                     <p className="mt-1 whitespace-pre-line break-words text-[13px] leading-5 text-ink">{root.content}</p>
                     {root.proposed_product && (
                       <div className="mt-1.5">
-                        <p className="mb-1 text-[11px] font-medium text-slate-500">{t('comments.suggested')}</p>
+                        <p className="mb-1 text-[11px] font-medium text-subtext">{t('comments.suggested')}</p>
                         <ProposalChip name={root.proposed_product.name} price={root.proposed_product.price} supplier={root.proposed_product.supplier_name}
                           thumb={root.proposed_product.thumbnail_url} current={element?.product?.unit_price} unavailable={!root.proposed_product.available} />
                       </div>
                     )}
-                    {p.allow.respond && root.status === 'ADDRESSED' && !open && <p className="mt-1 text-xs font-medium text-amber-800">{t('comments.yourTurn')}</p>}
+                    {p.allow.respond && root.status === 'ADDRESSED' && !open && <p className="mt-1 text-xs font-medium text-accent-text">{t('comments.yourTurn')}</p>}
                     <div className="mt-2 flex flex-wrap gap-1">
                       {element ? <Tag>{elementName(element, p.me)}</Tag> : kind === 'element' ? <Tag>{t('comments.removedItem', { name: root.element?.name ?? t('comments.kind.element') })}</Tag> : kind === 'general' && <Tag>{t('comments.kind.general')}</Tag>}
                       {floor && <Tag>{floor}</Tag>}
@@ -181,9 +181,9 @@ export function CommentPanel(p: Props) {
               {open && (
                 <div className="space-y-2 border-t border-line px-3 py-3">
                   {replies.map((r) => (
-                    <div key={r.id} className="rounded-lg bg-sand-50 px-2.5 py-2 text-[13px]">
-                      <p><span className="font-medium text-ink">{r.author.name}</span><span className="ml-1.5 text-[11px] text-slate-500">{formatTime(r.created_at)}</span></p>
-                      <p className="mt-0.5 whitespace-pre-line break-words text-slate-700">{r.content}</p>
+                    <div key={r.id} className="rounded-lg bg-canvas px-2.5 py-2 text-[13px]">
+                      <p><span className="font-medium text-ink">{r.author.name}</span><span className="ml-1.5 text-[11px] text-subtext">{formatTime(r.created_at)}</span></p>
+                      <p className="mt-0.5 whitespace-pre-line break-words text-ink-2">{r.content}</p>
                     </div>
                   ))}
                   {p.allow.respond && root.status === 'ADDRESSED' && notYet !== root.id && (
@@ -195,15 +195,15 @@ export function CommentPanel(p: Props) {
                   {p.apply?.can(thread) && (
                     <div className="space-y-1">
                       <Button size="sm" variant="primary" block onClick={() => p.apply!.onApply(thread)}>{t('comments.apply')}</Button>
-                      <p className="text-[11px] leading-4 text-slate-500">{t('comments.applyHint')}</p>
+                      <p className="text-[11px] leading-4 text-subtext">{t('comments.applyHint')}</p>
                     </div>
                   )}
                   {p.allow.address && root.status === 'OPEN' && (
                     <Button size="sm" block onClick={() => p.onAddress(root.id)}>{t('comments.markAddressed')}</Button>
                   )}
                   {p.draftTick?.can(thread) && (
-                    <label className="flex items-start gap-2 text-[13px] text-slate-700">
-                      <input type="checkbox" className="mt-0.5 h-4 w-4 rounded border-slate-300 accent-brand" checked={p.draftTick.checked(thread)} onChange={(e) => p.draftTick!.onToggle(thread, e.target.checked)} />
+                    <label className="flex items-start gap-2 text-[13px] text-ink-2">
+                      <input type="checkbox" className="mt-0.5 h-4 w-4 rounded border-line-strong accent-brand" checked={p.draftTick.checked(thread)} onChange={(e) => p.draftTick!.onToggle(thread, e.target.checked)} />
                       {t('comments.handledInDraft')}
                     </label>
                   )}
@@ -222,7 +222,7 @@ export function CommentPanel(p: Props) {
 
       {p.allow.comment && (
         <div className="shrink-0 border-t border-line bg-surface px-4 py-3">
-          <p className="mb-1.5 truncate text-xs font-medium text-slate-600">{t('comments.forGeneral')}</p>
+          <p className="mb-1.5 truncate text-xs font-medium text-ink-2">{t('comments.forGeneral')}</p>
           <Composer compact hint={t('comments.hint')} placeholder={p.composerPlaceholder} onSend={p.onCreate} />
         </div>
       )}

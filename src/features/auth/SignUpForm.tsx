@@ -170,9 +170,8 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({
         password,
       });
 
-      const successMessage =
-        res.message ||
-        'Account created. Check your email for the verification code.';
+      // Fixed English copy: the backend's success message is in Vietnamese.
+      const successMessage = 'Account created. Check your email for the verification code.';
 
       setNotice(successMessage);
       setSuccess(successMessage);

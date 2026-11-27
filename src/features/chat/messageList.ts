@@ -34,6 +34,23 @@ export function mergeFirstPage<T extends WithId>(current: readonly T[], pageItem
   return extra.length ? [...page, ...extra] : page;
 }
 
+/**
+ * Latest page fetched again after a socket reconnect, while the thread may also hold older pages (loaded with
+ * "load more") and messages added during the wait. Older messages stay in front, the page replaces the overlapping
+ * part, and messages held but not in the page stay at the end.
+ * `contiguous` is false when the page shares no message with the thread: more messages than one page were missed, so
+ * the older ones held no longer join up and are dropped (load more fetches them again).
+ */
+export function mergeLatestPage<T extends WithId>(current: readonly T[], pageItems: readonly T[]): { messages: T[]; contiguous: boolean } {
+  const page = firstPage(pageItems);
+  const inPage = new Set(page.map((m) => m.id));
+  const firstOverlap = current.findIndex((m) => inPage.has(m.id));
+  if (firstOverlap < 0) return { messages: mergeFirstPage([], pageItems), contiguous: false };
+  const older = current.slice(0, firstOverlap);
+  const after = current.slice(firstOverlap).filter((m) => !inPage.has(m.id));
+  return { messages: [...older, ...page, ...after], contiguous: true };
+}
+
 /** An older page goes in FRONT. Messages already held win over a repeated copy. */
 export function prependOlder<T extends WithId>(current: readonly T[], olderItems: readonly T[]): T[] {
   const older = reversedUnique(olderItems, new Set(current.map((m) => m.id)));

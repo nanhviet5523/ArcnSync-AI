@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from '@/components/ui';
 import {
   Layers, UserX, CheckCircle2, FileSignature, Search, Download, Plus, X, AlertCircle,
   ChevronLeft, ChevronRight,
@@ -21,7 +22,7 @@ import {
 const STATUS_LABEL: Record<ProjectStatus, string> = {
   DRAFT: 'Draft',
   CONTRACT_PENDING: 'Contract pending',
-  REQUIREMENT_ANALYSIS: 'Requirements',
+  REQUIREMENT_ANALYSIS: 'Requirement analysis',
   IN_DESIGN: 'In design',
   PRODUCT_SELECTION: 'Products',
   QUOTING: 'Quoting',
@@ -46,7 +47,7 @@ const ROLE_BADGE: Record<MyProjectRole, string> = {
 };
 
 const STATUS_TABS: (ProjectStatus | '')[] = [
-  '', 'DRAFT', 'CONTRACT_PENDING', 'REQUIREMENT_ANALYSIS', 'IN_DESIGN',
+  '', 'DRAFT', 'CONTRACT_PENDING', 'IN_DESIGN',
   'PRODUCT_SELECTION', 'QUOTING', 'COMPLETED', 'CANCELLED',
 ];
 
@@ -86,11 +87,6 @@ export const StaffProjects: React.FC = () => {
   const [creating, setCreating] = useState(false);
   const [formError, setFormError] = useState('');
   const [form, setForm] = useState(EMPTY_PROJECT_FORM);
-  const [toast, setToast] = useState<{
-    type: 'success' | 'error';
-    message: string;
-    action?: { label: string; onClick: () => void };
-  } | null>(null);
 
   // `loading` is derived (result belongs to an older request) so the fetch effect never sets state synchronously.
   const requestKey = JSON.stringify({ status, q, page, reloadKey });
@@ -118,21 +114,12 @@ export const StaffProjects: React.FC = () => {
       .catch((err: unknown) => {
         if (cancelled) return;
         setResult({ key: requestKey, projects: [], total: 0 });
-        setToast({
-          type: 'error',
-          message: err instanceof ApiError ? err.message : 'Không tải được danh sách dự án.',
-        });
+        toast.error(err instanceof ApiError ? err.message : 'Không tải được danh sách dự án.');
       });
     return () => {
       cancelled = true;
     };
   }, [requestKey, status, q, page]);
-
-  useEffect(() => {
-    if (!toast || toast.action) return;
-    const timer = setTimeout(() => setToast(null), 3500);
-    return () => clearTimeout(timer);
-  }, [toast]);
 
   const resetForm = () => {
     setForm(EMPTY_PROJECT_FORM);
@@ -176,28 +163,24 @@ export const StaffProjects: React.FC = () => {
       resetForm();
       setOverallTotal((n) => (n === null ? n : n + 1));
       setReloadKey((key) => key + 1);
-      setToast({ type: 'success', message: `Tạo dự án thành công (${project.code}).` });
+      toast.success(`Tạo dự án thành công (${project.code}).`);
     } catch (err) {
       if (err instanceof ApiError && err.status === 409 && err.code === 'APARTMENT_HAS_ACTIVE_PROJECT') {
         const details = err.details as unknown as ApartmentHasActiveProjectDetails | undefined;
-        setToast({
-          type: 'error',
-          message: 'Căn hộ đã có dự án đang hoạt động.',
-          action: details?.projectId
-            ? {
+        // With a link to the active project, it stays until closed so there is time to press it.
+        toast.error('Căn hộ đã có dự án đang hoạt động.', details?.projectId
+          ? {
+              duration: Infinity,
+              action: {
                 label: 'Xem dự án hiện tại',
-                onClick: () =>
-                  navigate(`/staff-project-detail?projectId=${encodeURIComponent(details.projectId)}`),
-              }
-            : undefined,
-        });
+                onClick: () => navigate(`/staff-project-detail?projectId=${encodeURIComponent(details.projectId)}`),
+              },
+            }
+          : undefined);
       } else if (err instanceof ApiError && err.status === 422 && err.code === 'USER_NOT_ACTIVE') {
-        setToast({ type: 'error', message: 'Tài khoản không ở trạng thái hoạt động.' });
+        toast.error('Tài khoản không ở trạng thái hoạt động.');
       } else {
-        setToast({
-          type: 'error',
-          message: err instanceof ApiError ? err.message : 'Có lỗi xảy ra. Vui lòng thử lại.',
-        });
+        toast.error(err instanceof ApiError ? err.message : 'Có lỗi xảy ra. Vui lòng thử lại.');
       }
     } finally {
       setCreating(false);
@@ -234,36 +217,6 @@ export const StaffProjects: React.FC = () => {
   return (
     <div className="min-h-screen bg-sand-50/60 font-sans flex flex-col justify-between">
       <Header role="staff" />
-
-      {toast && (
-        <div
-          role={toast.type === 'error' ? 'alert' : 'status'}
-          className={`fixed right-4 top-4 z-[80] flex max-w-sm items-start gap-2.5 rounded-xl border px-4 py-3 text-sm font-medium shadow-lg ${
-            toast.type === 'success'
-              ? 'border-emerald-100 bg-emerald-50 text-emerald-800'
-              : 'border-red-100 bg-red-50 text-red-700'
-          }`}
-        >
-          <div className="flex-1">
-            <p>{toast.message}</p>
-            {toast.action && (
-              <button
-                type="button"
-                onClick={() => {
-                  toast.action?.onClick();
-                  setToast(null);
-                }}
-                className="mt-2 inline-flex items-center rounded-lg bg-surface/70 px-2.5 py-1 text-xs font-bold text-red-700 underline hover:bg-surface"
-              >
-                {toast.action.label}
-              </button>
-            )}
-          </div>
-          <button type="button" onClick={() => setToast(null)} aria-label="Đóng" className="text-current/60 hover:text-current">
-            <X size={14} />
-          </button>
-        </div>
-      )}
 
       <main className="w-full max-w-[1440px] mx-auto px-6 lg:px-12 py-10 flex-1">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">

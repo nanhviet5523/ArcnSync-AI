@@ -1,22 +1,42 @@
 import { useEffect, useState } from 'react';
-import type { FormEvent } from 'react';
+import type { FormEvent, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AppShell, Button, Card, DetailList, ErrorState, Field, Input, PageHeader, Select, Stepper, Textarea } from '@/components/ui';
+import { ArrowLeft, ArrowRight, CheckCircle2, FolderPlus, Lightbulb, Mail, Search, UserSearch } from 'lucide-react';
+import { AppShell, Button, Card, ErrorState, Field, Input, PageHeader, Select, Textarea, initials, toast } from '@/components/ui';
 import { errorText, fieldErrorsText, formatMoney, t, tList } from '@/i18n';
 import { ApiError } from '@/services/authService';
 import { designStyleService } from '@/services/designStyleService';
 import type { DesignStyle } from '@/services/designStyleService';
 import { projectApi } from './projectApi';
 import { PendingSurvey } from './ProjectInfoSections';
+import { StepTrack } from './ProjectStepper';
 
 type Customer = { id: string; email: string; fullName: string; phone: string };
 type Errors = Record<string, string>;
 const blankProject = { title: '', budgetMin: '', budgetMax: '', description: '', householdSize: '', preferredStyleId: '' };
-type Toast = { tone: 'success' | 'warning' | 'error'; message: string };
+const STEP_ICONS = [UserSearch, FolderPlus];
+
+/** The homeowner as a small identity row: initials disc, name, email and phone. */
+function CustomerIdentity({ customer, trailing }: { customer: Customer; trailing?: ReactNode }) {
+  return (
+    <div className="flex min-w-0 items-center gap-3">
+      <span aria-hidden className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-brand text-sm font-semibold text-white">
+        {initials(customer.fullName)}
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="truncate font-semibold text-slate-900">{customer.fullName}</p>
+        <p className="truncate text-xs text-slate-600">{customer.email}{customer.phone ? ` · ${customer.phone}` : ''}</p>
+      </div>
+      {trailing}
+    </div>
+  );
+}
 
 /**
  * Staff: create a project in two steps, customer (by email) then project details. POST /projects takes the
  * customerEmail; the home is attached later, once the site survey is confirmed.
+ * Layout: the same icon step track as the project pages; step 2 puts the form beside a sticky summary that holds the
+ * submit button. Each step fades in (step-in, globals.css).
  */
 export function StaffProjectNew() {
   const navigate = useNavigate();
@@ -29,13 +49,6 @@ export function StaffProjectNew() {
   const [busy, setBusy] = useState(false);
 
   const [styles, setStyles] = useState<DesignStyle[]>([]);
-  const [toast, setToast] = useState<Toast | null>(null);
-
-  useEffect(() => {
-    if (!toast || toast.tone === 'success') return;
-    const timer = setTimeout(() => setToast(null), 4500);
-    return () => clearTimeout(timer);
-  }, [toast]);
 
   // Active design styles for the optional style dropdown; the form still works if this fails.
   useEffect(() => {
@@ -49,7 +62,7 @@ export function StaffProjectNew() {
   const fail = (e: unknown) => {
     if (!(e instanceof ApiError)) { setError(errorText(e)); return; }
     setErrors(fieldErrorsText(e.fieldErrors));
-    const toastError = (message: string) => setToast({ tone: 'error', message });
+    const toastError = (message: string) => toast.error(message);
     switch (e.code) {
       // 404 USER_NOT_FOUND / 422 USER_NOT_ACTIVE: the customerEmail of POST /projects (or the lookup)
       case 'USER_NOT_FOUND': toastError(t('newProject.homeownerNotFound')); return;
@@ -98,7 +111,7 @@ export function StaffProjectNew() {
     ev.preventDefault();
     if (!customer) return;
     const e = validateProject();
-    setErrors(e); setError(''); setToast(null);
+    setErrors(e); setError('');
     if (Object.keys(e).length) return;
     setBusy(true);
     try {
@@ -108,9 +121,9 @@ export function StaffProjectNew() {
         ...(project.householdSize.trim() ? { householdSize: householdNum } : {}),
         ...(project.preferredStyleId ? { preferredStyleId: project.preferredStyleId } : {}),
       });
-      setToast({ tone: 'success', message: t('newProject.success') });
-      // Brief pause so the confirmation is readable before the detail page opens.
-      window.setTimeout(() => navigate(`/staff/projects/${p.id}`), 1000);
+      // The toast lives at the app root, so it stays readable on the project page.
+      toast.success(t('newProject.success'));
+      navigate(`/staff/projects/${p.id}`);
     } catch (err) { fail(err); } finally { setBusy(false); }
   };
 
@@ -118,44 +131,112 @@ export function StaffProjectNew() {
     setProject({ ...project, [k]: ev.target.value });
     if (errors[k]) setErrors((prev) => ({ ...prev, [k]: '' }));
   };
-  const steps = tList('newProject.steps');
+  const goTo = (next: number) => { setErrors({}); setError(''); setStep(next); };
+
+  const labels = tList('newProject.steps');
+  const hints = tList('newProject.stepHints');
+  const track = labels.map((label, i) => ({
+    key: label, label, hint: hints[i], icon: STEP_ICONS[i],
+    state: i < step ? 'done' as const : i === step ? 'active' as const : 'upcoming' as const,
+  }));
+  /** Typed amount, formatted under the budget fields so long numbers are easy to check. */
+  const moneyHint = (v: string) => (Number(v) > 0 ? formatMoney(v) : undefined);
+  const styleName = styles.find((x) => x.id === project.preferredStyleId)?.name ?? t('newProject.noStyle');
 
   return (
     <AppShell>
-      <PageHeader back={{ to: '/staff/projects', label: t('newProject.back') }} title={t('newProject.title')} description={t('newProject.description')} />
-      <div className="mx-auto max-w-3xl space-y-5">
-        <Card bodyClassName="px-4 py-4 sm:px-6"><Stepper steps={steps} current={step} /></Card>
+      <div className="mx-auto max-w-5xl">
+        <PageHeader back={{ to: '/staff/projects', label: t('newProject.back') }} title={t('newProject.title')} description={t('newProject.description')} />
+
+        <Card className="mb-5" bodyClassName="px-4 py-5 sm:px-6">
+          <StepTrack label={t('newProject.stepsLabel')} steps={track} className="mx-auto max-w-xl" />
+        </Card>
 
         {step === 0 && (
-          <Card title={steps[0]}>
-            <form onSubmit={findCustomer} className="flex flex-wrap items-end gap-3" noValidate>
-              <Field label={t('newProject.email')} hint={t('newProject.emailHint')} error={errors.email} className="min-w-0 flex-1 basis-64">
-                {(f) => <Input {...f} type="email" autoComplete="off" value={email} invalid={!!errors.email} onChange={(e) => setEmail(e.target.value)} placeholder="name@example.com" />}
-              </Field>
-              <Button type="submit" loading={busy} className="mb-[22px]">{t('newProject.find')}</Button>
-            </form>
-            {customer && (
-              <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3">
-                <div>
-                  <p className="text-[13px] text-emerald-700">{t('newProject.found')}</p>
-                  <p className="font-semibold text-ink">{customer.fullName}</p>
-                  <p className="text-xs text-slate-600">{customer.email}{customer.phone ? `, ${customer.phone}` : ''}</p>
+          <div key="customer" className="step-in grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
+            <Card title={t('newProject.findTitle')} description={t('newProject.findDescription')} bodyClassName="p-5 sm:p-6">
+              <form onSubmit={findCustomer} noValidate>
+                <Field label={t('newProject.email')} hint={t('newProject.emailHint')} error={errors.email}>
+                  {(f) => (
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                      <div className="relative min-w-0 flex-1">
+                        <Mail aria-hidden className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                        <Input
+                          {...f}
+                          type="email"
+                          autoComplete="off"
+                          value={email}
+                          invalid={!!errors.email}
+                          // a different email means a different homeowner: drop the one found before
+                          onChange={(e) => { setEmail(e.target.value); setCustomer(null); }}
+                          placeholder="name@example.com"
+                          className="pl-9"
+                        />
+                      </div>
+                      <Button type="submit" loading={busy}>
+                        {!busy && <Search aria-hidden className="h-4 w-4" />}
+                        {t('newProject.find')}
+                      </Button>
+                    </div>
+                  )}
+                </Field>
+              </form>
+
+              {customer && (
+                <div className="step-in mt-5 rounded-xl border border-emerald-200 bg-emerald-50/60 p-4">
+                  <p className="mb-3 flex items-center gap-1.5 text-xs font-semibold text-emerald-700">
+                    <CheckCircle2 aria-hidden className="h-4 w-4" />
+                    {t('newProject.found')}
+                  </p>
+                  <CustomerIdentity
+                    customer={customer}
+                    trailing={(
+                      <Button variant="primary" onClick={() => goTo(1)} className="hidden sm:inline-flex">
+                        {t('common.continue')}
+                        <ArrowRight aria-hidden className="h-4 w-4" />
+                      </Button>
+                    )}
+                  />
+                  <Button variant="primary" block onClick={() => goTo(1)} className="mt-4 sm:hidden">
+                    {t('common.continue')}
+                    <ArrowRight aria-hidden className="h-4 w-4" />
+                  </Button>
                 </div>
-                <Button variant="primary" onClick={() => { setErrors({}); setStep(1); }}>{t('common.continue')}</Button>
-              </div>
-            )}
-          </Card>
+              )}
+              {error && <div className="mt-4"><ErrorState message={error} /></div>}
+            </Card>
+
+            {/* Side panel in the same column as step 2's summary, so both steps line up */}
+            <aside className="rounded-card border border-dashed border-line-strong bg-canvas/60 p-5">
+              <p className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+                <Lightbulb aria-hidden className="h-4 w-4 text-amber-600" />
+                {t('newProject.tipsTitle')}
+              </p>
+              <ul className="mt-3 space-y-2.5 text-[13px] leading-relaxed text-slate-600">
+                {tList('newProject.tips').map((tip) => (
+                  <li key={tip} className="flex gap-2.5">
+                    <span aria-hidden className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-brand/60" />
+                    {tip}
+                  </li>
+                ))}
+              </ul>
+            </aside>
+          </div>
         )}
 
         {step === 1 && customer && (
-          <form onSubmit={create} noValidate className="space-y-5">
-            <Card title={steps[1]}>
-              <div className="grid gap-4 sm:grid-cols-2">
+          <form key="project" onSubmit={create} noValidate className="step-in grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
+            <Card title={t('newProject.detailsTitle')} description={t('newProject.detailsDescription')} bodyClassName="p-5 sm:p-6">
+              <div className="grid gap-x-4 gap-y-5 sm:grid-cols-2">
                 <Field label={t('newProject.projectName')} error={errors.title} className="sm:col-span-2">
-                  {(f) => <Input {...f} maxLength={255} value={project.title} invalid={!!errors.title} onChange={setP('title')} placeholder={t('newProject.projectNamePlaceholder')} />}
+                  {(f) => <Input {...f} maxLength={255} value={project.title} invalid={!!errors.title} onChange={setP('title')} placeholder={t('newProject.projectNamePlaceholder')} autoFocus />}
                 </Field>
-                <Field label={t('newProject.budgetMin')} error={errors.budgetMin || budgetOrderError}>{(f) => <Input {...f} type="number" inputMode="numeric" min={1} value={project.budgetMin} invalid={!!(errors.budgetMin || budgetOrderError)} onChange={setP('budgetMin')} />}</Field>
-                <Field label={t('newProject.budgetMax')} error={errors.budgetMax || budgetOrderError}>{(f) => <Input {...f} type="number" inputMode="numeric" min={1} value={project.budgetMax} invalid={!!(errors.budgetMax || budgetOrderError)} onChange={setP('budgetMax')} />}</Field>
+                <Field label={t('newProject.budgetMin')} hint={moneyHint(project.budgetMin)} error={errors.budgetMin || budgetOrderError}>
+                  {(f) => <Input {...f} type="number" inputMode="numeric" min={1} value={project.budgetMin} invalid={!!(errors.budgetMin || budgetOrderError)} onChange={setP('budgetMin')} placeholder="0" />}
+                </Field>
+                <Field label={t('newProject.budgetMax')} hint={moneyHint(project.budgetMax)} error={errors.budgetMax || budgetOrderError}>
+                  {(f) => <Input {...f} type="number" inputMode="numeric" min={1} value={project.budgetMax} invalid={!!(errors.budgetMax || budgetOrderError)} onChange={setP('budgetMax')} placeholder="0" />}
+                </Field>
                 <Field label={t('newProject.householdSize')} hint={t('newProject.householdSizeNote')} optional error={errors.householdSize || householdError}>
                   {(f) => <Input {...f} type="number" inputMode="numeric" min={1} max={50} value={project.householdSize} invalid={!!(errors.householdSize || householdError)} onChange={setP('householdSize')} />}
                 </Field>
@@ -168,37 +249,59 @@ export function StaffProjectNew() {
                   )}
                 </Field>
                 <Field label={t('newProject.description2')} optional error={errors.description} className="sm:col-span-2">
-                  {(f) => <Textarea {...f} rows={3} maxLength={5000} value={project.description} onChange={setP('description')} />}
+                  {(f) => <Textarea {...f} rows={4} maxLength={5000} value={project.description} onChange={setP('description')} />}
                 </Field>
               </div>
             </Card>
 
-            <Card title={t('newProject.summary')}>
-              <DetailList items={[
-                { label: steps[0], value: `${customer.fullName} (${customer.email})` },
-                { label: t('projectDetail.home'), value: <PendingSurvey /> },
-                ...(project.budgetMin && project.budgetMax ? [{ label: t('projectDetail.budget'), value: t('projectDetail.budgetValue', { min: formatMoney(project.budgetMin), max: formatMoney(project.budgetMax) }) }] : []),
-              ]} />
-            </Card>
+            {/* Summary + submit: beside the form on desktop (stays in view while scrolling), below it on phones */}
+            <aside className="lg:sticky lg:top-24">
+              <Card title={t('newProject.summary')} bodyClassName="p-5">
+                <CustomerIdentity
+                  customer={customer}
+                  trailing={<Button size="sm" variant="ghost" onClick={() => goTo(0)}>{t('newProject.change')}</Button>}
+                />
+                <dl className="mt-5 space-y-3 border-t border-line pt-4 text-sm">
+                  <div className="flex justify-between gap-3">
+                    <dt className="text-slate-500">{t('projectDetail.budget')}</dt>
+                    <dd className="text-right font-medium text-slate-900">
+                      {project.budgetMin && project.budgetMax
+                        ? t('projectDetail.budgetValue', { min: formatMoney(project.budgetMin), max: formatMoney(project.budgetMax) })
+                        : t('common.none')}
+                    </dd>
+                  </div>
+                  <div className="flex justify-between gap-3">
+                    <dt className="text-slate-500">{t('newProject.style')}</dt>
+                    <dd className="text-right font-medium text-slate-900">{styleName}</dd>
+                  </div>
+                  {project.householdSize.trim() && !householdError && (
+                    <div className="flex justify-between gap-3">
+                      <dt className="text-slate-500">{t('newProject.householdSize')}</dt>
+                      <dd className="text-right font-medium text-slate-900">{project.householdSize}</dd>
+                    </div>
+                  )}
+                  <div>
+                    <dt className="mb-1.5 text-slate-500">{t('projectDetail.home')}</dt>
+                    <dd><PendingSurvey /></dd>
+                  </div>
+                </dl>
 
-            {error && <ErrorState message={error} />}
-            <div className="flex justify-between gap-2">
-              <Button onClick={() => { setErrors({}); setStep(0); }}>{t('common.back')}</Button>
-              <Button type="submit" variant="primary" loading={busy} disabled={!!budgetOrderError || !!householdError}>{busy ? t('newProject.creating') : t('newProject.create')}</Button>
-            </div>
+                {error && <div className="mt-4"><ErrorState message={error} /></div>}
+
+                <div className="mt-5 space-y-2">
+                  <Button type="submit" variant="primary" block loading={busy} disabled={!!budgetOrderError || !!householdError}>
+                    {busy ? t('newProject.creating') : t('newProject.create')}
+                  </Button>
+                  <Button variant="ghost" block onClick={() => goTo(0)}>
+                    <ArrowLeft aria-hidden className="h-4 w-4" />
+                    {t('common.back')}
+                  </Button>
+                </div>
+              </Card>
+            </aside>
           </form>
         )}
-        {step < 1 && error && <ErrorState message={error} />}
       </div>
-      {toast && (
-        <div role={toast.tone === 'success' ? 'status' : 'alert'}
-          className={`fixed right-4 top-4 z-[80] max-w-sm rounded-xl border px-4 py-3 text-sm font-medium shadow-lg ${
-            toast.tone === 'success' ? 'border-emerald-100 bg-emerald-50 text-emerald-800'
-              : toast.tone === 'warning' ? 'border-amber-200 bg-amber-50 text-amber-800'
-                : 'border-red-100 bg-red-50 text-red-700'}`}>
-          {toast.message}
-        </div>
-      )}
     </AppShell>
   );
 }

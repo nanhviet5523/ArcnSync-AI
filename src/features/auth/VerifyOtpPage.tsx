@@ -3,6 +3,7 @@ import type { FormEvent } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Logo } from '@/components/common/Logo';
 import { ApiError, resendOtp, verifyEmail } from '@/services/authService';
+import { toast } from '@/components/ui';
 
 const PENDING_EMAIL_KEY = 'archsync-pending-verify-email';
 const RESEND_COOLDOWN_SECONDS = 20;
@@ -37,7 +38,6 @@ export const VerifyOtpPage: React.FC = () => {
   // Đếm ngược "Resend OTP": bắt đầu 20s ngay khi vào trang, reset lại mỗi lần gửi lại thành công.
   const [resendCountdown, setResendCountdown] = useState(RESEND_COOLDOWN_SECONDS);
   const [resending, setResending] = useState(false);
-  const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   useEffect(() => {
     if (resendCountdown <= 0) return;
@@ -47,30 +47,21 @@ export const VerifyOtpPage: React.FC = () => {
     return () => clearTimeout(timer);
   }, [resendCountdown]);
 
-  useEffect(() => {
-    if (!toast) return;
-    const timer = setTimeout(() => setToast(null), 3500);
-    return () => clearTimeout(timer);
-  }, [toast]);
-
   const handleResend = async () => {
     if (resendCountdown > 0 || resending) return;
 
     if (!email) {
-      setToast({ type: 'error', message: 'Missing email. Please sign up again.' });
+      toast.error('Missing email. Please sign up again.');
       return;
     }
 
     setResending(true);
     try {
       await resendOtp({ email });
-      setToast({ type: 'success', message: 'Đã gửi lại mã OTP mới' });
+      toast.success('A new OTP code has been sent to your email.');
       setResendCountdown(RESEND_COOLDOWN_SECONDS);
     } catch (err) {
-      setToast({
-        type: 'error',
-        message: err instanceof ApiError ? err.message : 'Could not resend the OTP code. Please try again.',
-      });
+      toast.error(err instanceof ApiError ? err.message : 'Could not resend the OTP code. Please try again.');
     } finally {
       setResending(false);
     }
@@ -92,8 +83,8 @@ export const VerifyOtpPage: React.FC = () => {
 
     setLoading(true);
     try {
-      const res = await verifyEmail({ otp: otp.trim(), email });
-      setSuccess(res.message);
+      await verifyEmail({ otp: otp.trim(), email });
+      setSuccess('Email verified. Redirecting you to log in…');
       try {
         window.sessionStorage.removeItem(PENDING_EMAIL_KEY);
       } catch {
@@ -108,18 +99,6 @@ export const VerifyOtpPage: React.FC = () => {
 
   return (
     <div className="flex w-full min-h-screen items-center justify-center bg-surface p-8 font-sans">
-      {toast && (
-        <div
-          role={toast.type === 'error' ? 'alert' : 'status'}
-          className={`fixed right-4 top-4 z-[80] max-w-sm rounded-xl border px-4 py-3 text-sm font-medium shadow-lg ${
-            toast.type === 'success'
-              ? 'border-emerald-100 bg-emerald-50 text-emerald-800'
-              : 'border-red-100 bg-red-50 text-red-700'
-          }`}
-        >
-          {toast.message}
-        </div>
-      )}
       <div className="w-full max-w-[420px]">
         <div className="mb-6">
           <Logo size={38} to="/" />
@@ -142,7 +121,7 @@ export const VerifyOtpPage: React.FC = () => {
           <div className="text-center">
             {resendCountdown > 0 ? (
               <span className="text-xs font-medium text-subtext">
-                Gửi lại sau ({resendCountdown}s)
+                Resend in {resendCountdown}s
               </span>
             ) : (
               <button
@@ -151,7 +130,7 @@ export const VerifyOtpPage: React.FC = () => {
                 disabled={resending}
                 className="text-xs font-bold text-brand-text hover:underline disabled:cursor-not-allowed disabled:text-subtext disabled:no-underline"
               >
-                {resending ? 'Đang gửi…' : 'Resend OTP'}
+                {resending ? 'Sending…' : 'Resend OTP'}
               </button>
             )}
           </div>

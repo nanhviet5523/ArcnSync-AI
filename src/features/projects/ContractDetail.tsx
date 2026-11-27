@@ -17,7 +17,8 @@ import { Header } from '@/components/layout';
 import { Footer } from '@/components/layout';
 import { ApiError, getCurrentUser, logout } from '@/services/authService';
 import type { UserRole } from '@/types/role';
-import { Button, Modal } from '@/components/ui';
+import { Button, Modal, Notice, toast } from '@/components/ui';
+import { ContractPaymentHistory } from '@/features/payments/ContractPaymentHistory';
 import {
   CONTRACT_FILE_MAX_BYTES,
   getContractFileBlob,
@@ -112,6 +113,8 @@ export const ContractDetail: React.FC = () => {
   const backToProject = projectId
     ? `${role === 'staff' || role === 'admin' ? '/staff/projects' : role === 'designer' ? '/designer/projects' : '/homeowner/projects'}/${encodeURIComponent(projectId)}`
     : role === 'staff' || role === 'admin' ? '/staff/projects' : role === 'designer' ? '/designer/projects' : '/homeowner/projects';
+  /** Arrived straight from "Create contract draft": upload the PDF, then go back to the project. */
+  const uploadThenBack = isStaff && params.get('next') === 'upload' && projectId !== '';
 
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -130,6 +133,36 @@ export const ContractDetail: React.FC = () => {
   const [otpRequesting, setOtpRequesting] = useState(false);
   const otpInFlight = useRef(false);
   const [now, setNow] = useState(() => Date.now());
+  /**
+   * The server refused a new OTP as too soon (429) while this page knew of none: a code was sent moments ago (before a
+   * reload, or from another tab) and is still valid, so the code box is shown without a known expiry.
+   */
+  const [otpEarlier, setOtpEarlier] = useState(false);
+
+  // Remember the OTP timers for this contract across reloads in this tab, so a reload doesn't hide the code box.
+  const otpKey = (contractId: string) => `contract-otp:${contractId}`;
+  const saveOtpTimers = (contractId: string, timers: { expiresAt: number; cooldownUntil: number } | null) => {
+    try {
+      if (timers) sessionStorage.setItem(otpKey(contractId), JSON.stringify(timers));
+      else sessionStorage.removeItem(otpKey(contractId));
+    } catch { /* storage blocked: the timers just don't survive a reload */ }
+  };
+  const awaitingCustomerId = contract?.esignStatus === 'AWAITING_CUSTOMER' && isCustomer ? contract.id : null;
+  useEffect(() => {
+    if (!awaitingCustomerId) return;
+    let saved: { expiresAt?: unknown; cooldownUntil?: unknown } | null = null;
+    try {
+      saved = JSON.parse(sessionStorage.getItem(otpKey(awaitingCustomerId)) ?? 'null');
+    } catch { /* unreadable: start without timers */ }
+    const start = Date.now();
+    if (!saved || typeof saved.expiresAt !== 'number' || saved.expiresAt <= start) return;
+    const { expiresAt, cooldownUntil } = saved;
+    Promise.resolve().then(() => {
+      setNow(start);
+      setOtpExpiresAt(expiresAt);
+      if (typeof cooldownUntil === 'number') setOtpCooldownUntil(cooldownUntil);
+    });
+  }, [awaitingCustomerId]);
 
   // Tick once a second only while a countdown is running.
   const timersRunning = otpCooldownUntil > now || (otpExpiresAt !== null && otpExpiresAt > now);
@@ -143,19 +176,12 @@ export const ContractDetail: React.FC = () => {
   const fileInput = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [fileError, setFileError] = useState('');
-  const [toast, setToast] = useState<{ type: 'success' | 'error' | 'warning'; message: string } | null>(null);
 
   // Send signing request (Staff, DRAFT + NOT_SENT + PDF uploaded).
   const [confirmSigning, setConfirmSigning] = useState(false);
   const [sendingSigning, setSendingSigning] = useState(false);
   /** Synchronous guard: state updates are async, so a fast double click could fire two POSTs. */
   const signingInFlight = useRef(false);
-
-  useEffect(() => {
-    if (!toast) return;
-    const timer = setTimeout(() => setToast(null), 3500);
-    return () => clearTimeout(timer);
-  }, [toast]);
 
   const loadContract = useCallback(async () => {
     setLoading(true);
@@ -178,6 +204,13 @@ export const ContractDetail: React.FC = () => {
     }
   }, [projectId, isCustomer]);
 
+  /** Refresh milestone statuses after a payment re-check, without the full-page loading state. */
+  const refreshContractQuietly = useCallback(() => {
+    getProjectContract(projectId)
+      .then((result) => setContract(isCustomer && result?.esignStatus === 'NOT_SENT' ? null : result))
+      .catch(() => { /* keep what is on screen; the transaction section shows its own state */ });
+  }, [projectId, isCustomer]);
+
   useEffect(() => {
     if (!isUuid(projectId)) {
       setLoading(false);
@@ -195,7 +228,7 @@ export const ContractDetail: React.FC = () => {
     try {
       await action();
     } catch (err) {
-      setToast({ type: 'error', message: err instanceof ApiError ? err.message : t('contractPage.fileLoadFailed') });
+      toast.error(err instanceof ApiError ? err.message : t('contractPage.fileLoadFailed'));
     } finally {
       setActionBusy(false);
     }
@@ -238,18 +271,24 @@ export const ContractDetail: React.FC = () => {
     setActionMessage(null);
     try {
       const updated = await sendSigningRequest(contractId);
+      if (uploadThenBack) {
+        // Toasts live at the app root, so this one stays up on the project page we go back to.
+        toast.success(t('contractSigning.successBack'));
+        navigate(backToProject, { replace: true });
+        return;
+      }
       setContract(updated);
       setConfirmSigning(false);
-      setToast({ type: 'success', message: t('contractSigning.success') });
+      toast.success(t('contractSigning.success'));
       await loadContract();
     } catch (err) {
       setConfirmSigning(false);
       const apiErr = err instanceof ApiError ? err : null;
       const code = apiErr?.code ?? '';
-      const fail = (message: string) => setToast({ type: 'error', message });
+      const fail = (message: string) => toast.error(message);
       if (code === 'INVALID_ESIGN_STATUS_TRANSITION') {
         // Usually a double submit or a stale page: the request is already out, so just sync the UI.
-        setToast({ type: 'success', message: t('contractSigning.alreadySent') });
+        toast.success(t('contractSigning.alreadySent'));
         await loadContract();
       } else if (code === 'NOT_PROJECT_STAFF') fail(t('contractSigning.notProjectStaff'));
       else if (code === 'CONTRACT_NOT_FOUND') fail(t('contractSigning.notFound'));
@@ -286,7 +325,7 @@ export const ContractDetail: React.FC = () => {
     try {
       await withdrawSigningRequest(contractId);
       setConfirmRecall(false);
-      setToast({ type: 'success', message: t('contractPage.recallSuccess') });
+      toast.success(t('contractPage.recallSuccess'));
       await loadContract();
     } catch (err) {
       setConfirmRecall(false);
@@ -302,7 +341,7 @@ export const ContractDetail: React.FC = () => {
               : code === 'CONTRACT_NOT_FOUND' ? t('contractPage.recallNotFound')
                 : code === 'INSUFFICIENT_ROLE' || code === 'NOT_PROJECT_STAFF' ? t('contractPage.recallNotStaff')
                   : apiErr?.message ?? t('errors.unknownNoCode');
-        setToast({ type: 'error', message });
+        toast.error(message);
         if (code === 'INVALID_ESIGN_STATUS_TRANSITION' || code === 'CONTRACT_NOT_DRAFT') await loadContract();
       }
     } finally {
@@ -321,7 +360,7 @@ export const ContractDetail: React.FC = () => {
     try {
       const updated = await uploadContractFile(contractId, file);
       setContract(updated);
-      setToast({ type: 'success', message: t('contractFile.success') });
+      toast.success(t('contractFile.success'));
       await loadContract();
     } catch (err) {
       const code = err instanceof ApiError ? err.code : '';
@@ -329,13 +368,13 @@ export const ContractDetail: React.FC = () => {
       else if (code === 'INVALID_PDF_FILE') {
         const message = (err as ApiError).messages[0] ?? t('contractFile.invalidPdf');
         setFileError(message);
-        setToast({ type: 'error', message });
-      } else if (code === 'NOT_PROJECT_STAFF') setToast({ type: 'error', message: t('contractFile.notProjectStaff') });
-      else if (code === 'CONTRACT_NOT_FOUND') setToast({ type: 'error', message: t('contractFile.notFound') });
+        toast.error(message);
+      } else if (code === 'NOT_PROJECT_STAFF') toast.error(t('contractFile.notProjectStaff'));
+      else if (code === 'CONTRACT_NOT_FOUND') toast.error(t('contractFile.notFound'));
       else if (code === 'CONTRACT_NOT_EDITABLE') {
-        setToast({ type: 'error', message: t('contractFile.notEditable') });
+        toast.error(t('contractFile.notEditable'));
         await loadContract();
-      } else setToast({ type: 'error', message: err instanceof ApiError ? err.message : t('errors.unknownNoCode') });
+      } else toast.error(err instanceof ApiError ? err.message : t('errors.unknownNoCode'));
     } finally {
       setUploading(false);
       if (fileInput.current) fileInput.current.value = '';
@@ -354,15 +393,17 @@ export const ContractDetail: React.FC = () => {
     setOtpRequesting(true);
     setActionError(null);
     setActionMessage(null);
-    const fail = (message: string) => setToast({ type: 'error', message });
+    const fail = (message: string) => toast.error(message);
     try {
       const { expiresInMinutes } = await requestSignatureOtp(contractId);
       const start = Date.now();
       setNow(start);
       setOtpExpiresAt(start + expiresInMinutes * 60_000);
       setOtpCooldownUntil(start + OTP_RESEND_COOLDOWN_SECONDS * 1000);
+      saveOtpTimers(contractId, { expiresAt: start + expiresInMinutes * 60_000, cooldownUntil: start + OTP_RESEND_COOLDOWN_SECONDS * 1000 });
+      setOtpEarlier(false);
       setOtpValue('');
-      setToast({ type: 'success', message: t('contractPage.otpSent') });
+      toast.success(t('contractPage.otpSent'));
     } catch (err) {
       const apiErr = err instanceof ApiError ? err : null;
       const code = apiErr?.code ?? '';
@@ -370,10 +411,14 @@ export const ContractDetail: React.FC = () => {
       if (code === 'OTP_RESEND_TOO_SOON' || status === 429) {
         const retry = Number(apiErr?.details.retryAfterSeconds);
         startCooldown(Number.isFinite(retry) && retry > 0 ? Math.ceil(retry) : OTP_RESEND_COOLDOWN_SECONDS);
-        setToast({ type: 'warning', message: t('contractPage.otpTooSoon') });
+        // a code went out moments ago and is still valid: let the customer enter it
+        if (otpExpiresAt === null) setOtpEarlier(true);
+        toast.warning(t(otpExpiresAt === null ? 'contractPage.otpUseEarlier' : 'contractPage.otpTooSoon'));
       } else if (code === 'CONTRACT_NOT_AWAITING_SIGNATURE' && status === 422) {
         fail(t('contractPage.otpNotAwaiting'));
         setOtpExpiresAt(null);
+        setOtpEarlier(false);
+        saveOtpTimers(contractId, null);
         await loadContract();
       } else if (code === 'CONTRACT_NOT_AWAITING_SIGNATURE') fail(t('signatureOtp.notAwaitingState'));
       else if (code === 'USER_NOT_FOUND') {
@@ -405,12 +450,14 @@ export const ContractDetail: React.FC = () => {
       const updated = await submitContractSignature(contractId, { otp });
       setContract(updated);
       setOtpExpiresAt(null);
+      setOtpEarlier(false);
+      saveOtpTimers(contractId, null);
       setOtpValue('');
-      setToast({ type: 'success', message: t('contractPage.signSuccess') });
+      toast.success(t('contractPage.signSuccess'));
     } catch (err) {
       const apiErr = err instanceof ApiError ? err : null;
       const code = apiErr?.code ?? '';
-      const fail = (message: string) => setToast({ type: 'error', message });
+      const fail = (message: string) => toast.error(message);
       if (code === 'OTP_INVALID') {
         const left = Number(apiErr?.details.remainingAttempts);
         fail(apiErr?.details.remainingAttempts !== undefined && Number.isFinite(left)
@@ -420,7 +467,7 @@ export const ContractDetail: React.FC = () => {
       else if (code === 'OTP_EXPIRED') fail(t('contractPage.otpExpired'));
       else if (code === 'CONTRACT_FILE_TAMPERED') fail(t('contractPage.fileTampered'));
       else if (code === 'CONTRACT_ALREADY_SIGNED') {
-        setToast({ type: 'warning', message: t('contractPage.alreadySigned') });
+        toast.warning(t('contractPage.alreadySigned'));
         await loadContract();
       } else fail(apiErr?.message || t('errors.unknownNoCode'));
     } finally {
@@ -498,6 +545,8 @@ export const ContractDetail: React.FC = () => {
 
   const { status, esignStatus } = contract;
   const showMilestones = status === 'ACTIVE' && esignStatus === 'SIGNED';
+  // Payments only exist once the contract is active; a completed contract keeps its history.
+  const showTransactions = role !== 'designer' && (showMilestones || status === 'COMPLETED');
   const canDownloadSignedFile = esignStatus === 'SIGNED' || contract.signedFile !== null;
   const cooldownLeft = Math.max(0, Math.ceil((otpCooldownUntil - now) / 1000));
   const otpSecondsLeft = otpExpiresAt === null ? null : Math.max(0, Math.ceil((otpExpiresAt - now) / 1000));
@@ -515,6 +564,9 @@ export const ContractDetail: React.FC = () => {
           <h1 className="text-3xl font-extrabold text-ink tracking-tight">Contract {contract.contractNo}</h1>
           <p className="mt-1 text-sm text-slate-500">
             Total design fee: <span className="font-semibold text-ink">{formatVnd(contract.totalDesignFee)}</span>
+          </p>
+          <p className="mt-0.5 text-sm text-slate-500" title={t('newContract.maxRevisionsTooltip')}>
+            {t('contractPage.maxRevisions', { n: contract.maxRevisionsPerStage })}
           </p>
         </div>
         <div className="flex gap-2">
@@ -577,34 +629,25 @@ export const ContractDetail: React.FC = () => {
         </Modal>
       )}
 
-      {toast && (
-        <div
-          role={toast.type === 'error' ? 'alert' : 'status'}
-          className={`fixed right-4 top-20 z-[80] max-w-sm rounded-xl border px-4 py-3 text-sm font-medium shadow-lg ${
-            toast.type === 'success' ? 'border-emerald-100 bg-emerald-50 text-emerald-800'
-              : toast.type === 'warning' ? 'border-amber-200 bg-amber-50 text-amber-800' : 'border-red-100 bg-red-50 text-red-700'
-          }`}
-        >
-          {toast.message}
-        </div>
-      )}
-
       {actionMessage && (
-        <div className="mb-6 flex items-start gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 p-3.5 text-sm text-emerald-800">
-          <CheckCircle2 size={18} className="mt-0.5 flex-shrink-0 text-emerald-600" />
-          <span>{actionMessage}</span>
-        </div>
+        <Notice tone="success" className="mb-6">{actionMessage}</Notice>
       )}
       {actionError && (
-        <div role="alert" className="mb-6 flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 p-3.5 text-sm text-red-800">
-          <AlertCircle size={18} className="mt-0.5 flex-shrink-0 text-red-600" />
-          <span>{actionError}</span>
-        </div>
+        <Notice tone="error" className="mb-6">{actionError}</Notice>
       )}
 
       {contract.note && (
         <div className="mb-6 rounded-xl border border-line bg-surface p-4 text-sm text-slate-600">
           <span className="font-bold text-ink">Note: </span>{contract.note}
+        </div>
+      )}
+
+      {uploadThenBack && status === 'DRAFT' && esignStatus === 'NOT_SENT' && (
+        <div role="status" className="mb-6 flex items-start gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 p-3.5 text-sm text-emerald-800">
+          <CheckCircle2 size={18} className="mt-0.5 shrink-0 text-emerald-600" />
+          {contract.unsignedFile
+            ? <span><span className="font-semibold">{t('contractPage.pdfReadyTitle')}</span> {t('contractPage.pdfReadyNext')}</span>
+            : <span><span className="font-semibold">{t('contractPage.draftCreatedTitle')}</span> {t('contractPage.draftCreatedNext')}</span>}
         </div>
       )}
 
@@ -706,7 +749,7 @@ export const ContractDetail: React.FC = () => {
             </button>
           )}
 
-          {otpExpiresAt === null ? (
+          {otpExpiresAt === null && !otpEarlier ? (
             <>
               <button
                 type="button"
@@ -721,13 +764,13 @@ export const ContractDetail: React.FC = () => {
             </>
           ) : (
             <>
-            <p className="mb-1 text-[11px] text-slate-500">{t('signatureOtp.sentNotice')}</p>
+            <p className="mb-1 text-[11px] text-slate-500">{t(otpExpiresAt === null ? 'signatureOtp.earlierNotice' : 'signatureOtp.sentNotice')}</p>
             <p className="mb-3 text-[11px] text-slate-500">{t('signatureOtp.attemptsNotice')}</p>
             {otpExpired && <p role="alert" className="mb-3 text-xs font-semibold text-red-700">{t('signatureOtp.expired')}</p>}
             <div className="flex flex-wrap items-end gap-3">
               <div>
                 <label className="mb-1.5 block text-[11px] font-bold text-slate-500">
-                  {t('signatureOtp.validFor', { time: formatCountdown(otpSecondsLeft ?? 0) })}
+                  {otpSecondsLeft === null ? t('signatureOtp.codeLabel') : t('signatureOtp.validFor', { time: formatCountdown(otpSecondsLeft) })}
                 </label>
                 <input
                   type="text"
@@ -822,6 +865,11 @@ export const ContractDetail: React.FC = () => {
           </div>
 
         </section>
+      )}
+
+      {/* GET /contracts/:id/payment-transactions: CUSTOMER/STAFF/ADMIN only; designer gets no section and no request */}
+      {showTransactions && (
+        <ContractPaymentHistory key={contract.id} contractId={contract.id} onChanged={refreshContractQuietly} />
       )}
     </Shell>
   );

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Bell, Plus, UserCog } from 'lucide-react';
 import { Header } from '@/components/layout';
@@ -7,6 +7,7 @@ import { useDemoWorkspace } from '@/hooks/useDemoWorkspace';
 import { ApiError } from '@/services/authService';
 import { assignLeadDesigner, type ProjectDesignerRef } from '@/features/projects/projectApi';
 import { RoomAssignmentsTab } from '@/features/projects/RoomAssignmentsTab';
+import { toast } from '@/components/ui';
 
 export const StaffProjectDetail: React.FC = () => {
   const navigate = useNavigate();
@@ -21,23 +22,16 @@ export const StaffProjectDetail: React.FC = () => {
   const [showAssignForm, setShowAssignForm] = useState(false);
   const [designerIdInput, setDesignerIdInput] = useState('');
   const [assigning, setAssigning] = useState(false);
-  const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
-
-  useEffect(() => {
-    if (!toast) return;
-    const timer = setTimeout(() => setToast(null), 3500);
-    return () => clearTimeout(timer);
-  }, [toast]);
 
   const handleAssignDesigner = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!hasValidProjectId) {
-      setToast({ type: 'error', message: 'Mã dự án không hợp lệ.' });
+      toast.error('Mã dự án không hợp lệ.');
       return;
     }
     const designerId = designerIdInput.trim();
     if (!designerId) {
-      setToast({ type: 'error', message: 'Vui lòng nhập Designer ID (UUID).' });
+      toast.error('Vui lòng nhập Designer ID (UUID).');
       return;
     }
 
@@ -47,7 +41,7 @@ export const StaffProjectDetail: React.FC = () => {
       setAssignedDesigner(updated.designer);
       setShowAssignForm(false);
       setDesignerIdInput('');
-      setToast({ type: 'success', message: 'Phân công Lead Designer thành công!' });
+      toast.success('Phân công Lead Designer thành công!');
     } catch (err) {
       let message = 'Có lỗi xảy ra. Vui lòng thử lại.';
       if (err instanceof ApiError) {
@@ -63,7 +57,7 @@ export const StaffProjectDetail: React.FC = () => {
           message = err.message;
         }
       }
-      setToast({ type: 'error', message });
+      toast.error(message);
     } finally {
       setAssigning(false);
     }
@@ -122,19 +116,6 @@ export const StaffProjectDetail: React.FC = () => {
   return (
     <div className="min-h-screen bg-sand-50/60 font-sans flex flex-col justify-between">
       <Header role="staff" />
-
-      {toast && (
-        <div
-          role={toast.type === 'error' ? 'alert' : 'status'}
-          className={`fixed right-4 top-4 z-[80] max-w-sm rounded-xl border px-4 py-3 text-sm font-medium shadow-lg ${
-            toast.type === 'success'
-              ? 'border-emerald-100 bg-emerald-50 text-emerald-800'
-              : 'border-red-100 bg-red-50 text-red-700'
-          }`}
-        >
-          {toast.message}
-        </div>
-      )}
 
       {/* Main Content */}
       <main className="w-full max-w-[1440px] mx-auto px-6 lg:px-12 py-10 flex-1">
