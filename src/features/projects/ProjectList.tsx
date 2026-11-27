@@ -13,7 +13,7 @@ import { awaitingCount, draftNote, isClosed, knownVersion, needsAction, useConce
 import { MiniSteps } from './ProjectStepper';
 
 type ListRole = 'staff' | 'admin' | 'designer' | 'homeowner';
-const STATUSES: ProjectStatus[] = ['DRAFT', 'CONTRACT_PENDING', 'REQUIREMENT_ANALYSIS', 'IN_DESIGN', 'PRODUCT_SELECTION', 'QUOTING', 'COMPLETED', 'CANCELLED'];
+const STATUSES: ProjectStatus[] = ['DRAFT', 'CONTRACT_PENDING', 'IN_DESIGN', 'PRODUCT_SELECTION', 'QUOTING', 'COMPLETED', 'CANCELLED'];
 const inDesign = (p: Project) => p.status === 'IN_DESIGN' || p.status === 'PRODUCT_SELECTION';
 
 /** Staff stat tiles double as quick filters on the table (combined with search and the status select). */

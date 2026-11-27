@@ -66,10 +66,12 @@ export function HomeownerPayments() {
         window.sessionStorage.removeItem('archsync-payos-transaction-id');
         window.sessionStorage.removeItem('archsync-payos-milestone-id');
       }
+      // A paid DEPOSIT moves the project to IN_DESIGN on the server: reload it and the milestones to show that.
+      if (actual.status === 'SUCCESS') void loadContext();
     } catch (error) {
       setTransactionError(error instanceof Error ? error.message : 'Could not verify the transaction status.');
     } finally { setTransactionLoading(false); }
-  }, [transactionId]);
+  }, [transactionId, loadContext]);
 
   useEffect(() => { void loadContext(); }, [loadContext]);
   useEffect(() => { void verifyTransaction(); }, [verifyTransaction]);

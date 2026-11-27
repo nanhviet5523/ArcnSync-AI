@@ -7,7 +7,7 @@ import { Stars } from '@/features/reviews/ReviewCard';
 import { dashboardApi } from './dashboardApi';
 import type { BackendRole, DashboardStats } from './dashboardApi';
 
-const STAGES = ['DRAFT', 'CONTRACT_PENDING', 'REQUIREMENT_ANALYSIS', 'IN_DESIGN', 'PRODUCT_SELECTION', 'QUOTING', 'COMPLETED', 'CANCELLED'] as const;
+const STAGES = ['DRAFT', 'CONTRACT_PENDING', 'IN_DESIGN', 'PRODUCT_SELECTION', 'QUOTING', 'COMPLETED', 'CANCELLED'] as const;
 const ROLES: BackendRole[] = ['CUSTOMER', 'DESIGNER', 'STAFF', 'SUPPLIER', 'ADMIN'];
 const INQUIRY_STATES = ['NEW', 'IN_PROGRESS', 'RESOLVED', 'SPAM'] as const;
 

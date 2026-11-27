@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { AppShell, Button, Card, DetailList, ErrorState, PageHeader, Skeleton, StatusChip, avatarTone, initials, toast } from '@/components/ui';
 import { CalendarDays, Copy, Signpost, Sparkles, Wallet } from 'lucide-react';
 import { errorText, formatDate, formatMoney, formatNumber, t } from '@/i18n';
 import { getCurrentUser } from '@/services/authService';
-import { canOpenWorkspace, kickoffErrorText, kickoffProjectDesign, projectApi } from './projectApi';
+import { canOpenWorkspace, projectApi } from './projectApi';
 import type { DesignerOption, Project } from './projectApi';
 import { TeamCard } from '@/features/design-workspace/TeamCard';
 import { isOffTeam, resolveProjectRole } from '@/features/design-workspace/logic';
@@ -42,7 +42,6 @@ export function ProjectDetail() {
   const [designers, setDesigners] = useState<DesignerOption[] | null>(null);
   const [error, setError] = useState('');
   const [offTeam, setOffTeam] = useState(false);
-  const [busy, setBusy] = useState<'' | 'kickoff'>('');
   /** Staff only. undefined = not checked yet (or the check failed), null = the project has no contract. */
   const [contract, setContract] = useState<ContractResponse | null | undefined>(undefined);
   const [contractOpen, setContractOpen] = useState(false);
@@ -87,25 +86,6 @@ export function ProjectDetail() {
   // the homeowner's view loads its own concepts
   const conceptData = useProjectConcepts(staff || designer ? project : null);
 
-  // The kickoff is not idempotent: the ref blocks a second click before the loading state renders.
-  const kickoffRunning = useRef(false);
-  const startDesign = async (projectId: string) => {
-    if (kickoffRunning.current) return;
-    kickoffRunning.current = true;
-    setBusy('kickoff');
-    try {
-      await kickoffProjectDesign(projectId);
-      setToast({ tone: 'success', message: t('kickoff.success') });
-      await load();
-    } catch (e) {
-      setToast({ tone: 'error', message: kickoffErrorText(e) });
-      // the project may have moved on server-side: sync the page
-      void load();
-    } finally {
-      kickoffRunning.current = false;
-      setBusy('');
-    }
-  };
   const contractPage = `/project-contract?projectId=${encodeURIComponent(id)}`;
   const back = { to: staff ? '/staff/projects' : designer ? '/designer/projects' : '/homeowner/projects', label: t('projectDetail.back') };
 
@@ -124,13 +104,10 @@ export function ProjectDetail() {
 
   const a = project.apartment;
   const floors = [...(a?.floors ?? [])].sort((x, y) => x.level - y.level);
-  // The kickoff API only accepts REQUIREMENT_ANALYSIS (it answers 422 INVALID_PROJECT_STATUS_TRANSITION before the deposit is paid).
-  const kickoffReady = project.status === 'REQUIREMENT_ANALYSIS';
-  // The contract is signed (ACTIVE) but the deposit is not paid: the project is still CONTRACT_PENDING until it is.
+  // The contract is signed (ACTIVE) but the deposit is not paid: the project is still CONTRACT_PENDING until it is,
+  // then the server moves it straight to IN_DESIGN.
   const waitingDeposit = project.status === 'CONTRACT_PENDING' && contract?.status === 'ACTIVE';
   const workspace = canOpenWorkspace(project.status);
-  // "Start design": REQUIREMENT_ANALYSIS, a Lead assigned, and Admin or the Staff member in charge
-  const canKickoff = kickoffReady && !!project.designer && (role === 'admin' || (role === 'staff' && project.staff.id === userId));
   // PATCH /projects/:id: a DRAFT project, by Admin or the Staff member in charge
   const canEditProject = project.status === 'DRAFT' && (role === 'admin' || (role === 'staff' && project.staff.id === userId));
   // Site survey: the Lead is per project (projectRole), not an account role; Staff in charge or Admin may cancel it
@@ -184,10 +161,7 @@ export function ProjectDetail() {
     ? <Button variant="primary" onClick={toConcepts}>{t('projectDetail.workOnConcepts')}</Button>
     : workspace
     ? <Button variant="primary" onClick={open}>{workspaceLabel}</Button>
-    : canKickoff
-      ? <Button variant="primary" loading={busy === 'kickoff'} disabled={busy === 'kickoff'}
-          onClick={() => void startDesign(project.id)}>{t('projectDetail.startDesign')}</Button>
-      : null;
+    : null;
 
   return (
     <AppShell>
@@ -223,7 +197,6 @@ export function ProjectDetail() {
           {!(staff && contract === null) && <Button onClick={() => navigate(contractPage)}>{t('projectDetail.contract')}</Button>}
         </>}
       />
-      {staff && kickoffReady && !project.designer && <p className="-mt-4 mb-5 text-right text-xs text-amber-700">{t('projectDetail.startDesignHint')}</p>}
       {staff && project.status === 'DRAFT' && project.apartment === null && contract === null && <p className="-mt-4 mb-5 text-right text-xs text-slate-500">{t('projectDetail.createContractLocked')}</p>}
 
       <Card className="mb-5" bodyClassName="px-4 py-4 sm:px-6">
@@ -313,7 +286,6 @@ export function ProjectDetail() {
           {staff && (
             <div className="mt-5 border-t border-line pt-4">
               <DesignTeamCard project={project} role={viewerRole} designers={designers} onToast={setToast} onSaved={() => { void load(); setRoomsKey((k) => k + 1); }} />
-              {kickoffReady && <p className="mt-3 text-xs text-slate-500">{t('projectDetail.kickoffNote')}</p>}
             </div>
           )}
         </Card>

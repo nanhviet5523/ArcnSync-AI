@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { BadgeCheck, ClipboardList, FileSignature, ListChecks, PenTool, Receipt, Sofa } from 'lucide-react';
+import { BadgeCheck, ClipboardList, FileSignature, PenTool, Receipt, Sofa } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { t, tList } from '@/i18n';
 import { PROJECT_STEPS, projectStepStates } from './steps';
@@ -9,7 +9,6 @@ import type { ProjectStep, StepState } from './steps';
 const STEP_ICONS: Record<ProjectStep, LucideIcon> = {
   DRAFT: ClipboardList,
   CONTRACT_PENDING: FileSignature,
-  REQUIREMENT_ANALYSIS: ListChecks,
   IN_DESIGN: PenTool,
   PRODUCT_SELECTION: Sofa,
   QUOTING: Receipt,
@@ -84,7 +83,7 @@ export function StepTrack({ steps, label, emphasis = false, className = '' }: {
 }
 
 /**
- * The 7 steps as a strip of tiny segments for tables: done steps filled, the current one half-tone. The step name
+ * The 6 steps as a strip of tiny segments for tables: done steps filled, the current one half-tone. The step name
  * and number are in the tooltip and for screen readers. Nothing for a cancelled or unknown status.
  */
 export function MiniSteps({ status }: { status: string }) {
@@ -107,7 +106,7 @@ export function MiniSteps({ status }: { status: string }) {
 }
 
 /**
- * Project progress on the project pages (Staff, Designer, Homeowner): the 7 steps of PROJECT_STEPS, drawn only from
+ * Project progress on the project pages (Staff, Designer, Homeowner): the 6 steps of PROJECT_STEPS, drawn only from
  * `status`. Display only. Below 640px the bar scrolls sideways inside its card instead of squeezing the labels.
  */
 export function ProjectStepper({ status, emphasis = false }: {

@@ -78,7 +78,7 @@ export const en = {
   role: { homeowner: 'Homeowner', staff: 'Staff', designer: 'Designer', supplier: 'Supplier', admin: 'Admin' },
   status: {
     project: {
-      DRAFT: 'Draft', CONTRACT_PENDING: 'Awaiting contract', REQUIREMENT_ANALYSIS: 'Requirements', IN_DESIGN: 'Layout',
+      DRAFT: 'Draft', CONTRACT_PENDING: 'Awaiting contract', REQUIREMENT_ANALYSIS: 'Requirement analysis', IN_DESIGN: 'Layout',
       PRODUCT_SELECTION: 'Product selection', QUOTING: 'Quotation', COMPLETED: 'Completed', CANCELLED: 'Cancelled',
     },
     version: { DRAFT: 'Draft', SUBMITTED: 'In review', REVISION_REQUESTED: 'Changes requested', APPROVED: 'Approved', SUPERSEDED: 'Superseded' },
@@ -281,7 +281,7 @@ export const en = {
   },
   steps: {
     /** One label per backend status, in order (features/projects/steps.ts); also used by the landing page. */
-    project: ['Survey', 'Contract', 'Analysis', 'Design', 'Products', 'Quotation & handover', 'Completed'],
+    project: ['Survey', 'Contract', 'Design', 'Products', 'Quotation & handover', 'Completed'],
     workspace: ['Concept', 'Layout', 'Products', 'Quotation', 'Approved'],
     label: 'Project progress',
     // still read by the workspace stepper (WorkspaceBar), which draws Concept as a separate step
@@ -480,11 +480,9 @@ export const en = {
     cancelled: 'This project was cancelled.',
     completedHomeowner: 'Your project is complete. Tell us how it went.',
     completed: 'The project is complete.',
-    staffAssign: 'Assign a designer to this project.',
-    staffKickoff: 'Move the project into design.',
     staffContract: 'Create the contract and send it to the homeowner to sign.',
     staffDeposit: 'Waiting for the homeowner to sign the contract. The deposit will be payable after signing.',
-    staffWaitingDeposit: 'The contract is signed. Waiting for the homeowner to pay the deposit.',
+    staffWaitingDeposit: 'The contract is signed. Once the homeowner pays the deposit, the project moves into the design phase.',
     waitingStaff: 'The staff team is preparing this project.',
     surveyStaffNoLead: 'Assign a Lead designer so the homeowner can book the site survey.',
     surveyStaff: 'Waiting for the site survey. The contract can be created once the homeowner confirms it.',
@@ -538,9 +536,6 @@ export const en = {
     notAssigned: 'Not assigned',
     noDesigners: 'No designers are available right now',
     pendingSurvey: 'Pending site survey confirmation',
-    startDesign: 'Start design',
-    startDesignHint: 'Assign a designer first',
-    kickoffNote: 'Temporary step until contracts are in place.',
     openWorkspace: 'Open design workspace',
     workOnConcepts: 'Work on concepts',
     openViewOnly: 'Open workspace (view only)',
@@ -787,16 +782,6 @@ export const en = {
       noFloors: 'Record at least one floor before submitting.',
       missingPhotos: 'Add photos for every floor before submitting (missing: level {levels}).',
     },
-  },
-  kickoff: {
-    success: 'Project design phase started successfully!',
-    noDesigner: 'Please assign a Lead Designer first.',
-    fromDraft: 'Cannot start design. Contract has not been created yet.',
-    fromContractPending: 'Cannot start design. Contract signing or deposit payment is pending.',
-    alreadyStarted: 'Design phase has already been started.',
-    wrongStatus: 'Project must be in REQUIREMENT_ANALYSIS status to start design.',
-    notFound: 'Project not found or you are not assigned to this project.',
-    forbidden: 'You do not have permission to kickoff design phase.',
   },
   editProject: {
     open: 'Edit project',
@@ -1794,7 +1779,7 @@ export const en = {
   },
   /**
    * Public landing page (/): progress tracking, drawing review and staged payments for homeowners and design firms.
-   * The 7 steps are keyed by backend ProjectStatus, in order (CANCELLED left out).
+   * The 6 steps are keyed by backend ProjectStatus, in order (CANCELLED and REQUIREMENT_ANALYSIS left out).
    */
   home: {
     nav: { hero: 'Home', howItWorks: 'How it works', features: 'Features', inspiration: 'Inspiration', contact: 'Contact', outline: 'Page sections' },
@@ -1810,7 +1795,7 @@ export const en = {
       description: 'View 2D and 3D drawings, pin comments right on the floor plan, approve each design stage, sign your contract with an OTP code and pay in installments through PayOS, all on one platform.',
       /** Sample data for the project page preview beside the hero text (decorative). */
       preview: {
-        label: 'Preview of a project page: the 7-step progress bar at step 4, Design, and the next step card',
+        label: 'Preview of a project page: the 6-step progress bar at step 3, Design, and the next step card',
         project: 'Riverside apartment',
         designer: 'Nguyen Linh',
         staff: 'Tran Nam',
@@ -1822,11 +1807,10 @@ export const en = {
     },
     steps: {
       eyebrow: 'How it works',
-      title: 'Seven steps, from site survey to handover',
+      title: 'Six steps, from site survey to handover',
       intro: 'Each step matches a project status on the platform, so you always know where your project stands and what comes next.',
       DRAFT: { title: 'Site survey', body: 'Book a visit with your designer, then confirm the measurements they record.' },
-      CONTRACT_PENDING: { title: 'Contract & deposit', body: 'Sign the contract online with an OTP code and pay the deposit by scanning a PayOS QR code.' },
-      REQUIREMENT_ANALYSIS: { title: 'Requirement analysis', body: 'The design team sets up the floors and rooms of your home from the survey and your brief.' },
+      CONTRACT_PENDING: { title: 'Contract & deposit', body: 'Sign the contract online with an OTP code and pay the deposit by scanning a PayOS QR code. Once the deposit is paid, the project moves into the design phase.' },
       IN_DESIGN: { title: '2D design & concept', body: 'Compare the concept options and layouts, and pin comments right on the drawing.' },
       PRODUCT_SELECTION: { title: '3D product selection', body: 'Review the real furniture chosen for each room in the 3D model and approve it.' },
       QUOTING: { title: 'Quotation & BOM', body: 'Check and accept the bill of materials, generated from the products in your design.' },

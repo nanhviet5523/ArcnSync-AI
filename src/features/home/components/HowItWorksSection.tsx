@@ -3,7 +3,7 @@ import { t } from '@/i18n';
 import { useReveal } from '../useReveal';
 import { PROJECT_STEPS } from '../landing';
 
-/** Section 2: the 7 steps of a project, one per backend status, as a numbered timeline. */
+/** Section 2: the 6 steps of a project, as a numbered timeline. */
 export function HowItWorksSection() {
   const intro = useReveal<HTMLDivElement>();
   const steps = useReveal<HTMLOListElement>();

@@ -265,29 +265,6 @@ export function updateProject(projectId: string, payload: UpdateProjectPayload):
   return apiRequest<ProjectResponse>(path(projectId), json('PATCH', body));
 }
 
-/**
- * POST /projects/:id/design-kickoff, no body: Staff in charge or Admin moves REQUIREMENT_ANALYSIS → IN_DESIGN.
- * Not idempotent: callers must block a second click while it runs.
- * Errors: 403 INSUFFICIENT_ROLE, 404 PROJECT_NOT_FOUND, 422 DESIGNER_NOT_ASSIGNED / INVALID_PROJECT_STATUS_TRANSITION (details.from).
- */
-export function kickoffProjectDesign(projectId: string): Promise<Project> {
-  return apiRequest<Project>(`${path(projectId)}/design-kickoff`, { method: 'POST' });
-}
-
-/** Message for a failed kickoff, chosen by the backend `code` (and `details.from` for a wrong status). */
-export function kickoffErrorText(e: unknown): string {
-  const { code, details } = (e ?? {}) as { code?: string; details?: { from?: string } };
-  if (code === 'DESIGNER_NOT_ASSIGNED') return t('kickoff.noDesigner');
-  if (code === 'APARTMENT_NOT_SURVEYED') return t('errors.APARTMENT_NOT_SURVEYED');
-  if (code === 'INVALID_PROJECT_STATUS_TRANSITION') {
-    const from = details?.from;
-    return t(from === 'DRAFT' ? 'kickoff.fromDraft' : from === 'CONTRACT_PENDING' ? 'kickoff.fromContractPending' : from === 'IN_DESIGN' ? 'kickoff.alreadyStarted' : 'kickoff.wrongStatus');
-  }
-  if (code === 'PROJECT_NOT_FOUND') return t('kickoff.notFound');
-  if (code === 'INSUFFICIENT_ROLE') return t('kickoff.forbidden');
-  return errorText(e);
-}
-
 /** GET /projects/:id/room-assignments: assigned rooms and who holds them. */
 export function getRoomAssignments(projectId: string): Promise<RoomAssignmentListResponse> {
   return apiRequest<RoomAssignmentListResponse>(`${path(projectId)}/room-assignments`);
@@ -366,7 +343,6 @@ export const projectApi = {
   list: (q: { status?: ProjectStatus; q?: string } = {}) => getProjects({ ...q, limit: 100 }),
   get: (id: string) => apiRequest<Project>(path(id)),
   create: createProject,
-  kickoff: kickoffProjectDesign,
   assignLeadDesigner,
 
   /** Staff, Admin and the design team: GET /projects/:id/team. */
@@ -380,10 +356,14 @@ export const projectApi = {
   listApartments: (ownerId: string) => apiRequest<Page<Apartment>>(`/apartments${qs({ ownerId, limit: 100 })}`),
 };
 
-/** Step of a status on the 7-step progress bar (steps.ts: one step per backend status). */
+/** Step of a status on the 6-step progress bar (steps.ts). */
 export { stepIndex } from './steps';
-export const isPreparing = (s: ProjectStatus) => ['DRAFT', 'CONTRACT_PENDING', 'REQUIREMENT_ANALYSIS'].includes(s);
-export const canOpenWorkspace = (s: ProjectStatus) => ['IN_DESIGN', 'PRODUCT_SELECTION', 'QUOTING', 'COMPLETED'].includes(s);
+/**
+ * Before design: the deposit (DEPOSIT milestone PAID) moves CONTRACT_PENDING straight to IN_DESIGN on the server.
+ * REQUIREMENT_ANALYSIS is reserved and nothing leads into it; it counts as design so an old project stays usable.
+ */
+export const isPreparing = (s: ProjectStatus) => ['DRAFT', 'CONTRACT_PENDING'].includes(s);
+export const canOpenWorkspace = (s: ProjectStatus) => ['REQUIREMENT_ANALYSIS', 'IN_DESIGN', 'PRODUCT_SELECTION', 'QUOTING', 'COMPLETED'].includes(s);
 
 /** "Next step" for the person viewing the project. */
 export function nextStep(role: UserRole, p: Project): string {
@@ -398,11 +378,8 @@ export function nextStep(role: UserRole, p: Project): string {
       if (role === 'designer' && p.myProjectRole === 'LEAD') return t('nextStep.surveyLead');
       return t('nextStep.waitingStaff');
     }
-    if (role === 'staff' || role === 'admin') {
-      // Kickoff is only possible once the deposit is paid (REQUIREMENT_ANALYSIS); before that the staff wait on the contract.
-      if (p.status === 'REQUIREMENT_ANALYSIS') return t(p.designer ? 'nextStep.staffKickoff' : 'nextStep.staffAssign');
-      return t(p.status === 'DRAFT' ? 'nextStep.staffContract' : 'nextStep.staffDeposit');
-    }
+    // paying the deposit starts the design phase by itself: until then the staff wait on the contract
+    if (role === 'staff' || role === 'admin') return t(p.status === 'DRAFT' ? 'nextStep.staffContract' : 'nextStep.staffDeposit');
     return t('nextStep.waitingStaff');
   }
   const key = `nextStep.${p.status}.${role}`;

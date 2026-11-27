@@ -22,7 +22,7 @@ import {
 const STATUS_LABEL: Record<ProjectStatus, string> = {
   DRAFT: 'Draft',
   CONTRACT_PENDING: 'Contract pending',
-  REQUIREMENT_ANALYSIS: 'Requirements',
+  REQUIREMENT_ANALYSIS: 'Requirement analysis',
   IN_DESIGN: 'In design',
   PRODUCT_SELECTION: 'Products',
   QUOTING: 'Quoting',
@@ -47,7 +47,7 @@ const ROLE_BADGE: Record<MyProjectRole, string> = {
 };
 
 const STATUS_TABS: (ProjectStatus | '')[] = [
-  '', 'DRAFT', 'CONTRACT_PENDING', 'REQUIREMENT_ANALYSIS', 'IN_DESIGN',
+  '', 'DRAFT', 'CONTRACT_PENDING', 'IN_DESIGN',
   'PRODUCT_SELECTION', 'QUOTING', 'COMPLETED', 'CANCELLED',
 ];
 
