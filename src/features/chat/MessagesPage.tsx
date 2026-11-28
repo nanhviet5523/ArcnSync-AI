@@ -156,7 +156,7 @@ export function MessagesPage() {
   };
 
   return (
-    <AppShell wide footer={false}>
+    <AppShell wide>
       <PageHeader title={t('chat.page.title')} description={t('chat.page.description')} />
       {notFound && (
         <div className="mb-4">

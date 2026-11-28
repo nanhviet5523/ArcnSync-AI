@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Camera, Check, LockKeyhole, UserRound } from 'lucide-react';
 import { Footer, Header } from '@/components/layout';
+import { roleBadgeClass } from '@/components/ui/status';
 import { ApiError, getCurrentUser } from '@/services/authService';
 import { changeMyPassword, getMyProfile, updateMyProfile, type UserProfile } from '@/services/userService';
 import { ROLE_CONFIG } from '@/types/role';
@@ -123,7 +124,7 @@ export const ProfileSettings: React.FC = () => {
         <aside className="rounded-3xl border border-line bg-surface p-7 text-center shadow-[0_12px_30px_rgba(15,23,42,.08)]">
           <div className="mx-auto grid h-32 w-32 place-items-center rounded-full bg-dark text-4xl font-extrabold text-white">{loading ? <UserRound size={42}/> : initials || 'U'}</div>
           <h2 className="mt-4 text-2xl font-extrabold text-ink">{loading ? 'Loading profile…' : profile?.fullName || sessionUser?.name || 'Account'}</h2>
-          <span className="mt-3 inline-flex rounded-full bg-cyan-100 px-3 py-1 text-sm font-bold text-cyan-800">{roleLabel}</span>
+          <span className={`mt-3 inline-flex rounded-full px-3 py-1 text-sm font-bold ${role ? roleBadgeClass(role) : 'bg-slate-200 text-slate-800 ring-1 ring-inset ring-slate-300'}`}>{roleLabel}</span>
           <p className="mt-4 break-all text-sm text-slate-500">{profile?.email ?? sessionUser?.email ?? ''}</p>
           <button type="button" disabled title="Profile photo upload is not available in the current API." className="mt-4 inline-flex items-center gap-2 rounded-xl border border-slate-300 px-5 py-3 text-sm font-bold text-subtext disabled:cursor-not-allowed"><Camera size={17}/>Change photo</button>
           <dl className="mt-6 space-y-3 border-t border-line pt-5 text-left text-sm">

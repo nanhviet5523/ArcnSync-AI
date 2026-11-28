@@ -80,3 +80,14 @@ export function avatarLabels(people: readonly { id: string; name: string }[]): R
 const ROLE_ALIAS: Record<string, string> = { CUSTOMER: 'homeowner', HOMEOWNER: 'homeowner', STAFF: 'staff', DESIGNER: 'designer', SUPPLIER: 'supplier', ADMIN: 'admin' };
 /** CUSTOMER (backend) and homeowner (frontend) both read "Homeowner". */
 export const roleLabel = (role: string) => t(`role.${ROLE_ALIAS[role] ?? role}`);
+
+/** Soft, consistent role colours used for role tags throughout the interface. */
+const ROLE_BADGE_CLASS: Record<string, string> = {
+  ADMIN: 'bg-red-100 text-red-800 ring-1 ring-inset ring-red-200',
+  STAFF: 'bg-sky-100 text-sky-800 ring-1 ring-inset ring-sky-200',
+  DESIGNER: 'bg-teal-100 text-teal-800 ring-1 ring-inset ring-teal-200',
+  SUPPLIER: 'bg-amber-100 text-amber-800 ring-1 ring-inset ring-amber-200',
+  CUSTOMER: 'bg-emerald-100 text-emerald-800 ring-1 ring-inset ring-emerald-200',
+  HOMEOWNER: 'bg-emerald-100 text-emerald-800 ring-1 ring-inset ring-emerald-200',
+};
+export const roleBadgeClass = (role: string) => ROLE_BADGE_CLASS[role.toUpperCase()] ?? 'bg-slate-200 text-slate-800 ring-1 ring-inset ring-slate-300';

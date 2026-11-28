@@ -42,12 +42,12 @@ export function AdminDashboard() {
       {error && <div className="mb-5"><ErrorState message={error} onRetry={load} /></div>}
 
       <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard icon={<Users className="h-5 w-5" />} label={t('adminDashboard.users')} loading={!s} value={s ? formatNumber(s.users.total) : ''} hint={s ? t('adminDashboard.usersHint', { n: s.users.newLast30Days }) : undefined} />
-        <StatCard icon={<FolderKanban className="h-5 w-5" />} iconTone="violet" label={t('adminDashboard.activeProjects')} loading={!s} value={s ? formatNumber(s.projects.active) : ''}
+        <StatCard icon={<Users className="h-5 w-5" />} iconTone="blue" label={t('adminDashboard.users')} loading={!s} value={s ? formatNumber(s.users.total) : ''} hint={s ? t('adminDashboard.usersHint', { n: s.users.newLast30Days }) : undefined} />
+        <StatCard icon={<FolderKanban className="h-5 w-5" />} iconTone="blue" label={t('adminDashboard.activeProjects')} loading={!s} value={s ? formatNumber(s.projects.active) : ''}
           hint={s ? t('adminDashboard.activeProjectsHint', { created: s.projects.createdLast30Days, completed: s.projects.completedLast30Days }) : undefined} />
         <StatCard icon={<Wallet className="h-5 w-5" />} iconTone="green" label={t('adminDashboard.collected')} loading={!s} value={s ? formatMoney(s.revenue.collected) : ''}
           hint={s ? t('adminDashboard.collectedHint', { amount: formatMoney(s.revenue.collectedLast30Days) }) : undefined} />
-        <StatCard icon={<AlertTriangle className="h-5 w-5" />} iconTone="orange" label={t('adminDashboard.outstanding')} loading={!s} value={s ? formatMoney(s.revenue.outstanding) : ''}
+        <StatCard icon={<AlertTriangle className="h-5 w-5" />} iconTone="amber" label={t('adminDashboard.outstanding')} loading={!s} value={s ? formatMoney(s.revenue.outstanding) : ''}
           hint={s ? t('adminDashboard.outstandingHint', { n: s.revenue.overdueMilestones }) : undefined} />
       </div>
 

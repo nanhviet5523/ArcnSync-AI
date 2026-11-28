@@ -1,5 +1,6 @@
 import { Lock, Paperclip, SquarePen } from 'lucide-react';
 import { Avatar, Button, EmptyState, ErrorState, Skeleton, roleLabel } from '@/components/ui';
+import { roleBadgeClass } from '@/components/ui/status';
 import { t } from '@/i18n';
 import { getCurrentUser } from '@/services/authService';
 import type { ConversationItem } from '@/types/chat';
@@ -97,7 +98,7 @@ function ConversationRow({ conversation: c, meId, selected, onSelect }: {
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-2">
           <span className={`truncate text-sm text-ink ${unread ? 'font-bold' : 'font-semibold'}`}>{c.otherUser.fullName}</span>
-          <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-700">{roleLabel(c.otherUser.role)}</span>
+          <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${roleBadgeClass(c.otherUser.role)}`}>{roleLabel(c.otherUser.role)}</span>
           <time dateTime={when} className={`ml-auto shrink-0 text-[11px] ${unread ? 'font-semibold text-brand' : 'text-slate-500'}`}>{stamp(when)}</time>
         </span>
         <span className="mt-0.5 flex items-center gap-2">

@@ -1,12 +1,7 @@
 import React from 'react';
+import { roleBadgeClass } from '@/components/ui/status';
 
-export const ROLE_BADGE: Record<string, string> = {
-  ADMIN: 'bg-sand-100 text-ink',
-  STAFF: 'bg-sand-100 text-ink',
-  DESIGNER: 'bg-sand-100 text-ink',
-  SUPPLIER: 'bg-sand-100 text-ink',
-  CUSTOMER: 'bg-sand-100 text-ink',
-};
+export const ROLE_BADGE: Record<string, string> = Object.fromEntries(['ADMIN', 'STAFF', 'DESIGNER', 'SUPPLIER', 'CUSTOMER'].map((role) => [role, roleBadgeClass(role)]));
 
 export const STATUS_BADGE: Record<string, string> = {
   ACTIVE: 'bg-emerald-50 text-emerald-700',

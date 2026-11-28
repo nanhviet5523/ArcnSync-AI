@@ -14,7 +14,7 @@ export { PageHeader, Stepper } from './PageHeader';
 export { Tabs } from './Tabs';
 export type { TabItem } from './Tabs';
 export { Avatar } from './Avatar';
-export { avatarLabels, avatarTone, initials, roleLabel, statusInfo } from './status';
+export { avatarLabels, avatarTone, initials, roleBadgeClass, roleLabel, statusInfo } from './status';
 export type { StatusKind, Tone } from './status';
 export { AppShell } from './AppShell';
 export { Z } from './zIndex';

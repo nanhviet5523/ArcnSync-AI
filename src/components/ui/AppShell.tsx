@@ -1,9 +1,8 @@
 import type { ReactNode } from 'react';
 import { Footer, Header } from '@/components/layout';
-import { getCurrentUser } from '@/services/authService';
 
 /** Shared app frame. `wide` remains accepted for existing callers; all app pages now share the same content rails. */
-export function AppShell({ children, wide, footer }: {
+export function AppShell({ children, footer }: {
   children: ReactNode;
   wide?: boolean;
   footer?: boolean;

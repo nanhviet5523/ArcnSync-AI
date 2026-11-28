@@ -1,15 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { AlertCircle, ArrowRight, ClipboardList, DraftingCompass, FileCheck2, FolderKanban, LayoutDashboard, PencilRuler, Plus, Receipt, Search, UserRoundX, UserX, X } from 'lucide-react';
-import { AppShell, Button, CountUp, DataTable, EmptyState, FilterBar, Input, PageHeader, Select, StatCard, StatusChip, avatarTone, initials } from '@/components/ui';
+import { AlertCircle, ArrowRight, ClipboardList, DraftingCompass, FileCheck2, FolderKanban, LayoutDashboard, Package, PencilRuler, Plus, Receipt, Search, UserRoundX, UserX, X } from 'lucide-react';
+import { AppShell, Button, DataTable, EmptyState, FilterBar, Input, PageHeader, Select, StatCard, StatusChip, avatarTone, initials } from '@/components/ui';
 import type { Column } from '@/components/ui';
 import { errorText, formatDate, t } from '@/i18n';
 import { getCurrentUser } from '@/services/authService';
 import { canOpenWorkspace, getProjects, isPreparing, projectApi } from './projectApi';
 import type { Project, ProjectStatus } from './projectApi';
 import { GreetingLine, ProjectCards } from './ProjectCards';
-import { awaitingCount, draftNote, isClosed, knownVersion, needsAction, useConceptGates, useFloorCounts, useLatestVersions, versionUnknown } from './projectView';
+import { awaitingCount, draftNote, isClosed, knownVersion, needsAction, nextFor, useConceptGates, useFloorCounts, useLatestVersions, versionUnknown } from './projectView';
 import { MiniSteps } from './ProjectStepper';
 
 type ListRole = 'staff' | 'admin' | 'designer' | 'homeowner';
@@ -228,12 +228,15 @@ export function ProjectList() {
   if (cards) {
     const loading = !items && !error;
     const needs = (projects: Project[]) => projects.filter((p) => needsAction(role, p, latest(p.id), gate(p.id))).length;
-    const icon = 'h-5 w-5';
-    const cardStats = role === 'designer' ? [
-      <StatCard key="a" label={t('projects.stat.assigned')} value={all.length} loading={loading} icon={<FolderKanban className={icon} />} />,
-      <StatCard key="l" label={t('projects.stat.layout')} value={count((p) => p.status === 'IN_DESIGN')} loading={loading} icon={<PencilRuler className={icon} />} />,
-      <StatCard key="p" label={t('projects.stat.products')} value={count((p) => p.status === 'PRODUCT_SELECTION')} loading={loading} icon={<FolderKanban className={icon} />} />,
-    ] : [];
+    const designerActionItems = all.filter((p) => needsAction('designer', p, latest(p.id), gate(p.id)))
+      .sort((a, b) => Number(awaitingCount(b, latest(b.id)) > 0) - Number(awaitingCount(a, latest(a.id)) > 0)
+        || (b.updatedAt ?? b.createdAt).localeCompare(a.updatedAt ?? a.createdAt)).slice(0, 8);
+    const designerStats = [
+      { key: 'assigned', label: t('projects.stat.assigned'), value: all.length, icon: <FolderKanban className="h-5 w-5" />, tone: 'brand' as const },
+      { key: 'action', label: t('projects.stat.needsMe'), value: needs(all), icon: <AlertCircle className="h-5 w-5" />, tone: 'amber' as const },
+      { key: 'layout', label: t('projects.stat.layout'), value: count((p) => p.status === 'IN_DESIGN'), icon: <PencilRuler className="h-5 w-5" />, tone: 'blue' as const },
+      { key: 'products', label: t('projects.stat.products'), value: count((p) => p.status === 'PRODUCT_SELECTION'), icon: <Package className="h-5 w-5" />, tone: 'violet' as const },
+    ];
 
     const filters = (
       <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
@@ -255,7 +258,18 @@ export function ProjectList() {
         <PageHeader title={t(`projects.title.${role}`)} secondary={!error && filters}
           description={error ? t(`projects.description.${role}`) : <GreetingLine name={getCurrentUser()?.name} count={needs(all)} replies={all.reduce((n, p) => n + awaitingCount(p, latest(p.id)), 0)}
             draftNote={draftNote(all.flatMap((p) => knownVersion(latest(p.id))?.draftRooms ?? []))} unknown={all.filter((p) => !isClosed(p.status) && versionUnknown(latest(p.id))).length} onRetryAll={() => retryAll(all.filter((p) => !isClosed(p.status)).map((p) => p.id))} loading={loading || !ready} />} />
-        {!error && !loading && all.length > 3 && cardStats.length > 0 && <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-3">{cardStats}</div>}
+        {role === 'designer' && !error && <section aria-labelledby="designer-today-title" className="mb-6 space-y-4">
+          <div className="flex items-center gap-2"><ClipboardList aria-hidden className="h-5 w-5 text-brand-text" /><h2 id="designer-today-title" className="text-lg font-bold text-ink">{t('staffUx.today.designerTitle')}</h2></div>
+          <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">{designerStats.map((item) => <StatCard key={item.key} label={item.label} value={item.value} loading={loading || (item.key === 'action' && !ready)} icon={item.icon} iconTone={item.tone} />)}</div>
+          <div className="rounded-card border border-line bg-surface p-4 shadow-card sm:p-5">
+            <h3 className="mb-3 text-[15px] font-semibold text-ink">{t('projects.stat.needsMe')}</h3>
+            {loading || !ready ? <div aria-busy="true" className="space-y-2">{[0, 1].map((i) => <div key={i} className="h-10 animate-pulse rounded-lg bg-slate-100" />)}</div>
+              : designerActionItems.length ? <ul className="divide-y divide-line">{designerActionItems.map((p) => {
+                const reason = (p.myProjectRole === 'LEAD' && gate(p.id) ? t('concepts.nextLead') : nextFor('designer', p, latest(p.id), gate(p.id))) || t(`status.project.${p.status}`);
+                return <li key={p.id} className="flex flex-wrap items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"><div className="min-w-0"><p className="truncate text-sm font-semibold text-ink">{p.title} <span className="font-normal text-slate-500">· {p.code}</span></p><p className="mt-1 flex items-center gap-1.5 text-xs text-slate-600"><AlertCircle aria-hidden className="h-3.5 w-3.5" />{reason}</p></div><Button size="sm" variant="primary" onClick={() => open(p)}>{t('projects.openWorkspace')}</Button></li>;
+              })}</ul> : <p className="text-sm text-slate-600">{t('staffUx.today.designerDone')}</p>}
+          </div>
+        </section>}
         <ProjectCards role={role} projects={items && filtered} latest={latest} gate={gate} floors={cardFloors} error={error} onRetry={load}
           filteredOut={filteredOut} onClearFilters={clearFilters}
           onWorkspace={(p) => navigate(`/projects/${p.id}/workspace`)}
@@ -271,10 +285,10 @@ export function ProjectList() {
   const actionItems = [...all].filter((p) => attentionRank(p) < 4).sort((a, b) => attentionRank(a) - attentionRank(b) || (b.updatedAt ?? b.createdAt).localeCompare(a.updatedAt ?? a.createdAt)).slice(0, 8);
   const activeItems = [...all].filter((p) => p.status === 'IN_DESIGN' || p.status === 'PRODUCT_SELECTION').sort((a, b) => (b.updatedAt ?? b.createdAt).localeCompare(a.updatedAt ?? a.createdAt)).slice(0, 8);
   const countCards = [
-    { key: 'all' as QuickFilter, label: t('projects.stat.total'), value: items ? (overallTotal ?? all.length) : '—', icon: <LayoutDashboard className="h-5 w-5" strokeWidth={1.8} /> },
-    { key: 'unassigned' as QuickFilter, label: t('projects.stat.noDesigner'), value: items ? quickCounts.unassigned : '—', icon: <UserRoundX className="h-5 w-5" strokeWidth={1.8} /> },
-    { key: 'quotation' as QuickFilter, label: t('projects.stat.quoteHandover'), value: items ? count((p) => p.status === 'QUOTING' || p.status === 'COMPLETED') : '—', icon: <FileCheck2 className="h-5 w-5" strokeWidth={1.8} /> },
-    { key: 'design' as QuickFilter, label: t('projects.stat.inDesign'), value: items ? quickCounts.design : '—', icon: <DraftingCompass className="h-5 w-5" strokeWidth={1.8} /> },
+    { key: 'all' as QuickFilter, label: t('projects.stat.total'), value: items ? (overallTotal ?? all.length) : '—', icon: <LayoutDashboard className="h-5 w-5" strokeWidth={1.8} />, tone: 'brand' as const },
+    { key: 'unassigned' as QuickFilter, label: t('projects.stat.noDesigner'), value: items ? quickCounts.unassigned : '—', icon: <UserRoundX className="h-5 w-5" strokeWidth={1.8} />, tone: 'amber' as const },
+    { key: 'quotation' as QuickFilter, label: t('projects.stat.quoteHandover'), value: items ? count((p) => p.status === 'QUOTING' || p.status === 'COMPLETED') : '—', icon: <FileCheck2 className="h-5 w-5" strokeWidth={1.8} />, tone: 'orange' as const },
+    { key: 'design' as QuickFilter, label: t('projects.stat.inDesign'), value: items ? quickCounts.design : '—', icon: <DraftingCompass className="h-5 w-5" strokeWidth={1.8} />, tone: 'blue' as const },
   ];
   const designerOptions = [...new Map(all.filter((p) => p.designer).map((p) => [p.designer!.id, p.designer!])).values()];
   const customerOptions = [...new Map(all.map((p) => [p.customer.id, p.customer])).values()];
@@ -300,7 +314,7 @@ export function ProjectList() {
               onClick={() => setQuery({ quick: card.key === 'all' ? null : card.key, status: null, designer: null, customer: null, q: null, page: null })}
               aria-pressed={quick === card.key || (card.key === 'all' && quick === 'all')}
               className="rounded-card text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">
-              <StatCard label={card.label} value={card.value} loading={!items && !error} icon={card.icon} />
+              <StatCard label={card.label} value={card.value} loading={!items && !error} icon={card.icon} iconTone={card.tone} />
             </button>
           ))}
         </div>

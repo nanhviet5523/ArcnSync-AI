@@ -1,5 +1,13 @@
 @import "tailwindcss";
 
+/* Keep supplier navigation swipeable on narrow screens without showing the native horizontal scrollbar. */
+.supplier-nav-no-scrollbar {
+  scrollbar-width: none;
+}
+.supplier-nav-no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 /*
  * "Olive & Gỗ" palette. Edit the hex values in this block: every Tailwind token below reads them.
  * Tailwind v4 turns each into utilities: bg-canvas, border-line, bg-brand, rounded-card, shadow-card, bg-navy…

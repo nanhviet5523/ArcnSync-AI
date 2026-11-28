@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Building2, ChevronDown, ChevronLeft, ChevronRight, DoorOpen, LoaderCircle, Search, X } from 'lucide-react';
 import { Footer, Header } from '@/components/layout';
 import { PageHeader } from '@/components/ui';
@@ -129,6 +130,8 @@ export const ApartmentManagement: React.FC = () => {
         </div> : <div className="grid min-h-60 place-items-center text-center"><div className="max-w-md"><Building2 size={30} className="mx-auto text-slate-300"/>
           <h2 className="mt-3 font-semibold text-ink">{searched ? 'No properties match your search' : 'No properties yet'}</h2>
           <p className="mt-1 text-sm text-slate-500">{searched ? 'Try another building, address or unit number.' : "A home is created when the homeowner confirms the designer's site survey on the project page."}</p>
+          {searched ? <button type="button" onClick={() => { setQuery(''); void load(1, ''); }} className="mt-4 min-h-10 rounded-lg border border-control bg-surface px-4 text-sm font-semibold text-ink hover:bg-sand-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">Clear search</button>
+            : role === 'homeowner' && <Link to="/homeowner/projects" className="mt-4 inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-brand px-4 text-sm font-semibold text-white hover:bg-brand-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">View my projects <ChevronRight size={16}/></Link>}
         </div></div>}
         <div className="mt-5 flex items-center justify-between border-t border-line pt-4 text-sm text-slate-500"><span>{total} properties</span><div className="flex gap-2"><button type="button" disabled={page <= 1 || loading} onClick={() => void load(page - 1, query)} className="inline-flex items-center gap-1 rounded-lg border border-line px-3 py-2 disabled:opacity-40"><ChevronLeft size={15}/> Previous</button><span className="px-2 py-2">{page} / {pageCount}</span><button type="button" disabled={page >= pageCount || loading} onClick={() => void load(page + 1, query)} className="inline-flex items-center gap-1 rounded-lg border border-line px-3 py-2 disabled:opacity-40">Next <ChevronRight size={15}/></button></div></div>
       </section>

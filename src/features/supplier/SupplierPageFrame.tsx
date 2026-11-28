@@ -3,7 +3,7 @@ import { Header } from '@/components/layout';
 import { Footer } from '@/components/layout';
 
 export const SupplierPageFrame: React.FC<React.PropsWithChildren<{title:string;description:string;action?:React.ReactNode}>> = ({title,description,action,children}) => (
-  <div className="min-h-screen bg-sand-50/70 font-sans flex flex-col"><Header role="supplier"/><main className="mx-auto w-full max-w-[1440px] flex-1 px-6 py-9 lg:px-12"><div className="mb-7 flex flex-col justify-between gap-4 md:flex-row md:items-end"><div><h1 className="text-3xl font-extrabold tracking-tight text-ink">{title}</h1><p className="mt-2 text-sm leading-6 text-slate-500">{description}</p></div>{action}</div>{children}</main><Footer/></div>
+  <div className="flex min-h-screen flex-col overflow-x-clip bg-sand-50/70 font-sans"><Header role="supplier"/><main className="mx-auto w-full max-w-[1440px] flex-1 px-4 py-6 sm:px-6 sm:py-9 lg:px-12"><div className="mb-6 flex min-w-0 flex-col justify-between gap-4 sm:mb-7 md:flex-row md:items-end"><div className="min-w-0"><h1 className="break-words text-2xl font-extrabold tracking-tight text-ink sm:text-3xl">{title}</h1><p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">{description}</p></div>{action && <div className="shrink-0">{action}</div>}</div>{children}</main><Footer/></div>
 );
 
 export const SupplierCard: React.FC<React.PropsWithChildren<{title?:string;className?:string}>> = ({title,className='',children}) => <section className={`rounded-2xl border border-line bg-surface p-5 shadow-sm ${className}`}>{title&&<h2 className="mb-4 text-base font-bold text-ink">{title}</h2>}{children}</section>;
